@@ -17,10 +17,19 @@ The following is what have been identified that sets up the system as of the tim
 1. **Mutiple cameras**
     - These are used for object identification and location
     - Captures the user's head.
+    - **Supplementary items:**
+    1. **Tripod**
+        - Helps the cameras to be positioned 
 2. **Headset**
     - This are used to project audio cues that represents the objects on the table.
-3. **Computer Unit**
+3. **Computer System Unit**
     - This is used for computing processes. For example. computer vision is used to compute for the user's real-time head rotation from what Multiple cameras in (1) captured. 
 4. **Computer networking devices.** Not yet finalized
     - This is used for data transfer.
     - For the time being, (1), (2) and (3) are wirelessly connected. Though this may be changed to wired connections due to delay.
+
+## System functions
+
+1. The system uses **computer vision**.
+    - To determine what the objects are and where they are located. 
+    - To calculate the user's head rotation so that where the user is facing is indicated. 
