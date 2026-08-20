@@ -32,4 +32,6 @@ The following is what have been identified that sets up the system as of the tim
 
 1. The system uses **computer vision**.
     - To determine what the objects are and where they are located. 
-    - To calculate the user's head rotation so that where the user is facing is indicated. 
+    - To calculate the user's head rotation so that where the user is facing is indicated and position. 
+2. Projects sound to the user according to the position and rotation of the user's head and the object's individual position and what the object is.
+    - Sounds projected are simulation as if the objects project sounds in real life. For example, if a water bottle is at the user's left side of their head, a type of sound assigned to the water bottle will be projected to the left side of the user
