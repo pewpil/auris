@@ -24,9 +24,9 @@ The following is what have been identified that sets up the system as of the tim
     - This are used to project audio cues that represents the objects on the table.
 3. **Computer System Unit**
     - This is used for computing processes. For example. computer vision is used to compute for the user's real-time head rotation from what Multiple cameras in (1) captured. 
-4. **Computer networking devices.** Not yet finalized
+4. **Computer networking devices.**
     - This is used for data transfer.
-    - For the time being, (1), (2) and (3) are wirelessly connected. Though this may be changed to wired connections due to delay.
+    - The system may use wired or wireless connections. Wireless is acceptable if the measured end-to-end latency still meets the system's latency standard; otherwise the system uses wired connections.
 
 ## System functions
 
