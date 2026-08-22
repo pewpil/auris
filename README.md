@@ -1,9 +1,5 @@
 # Auris — Development Plan
 
-## Purpose
-
-This document is the canonical development plan for the Auris project. It is stored at the repository root. It is consumed by opencode as development context (via `.opencode/context.md`), and it is written so that the AI working on the project keeps the Prototype → Production transition in mind at every decision. Read it together with `.opencode/concept.md`, which describes the project concept.
-
 ## Project overview
 
 The system aids a visually impaired (or blindfolded) user in locating objects on a table using simulated auditory cues. The user sits at a table with several objects. Cameras track the objects and the user's head. A headset plays spatialized audio: each object emits a unique earcon anchored to its real position. Turning the head rotates the sound field correctly so the field stays anchored in world space. A hybrid interaction model provides always-on earcons plus a query/beacon mode ("find the bottle" → that object pings periodically).
