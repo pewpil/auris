@@ -40,7 +40,7 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 
 ### 3.1 Camera capture & calibration
 
-- **Prototype:** phones streaming RTSP/MJPEG (e.g., IP Webcam app) over WiFi. RGB only; if depth-like capability is explored, phones triangulate from multiple RGB views.
+- **Prototype:** any smartphone ≥1080p streaming MJPEG over WiFi — Android via native RTSP/MJPEG (e.g., IP Webcam app), iPhone via DroidCam's Linux client or an iOS MJPEG-server app; Android and iPhone units can be mixed freely (§7.1). RGB only; if depth-like capability is explored, phones triangulate from multiple RGB views.
 - **Production:** specialized RGB cameras — or depth cameras if RGB proves insufficient — covering the room from several angles so objects *and* the user's head stay visible during turns and walks.
 - **Calibration:** per-camera intrinsics via OpenCV chessboard; then joint **multi-camera extrinsic calibration** registering all cameras into the room/world frame. No dominant-plane shortcut exists at room scale.
 
@@ -120,16 +120,130 @@ All formal evaluation runs on the **Production system only**.
 
 ---
 
-## 7. Hardware roadmap
+## 7. Hardware requirements & cost breakdown
 
-| Component | Prototype | Production |
+The two-stage hardware strategy mirrors the development stages: the Prototype runs on whatever non-specialized gear is available, while the Production system is specified once, acquired deliberately, and carries every formal evaluation. Each component below states what it is, which contract it fulfills, and why it is needed.
+
+### 7.1 Prototype rig (Stage 1)
+
+Goal: validate the two risky unknowns (head-rotation-tracked audio intuitiveness; ARUCO-marker head tracking at 30–60 Hz) with minimal spend, reusing personal devices wherever possible.
+
+**Smartphone(s) — capture (`CameraSource`)**
+- What/why: the rig's imaging devices. Each streams video over WiFi so the Python pipeline receives `Frame`s exactly as it will from Production cameras.
+- Specs: any smartphone with ≥1080p rear camera, 720p–1080p @ ≥30 fps; lock focus/exposure for tracking stability.
+- **Android route:** **IP Webcam** (or similar) serving native RTSP/MJPEG.
+- **iPhone route:** DroidCam iOS app + official Linux client (droidcam), or an iOS MJPEG-server app feeding OpenCV directly. iOS has no native RTSP server, so the route's added stream latency must be measured early (same treatment as the BT earbuds).
+- **Mixed fleets work:** each device is just an independent `CameraSource` backend. Synchronization is host-timestamp based, calibration registers every camera into the shared world frame regardless of brand, and per-source latency/color differences are absorbed by per-camera capture threads plus smoothing filters.
+- One phone suffices for the Phase 1 slice; a second (any OS) approximates multi-camera handoff later.
+
+**Phone tripod mounts**
+- What/why: hold the phone rigidly and repeatably — loose, handheld cameras break both calibration and marker tracking.
+- Specs: spring clamps with standard ¼"-20 tripod thread; small desk tripod or shelf mount.
+
+**Printed ARUCO markers — object stand-ins + head rig**
+- What/why: markers replace real objects (`MarkerLocalizer` solves their pose directly, no plane assumption), and a pair worn on the head gives the `HeadPoseEstimator` its rigid reference body.
+- Specs: matte A4 prints (glare kills detection), 5×5 dictionary (e.g., `DICT_5X5_50`), 5–10 cm per side; two mounted on a cap/headband at ear height (left/right), one per tagged object.
+
+**Bluetooth earbuds — output (`AudioSink`)**
+- What/why: the listening device for the spatialized soundscape; good enough to judge intuitiveness, cheap enough to be throwaway.
+- Specs: any TWS set. Expect SBC codec latency of ~100–200 ms — measure it early; this is a Prototype-only concern and never informs Production design.
+
+**Laptop — compute**
+- What/why: hosts Python CV, the UDP streamer, and Unity simultaneously.
+- Specs: existing laptop is fine — ARUCO solvePnP plus a single Unity stream run comfortably on CPU. Python 3.10+, Unity 2022 LTS; discrete GPU not required at this stage.
+
+**Home WiFi router**
+- What/why: transports the phone's video stream to the laptop.
+- Specs: existing router acceptable; prefer 5 GHz for stream stability; phone and laptop on the same band.
+
+**Measurement & consumables**
+- What/why: sanity-check ground truth (is the sound where the marker actually is?) and calibration input.
+- Specs: steel tape measure; printed OpenCV chessboard; tape/adhesive for markers.
+
+### 7.2 Production system (Stage 2)
+
+Goal: a fixed, calibrated room installation accurate enough for formal evaluation, with every component swappable behind its contract.
+
+**Depth camera array — Intel RealSense D435 (×2–3) — capture (`CameraSource`)**
+- What/why: active infrared-stereo depth cameras giving metric depth per pixel, so `DepthLocalizer` obtains world-frame object positions directly at any height — no plane assumption — and the same array tracks the user's head through turns and walks.
+- Specs: global shutter, up to 90 fps depth, ~87°×58° FOV, USB-C 3.1, SDK 2.0 on Linux. The D435i variant adds an onboard IMU (handy reference, not required).
+- Placement: two cameras cover opposite room diagonals; **three recommended** so the walking user's body rarely occludes every view at once.
+- Concept.md escape hatch: if plain RGB proves sufficient in Phase 2, these may be replaced by global-shutter RGB cameras + multi-view triangulation.
+
+**Camera mounting & USB infrastructure**
+- What/why: extrinsic calibration is only valid while cameras stay perfectly still; and each D435 demands dependable USB 3 bandwidth.
+- Specs: sturdy tripods or wall clamps (¼"-20); powered USB-C hub; active extensions beyond 2 m; plan host-controller lanes so cameras don't share bandwidth.
+
+**Wired headset — output (`AudioSink`)**
+- What/why: delivers the binaural soundscape with zero wireless-codec latency; HRTF rendering happens host-side.
+- Specs: closed-back wired headphones (ATH-M20x class or similar). Low-latency Bluetooth (aptX-LL/LDAC) is acceptable only if it survives the Phase 4 latency measurement.
+
+**Headset-attached orientation device (fallback)**
+- What/why: concept.md's designated fallback — when cameras lose the face (turned away, occluded), a head-worn IMU keeps *orientation* accurate. Head *position* still comes from the camera array; the device contributes rotation only.
+- Specs: BNO085 9-axis IMU module (fused absolute orientation output) + ESP32 dev board streaming over USB-serial/BLE + light head strap integrated with the headset.
+
+**GPU workstation — compute**
+- What/why: trains and runs YOLO, ingests multiple camera streams, computes transforms, and hosts Unity.
+- Specs floor: 8 GB VRAM GPU (RTX 4060 class), 6-core CPU, 32 GB RAM, Ubuntu 22.04+, multiple USB 3.1 ports.
+- Options: (a) drop the GPU into an existing desktop; (b) purpose-built tower; (c) gaming laptop — verify sustained thermals for hours-long inference sessions.
+
+**Wired network kit**
+- What/why: default camera→host interconnect chosen to protect the < 100 ms budget before wireless is even considered.
+- Specs: Cat6 patch cables + 5-port gigabit switch. Wireless remains a candidate only if Phase 4 measures end-to-end latency under the standard with it.
+
+**Ground-truth & validation kit**
+- What/why: thesis evaluation needs independent truth to score CV accuracy against.
+- Specs: laser distance meter + steel tape (object-position ground truth); spare printed markers (head-pose validation reference in Phase 2).
+
+### 7.3 Cost breakdown (Philippine Pesos)
+
+> **Assumptions:** prices surveyed August 2026 via Philippine street channels (Shopee/Lazada/official stores), USD converted at **₱61/USD** (Aug 2026 mid-market). Import shipping, customs duties, and FX movement (2026 band ≈ ₱57–62) are **not** included. Items marked *(existing)* assume personal assets are reused at zero cost.
+
+**Prototype:**
+
+| Item | Est. cost (₱) | Notes |
 |---|---|---|
-| Room cameras | Phone(s) (RTSP/MJPEG, WiFi) | Specialized RGB/depth cameras covering the room (e.g., RealSense D435) |
-| Head tracking | Phone camera viewing ARUCO markers worn on the sides of the head | Fixed specialized cameras (markerless CV); headset-attached device if CV is unreliable |
-| Object marking | ARUCO markers stand in for objects | Real objects, identified by YOLO |
-| Audio | Bluetooth earbuds | Low-latency headset (host-side HRTF) |
-| Compute | Laptop | Same (GPU for YOLO) |
-| Interconnect | WiFi | Wired or wireless — chosen by measured latency vs the < 100 ms standard |
+| Phone tripod mounts ×2 | 400 – 1,200 | generic clamps |
+| ARUCO marker printing | 100 – 200 | matte A4 |
+| Tape measure, chessboard, misc | 300 – 500 | |
+| Bluetooth earbuds | 0 *(existing)* | budget TWS alternative: 800 – 2,500 |
+| Smartphone | 0 *(existing)* | budget/second-hand alternative: 4,000 – 8,000 |
+| Laptop + WiFi router | 0 *(existing)* | |
+| **Total — everything reusable** | **≈ 800 – 1,900** | |
+| **Total — if earbuds + phone must be bought** | **≈ 5,600 – 12,600** | |
+
+**Production — Configuration A (lean):**
+
+| Item | Est. cost (₱) | Notes |
+|---|---|---|
+| RealSense D435 ×2 | 42,000 – 50,000 | $314 ea. list + landing costs |
+| Mounts, powered hub, cables | 3,000 – 6,000 | |
+| Wired headset | 2,000 – 4,500 | |
+| IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | |
+| GPU upgrade (RTX 4060 class, + PSU if needed) | 22,000 – 30,000 | into an existing desktop |
+| Network kit (Cat6 + gigabit switch) | 1,000 – 2,000 | |
+| Laser meter + validation markers | 1,500 – 2,500 | |
+| **Configuration A total** | **≈ 73,000 – 98,000** | |
+
+**Production — Configuration B (recommended):**
+
+| Item | Est. cost (₱) | Notes |
+|---|---|---|
+| RealSense D435 ×3 | 63,000 – 75,000 | occlusion-robust coverage |
+| Mounts, powered hub, cables | 3,000 – 6,000 | |
+| Wired headset | 2,000 – 4,500 | |
+| IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | |
+| Dedicated workstation (Ryzen 5/i5, 32 GB, RTX 4060–4070) | 60,000 – 90,000 | |
+| Network kit (Cat6 + gigabit switch) | 1,000 – 2,000 | |
+| Laser meter + validation markers | 1,500 – 2,500 | |
+| **Configuration B total** | **≈ 132,000 – 183,000** | |
+
+**Cost notes:**
+
+- **Depth cameras dominate the budget** (~45–55% of either configuration).
+- The RGB-only path sanctioned by concept.md could cut camera spend to roughly ₱15,000–25,000 (3× global-shutter RGB cameras + triangulation) — decide with Phase 2 data before ordering depth units.
+- The D435's official store currently flags a **2–3 week lead time and tariff surcharge** (in effect Feb 2026) — order early relative to Phase 2.
+- Reusing the Prototype laptop as the Unity host can shave ₱10,000–25,000 off either configuration.
 
 ---
 
@@ -140,7 +254,7 @@ All formal evaluation runs on the **Production system only**.
 - **Head pose drift when the face turns away** → headset-attached device fallback in Production.
 - **Room-scale occlusion / camera coverage** → user body or head rotation can hide markers from a single camera → multiple cameras, marker placement validated in Phase 2; multi-camera handoff must not cause audio jumps.
 - **BT earbud latency (~100–200 ms)** → Prototype-only concern; irrelevant to the production headset.
-- **Wireless links add latency/jitter** → measured in Phase 4; wireless stays in Production only if end-to-end latency stays < 100 ms, otherwise the system goes wired.
+- **Wireless links add latency/jitter** → prototype phone-stream routes (Android RTSP/MJPEG, iOS/DroidCam-over-WiFi) are measured early as Prototype-only concerns; in Production, wireless is measured in Phase 4 and stays only if end-to-end latency < 100 ms holds, otherwise the system goes wired.
 - **Prototype hacks leaking into Production** → prevented contract-first; see §4 and the handoff rule in §5 Phase 1.
 
 Open questions:
