@@ -1,0 +1,33 @@
+%% Auris system architecture — main runtime pipeline
+%% Paste into Lucidchart via "Diagram as code" -> "+ New Mermaid diagram"
+flowchart LR
+    subgraph PY["Python host — all spatial math lives here"]
+        direction LR
+        CAM["Room camera array (N cameras)"]
+        CAL["World-frame calibration (multi-camera extrinsics, no dominant plane)"]
+        OBJ["Object perception: MarkerLocalizer (Prototype) / YOLO + DepthLocalizer (Production)"]
+        HEAD["HeadPoseEstimator: full 6DoF (position + orientation), smoothed"]
+        SCENE["Scene model in ONE shared room/world frame"]
+        XF["Head-relative transform: azimuth, elevation, distance per object"]
+        TX["SceneState UDP streamer on localhost at 30-60 Hz"]
+    end
+
+    subgraph UNI["Unity audio engine — dumb renderer, never computes poses"]
+        direction TB
+        AUD["HRTF spatial renderer + earcon library + sonification modes"]
+        SINK["AudioSink output device abstraction"]
+    end
+
+    HS["Headset"]
+
+    CAM --> OBJ
+    CAM --> HEAD
+    CAM --> CAL
+    CAL -- "fixes the shared world frame" --> SCENE
+    OBJ --> SCENE
+    HEAD --> SCENE
+    SCENE --> XF
+    XF --> TX
+    TX --> AUD
+    AUD --> SINK
+    SINK --> HS
