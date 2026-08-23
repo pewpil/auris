@@ -168,11 +168,18 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - What/why: active infrared-stereo depth cameras giving metric depth per pixel, so `DepthLocalizer` obtains world-frame object positions directly at any height — no plane assumption — and the same array tracks the user's head through turns and walks.
 - Specs: global shutter, up to 90 fps depth, ~87°×58° FOV, USB-C 3.1, SDK 2.0 on Linux. The D435i variant adds an onboard IMU (handy reference, not required).
 - Placement: two cameras cover opposite room diagonals; **three recommended** so the walking user's body rarely occludes every view at once.
-- Concept.md escape hatch: if plain RGB proves sufficient in Phase 2, these may be replaced by global-shutter RGB cameras + multi-view triangulation.
+- If plain RGB proves sufficient in Phase 2 (concept.md's sanctioned fallback), switch to the RGB array below — same contracts, different localization backend.
+
+**RGB camera array (OR-alternative) — Arducam OV9782 color global shutter (×3)**
+- What/why: concept.md's sanctioned alternative — if plain RGB proves sufficient in Phase 2, three calibrated color cameras localize objects via **multi-view triangulation** instead of per-pixel depth. Same `CameraSource` / `ObjectLocalizer` contracts; only the backend swaps.
+- Specs: OV9782 1 MP color global-shutter sensor, UVC (driverless on Linux), low-distortion M12 lens; external-trigger sync is supported across Arducam's global-shutter family, while software sync is acceptable for a near-static room.
+- Trade-offs vs the D435: cuts roughly ₱45,000–57,000 off the camera subsystem and removes depth-map dependence; costs more integration effort (triangulation pipeline, stricter sync discipline) and gives no out-of-the-box metric depth.
+- Cheaper mono variant (OV9281) exists but complicates standard color-based YOLO — choose it only if grayscale retraining is acceptable.
 
 **Camera mounting & USB infrastructure**
-- What/why: extrinsic calibration is only valid while cameras stay perfectly still; and each D435 demands dependable USB 3 bandwidth.
-- Specs: sturdy tripods or wall clamps (¼"-20); powered USB-C hub; active extensions beyond 2 m; plan host-controller lanes so cameras don't share bandwidth.
+- What/why: extrinsic calibration is only valid while cameras stay perfectly still; and every USB camera demands dependable bandwidth.
+- Specs: sturdy tripods or wall clamps (¼"-20 UNC); powered USB-C hub; active extensions beyond 2 m; plan host-controller lanes so cameras don't share bandwidth.
+- Carry-over facts: retail D435 units include their own mini tripod (bench use), and any prototype tripod with a standard ¼"-20 screw can hold a D435 (~72 g) — partial reuse is real. Phone cradles do not transfer: they clamp a handset shape rather than a threaded mount, and desk stands don't suit room-corner placement.
 
 **Wired headset — output (`AudioSink`)**
 - What/why: delivers the binaural soundscape with zero wireless-codec latency; HRTF rendering happens host-side.
@@ -212,38 +219,46 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 | **Total — everything reusable** | **≈ 800 – 1,900** | |
 | **Total — if earbuds + phone must be bought** | **≈ 5,600 – 12,600** | |
 
-**Production — Configuration A (lean):**
+**Production common items** (bought regardless of camera/compute choice):
 
 | Item | Est. cost (₱) | Notes |
 |---|---|---|
-| RealSense D435 ×2 | 42,000 – 50,000 | $314 ea. list + landing costs |
-| Mounts, powered hub, cables | 3,000 – 6,000 | |
+| Mounts, powered hub, cables | 3,000 – 6,000 | room-scale rigging; see carry-over facts in §7.2 |
 | Wired headset | 2,000 – 4,500 | |
 | IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | |
+| Network kit (Cat6 + gigabit switch) | 1,000 – 2,000 | |
+| Laser meter + validation markers | 1,500 – 2,500 | |
+| **Common subtotal** | **≈ 8,800 – 17,800** | |
+
+**Camera subsystem — pick one:**
+
+| Option | Est. cost (₱) | Notes |
+|---|---|---|
+| Depth ×2 — RealSense D435 | 42,000 – 50,000 | $314 ea. list + landing; mini tripod included |
+| Depth ×3 — RealSense D435 *(recommended)* | 63,000 – 75,000 | occlusion-robust coverage |
+| RGB ×3 — Arducam OV9782 color GS *(OR-alternative)* | 10,500 – 18,000 | ≈ ₱3,500–6,000/unit landed; triangulation backend |
+
+**Compute — pick one:**
+
+| Option | Est. cost (₱) | Notes |
+|---|---|---|
 | GPU upgrade (RTX 4060 class, + PSU if needed) | 22,000 – 30,000 | into an existing desktop |
-| Network kit (Cat6 + gigabit switch) | 1,000 – 2,000 | |
-| Laser meter + validation markers | 1,500 – 2,500 | |
-| **Configuration A total** | **≈ 73,000 – 98,000** | |
-
-**Production — Configuration B (recommended):**
-
-| Item | Est. cost (₱) | Notes |
-|---|---|---|
-| RealSense D435 ×3 | 63,000 – 75,000 | occlusion-robust coverage |
-| Mounts, powered hub, cables | 3,000 – 6,000 | |
-| Wired headset | 2,000 – 4,500 | |
-| IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | |
 | Dedicated workstation (Ryzen 5/i5, 32 GB, RTX 4060–4070) | 60,000 – 90,000 | |
-| Network kit (Cat6 + gigabit switch) | 1,000 – 2,000 | |
-| Laser meter + validation markers | 1,500 – 2,500 | |
-| **Configuration B total** | **≈ 132,000 – 183,000** | |
+
+**Grand totals** (common + camera choice + compute choice):
+
+| | GPU upgrade | Dedicated workstation |
+|---|---|---|
+| Depth ×2 | ≈ 73,000 – 98,000 | ≈ 111,000 – 158,000 |
+| Depth ×3 | ≈ 94,000 – 123,000 | **≈ 132,000 – 183,000** *(reference build)* |
+| RGB ×3 (OV9782) | **≈ 41,000 – 66,000** | ≈ 79,000 – 126,000 |
 
 **Cost notes:**
 
-- **Depth cameras dominate the budget** (~45–55% of either configuration).
-- The RGB-only path sanctioned by concept.md could cut camera spend to roughly ₱15,000–25,000 (3× global-shutter RGB cameras + triangulation) — decide with Phase 2 data before ordering depth units.
-- The D435's official store currently flags a **2–3 week lead time and tariff surcharge** (in effect Feb 2026) — order early relative to Phase 2.
-- Reusing the Prototype laptop as the Unity host can shave ₱10,000–25,000 off either configuration.
+- In the depth configurations **cameras dominate** (~45–55%); the RGB-first path cuts total system cost by roughly 40%.
+- **OV9782 chosen over mono OV9281** to keep standard color-based YOLO; mono would force grayscale retraining.
+- The RGB-vs-depth decision gate is the Phase 2 RGB-sufficiency test — but the D435's official store flags a **2–3 week lead time and tariff surcharge**, so a depth decision must be ordered well before Phase 2 starts.
+- Reusing the Prototype laptop as the Unity host can shave ₱10,000–25,000 off any cell above.
 
 ---
 
