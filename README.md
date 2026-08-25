@@ -158,7 +158,7 @@ Goal: run the entire stack — CV pipeline, audio engine, integration & performa
 
 **Laptop — compute**
 - What/why: hosts Python CV, the UDP streamer, and Unity simultaneously.
-- Specs: existing laptop is fine — ARUCO solvePnP plus a single Unity stream run comfortably on CPU. Python 3.10+, Unity 2022 LTS; discrete GPU not required at this stage.
+- Specs: existing laptop is fine — Prototype CV is *classical* OpenCV (ARUCO detection + solvePnP, a few ms/frame on CPU), and Unity only renders one spatialized audio scene (HRTF is CPU/DSP work); no neural nets run until Production Phase 4 brings YOLO. Python 3.10+, Unity 2022 LTS; discrete GPU not required at this stage — a co-researcher's existing GPU is enlisted as an optional §7.2 asset for early YOLO experimentation (e.g., dataset collection/trial runs ahead of Phase 4). If multi-phone MJPEG decode ever lags an older CPU, drop camera streams to 720p.
 
 **Home WiFi router**
 - What/why: transports the phone's video stream to the laptop.
@@ -174,21 +174,22 @@ The Prototype stage buys **only** the items approved below — everything else m
 
 | Component | Subsystem | Qty | Price/unit (₱) | Cost (₱) | Requirement | Researcher 1 | Researcher 2 | Researcher 3 |
 |---|---|---|---|---|---|---|---|---|
-| Smartphone #1 | Capture (wireless) | 1 | 0 *(existing; buy-alt 4,000 – 8,000)* | 0 | Required | | | |
-| Smartphone #2 *(optional second camera)* | Capture (wireless) | 1 | 0 *(existing)* | 0 | Optional | | | |
-| Laptop (Python + Unity host) | Compute | 1 | 0 *(existing)* | 0 | Required | | | |
-| Home WiFi router | Networking (wireless) | 1 | 0 *(existing)* | 0 | Required | | | |
-| Bluetooth TWS earbuds | Audio output (wireless) | 1 | 0 *(existing; buy-alt 800 – 2,500)* | 0 | Required | | | |
-| Phone tripod mounts | Mounting | 2 | 150 – 350 | 300 – 700 | Required | | | |
-| Mini desk tripods *(alt to clamps)* | Mounting | 2 | 100 – 250 | 200 – 500 | Optional | | | |
-| Matte A4 ARUCO prints | Perception consumables | 10 | 10 – 20 | 100 – 200 | Required | | | |
-| Cap/headband for side markers | Head tracking | 1 | 50 – 150 | 50 – 150 | Required | | | |
-| Steel tape measure | Calibration / ground truth | 1 | 80 – 250 | 80 – 250 | Required | | | |
-| Chessboard print + tape/adhesive | Calibration consumables | 1 | 50 – 150 | 50 – 150 | Required | | | |
-| Dedicated WiFi 6 router (Archer AX23-class) | Networking (wireless) | 1 | 2,700 – 3,000 | 2,700 – 3,000 | Conditional *(only if home AP proves congested)* | | | |
-| Gigabit switch + Ethernet patch cables | Networking (wired) | 1 | 800 – 1,500 | 800 – 1,500 | Optional *(wired laptop↔router stability path)* | | | |
-| Power bank (long streaming sessions) | Power | 1 | 500 – 1,200 | 500 – 1,200 | Optional | | | |
-| **Required-purchase subtotal** | | | | **≈ 580 – 1,450** | | | | |
+| Smartphone #1 | Capture (wireless) | 1 | 0 *(existing; buy-alt 4,000 – 8,000)* | 0 | Required | yes | | |
+| Smartphone #2 *(optional second camera)* | Capture (wireless) | 1 | 0 *(existing)* | 0 | Optional | yes | | |
+| Laptop (Python + Unity host) | Compute | 1 | 0 *(existing)* | 0 | Required | yes  | | |
+| Discrete GPU *(co-researcher's, for early YOLO experiments)* | Compute | 1 | 0 *(existing)* | 0 | Optional | yes | | |
+| Home WiFi router | Networking (wireless) | 1 | 0 *(existing)* | 0 | Required | yes | | |
+| Bluetooth TWS earbuds | Audio output (wireless) | 1 | 0 *(existing; buy-alt 800 – 2,500)* | 0 | Required | yes | | |
+| Phone tripod mounts | Mounting | 2 | 150 – 350 | 300 – 700 | Required | yes | | |
+| Mini desk tripods *(alt to clamps)* | Mounting | 2 | 100 – 250 | 200 – 500 | Optional | yes | | |
+| Matte A4 ARUCO prints | Perception consumables | 10 | 10 – 20 | 100 – 200 | Required | yes | | |
+| Cap/headband for side markers | Head tracking | 1 | 50 – 150 | 50 – 150 | Required | yes | | |
+| Steel tape measure | Calibration / ground truth | 1 | 80 – 250 | 80 – 250 | Required | yes | | |
+| Chessboard print + tape/adhesive | Calibration consumables | 1 | 50 – 150 | 50 – 150 | Required | yes | | |
+| Dedicated WiFi 6 router (Archer AX23-class) | Networking (wireless) | 1 | 2,700 – 3,000 | 2,700 – 3,000 | Conditional *(only if home AP proves congested)* | yes | | |
+| Gigabit switch + Ethernet patch cables | Networking (wired) | 1 | 800 – 1,500 | 800 – 1,500 | Optional *(wired laptop↔router stability path)* | yes | | |
+| Power bank (long streaming sessions) | Power | 1 | 500 – 1,200 | 500 – 1,200 | Optional | yes | | |
+| **Required-purchase subtotal** | | | | **≈ 580 – 1,450** | | yes | | |
 
 *The Subsystem field says what the component handles; networking items are marked wired, wireless, or either. Prices surveyed August 2026 via Shopee/Lazada PH street channels.*
 
