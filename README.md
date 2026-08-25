@@ -40,14 +40,14 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 
 ### 3.1 Camera capture & calibration
 
-- **Prototype:** any smartphone ≥1080p streaming MJPEG over WiFi — Android via native RTSP/MJPEG (e.g., IP Webcam app), iPhone via DroidCam's Linux client or an iOS MJPEG-server app; Android and iPhone units can be mixed freely (§7.1). RGB only; if depth-like capability is explored, phones triangulate from multiple RGB views.
-- **Production:** specialized RGB cameras — or depth cameras if RGB proves insufficient — covering the room from several angles so objects *and* the user's head stay visible during turns and walks.
+- **Prototype:** any smartphone ≥1080p streaming MJPEG over WiFi — Android via native RTSP/MJPEG (e.g., IP Webcam app), iPhone via DroidCam's Linux client or an iOS MJPEG-server app; Android and iPhone units can be mixed freely (§7.1). **RGB only** — object positions come from ARUCO solvePnP (markers act as one-shot registration stand-ins); no triangulation and no depth at this stage.
+- **Production:** specialized cameras covering the room from several angles so objects *and* the user's head stay visible during turns and walks. Capture priority ladder: **① RGB primary → ② multi-view RGB triangulation for live 3D → ③ dedicated depth cameras last** (§7.3).
 - **Calibration:** per-camera intrinsics via OpenCV chessboard; then joint **multi-camera extrinsic calibration** registering all cameras into the room/world frame. No dominant-plane shortcut exists at room scale.
 
 ### 3.2 Object perception
 
-- **Prototype (`MarkerLocalizer`):** ARUCO markers stand in for real objects. A marker's solvePnP pose gives its 3D position directly in the camera/world frame — no plane assumption, works at any height.
-- **Production (`DepthLocalizer`):** YOLO (v8/v11, Ultralytics) fine-tuned on a small custom dataset (~100–300 images/class) detects objects; depth cameras or stereo/multi-view RGB triangulation yields world-frame 3D positions.
+- **Prototype (`MarkerLocalizer`, RGB-only):** ARUCO markers stand in for real objects. A marker's solvePnP pose gives its 3D position directly in the camera/world frame — no plane assumption, works at any height.
+- **Production (`ObjectLocalizer` backends follow the capture ladder):** YOLO (v8/v11, Ultralytics) fine-tuned on a small custom dataset (~100–300 images/class) detects objects. World-frame positions escalate: ① one-shot setup registration of static objects (temporary ARUCO tags / laser meter), ② `TriangulatedLocalizer` — multi-view RGB triangulation for live re-localization when objects move, ③ a depth-camera backend only if both prove insufficient.
 - **Tracking:** Kalman filter / ByteTrack on detections for temporal stability, so audio positions don't flicker between frames or across camera handoffs.
 
 ### 3.3 Head tracking (6DoF — position and orientation)
@@ -88,7 +88,7 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 Data schemas are defined **before** writing either implementation; both stages conform to the same contracts so the hardware swap never touches the rest of the system. All poses live in the one shared room/world frame. Because the user stands (and walks), head pose means full **6DoF** — position + orientation.
 
 1. `Frame` — pixels + timestamp + camera intrinsics (capture abstraction)
-2. `ObjectLocalizer` — `MarkerLocalizer` (ARUCO solvePnP, Prototype) → `DepthLocalizer` (depth/stereo triangulation, Production)
+2. `ObjectLocalizer` — `MarkerLocalizer` (ARUCO solvePnP, Prototype, RGB-only) → `TriangulatedLocalizer` (multi-view triangulation, Production) with an optional depth-camera backend
 3. `HeadPoseEstimator` — ARUCO side-of-head markers (Prototype) → markerless CV, headset-attached device fallback (Production)
 4. `SceneState` — UDP schema: object id/class/azimuth/elevation/distance, all relative to the current head pose. Defined and **frozen in the Prototype**, so the Unity engine is untouched by the hardware swap
 5. `AudioSink` — output-device abstraction (BT earbuds → production headset)
@@ -102,11 +102,11 @@ The stages exist for **financial reasons**: everything is built first on existin
 | Phase | Stage | Duration | Milestone / exit criterion |
 |---|---|---|---|
 | **0. Literature review** | — | 2–3 wks | HRTF/binaural rendering, sonification & earcons, assistive object-locating systems. Gap analysis → justifies design choices. |
-| **1. Prototype CV pipeline** | Prototype | 4–6 wks | WiFi phone capture behind `CameraSource` (ARUCO stand-ins only — no YOLO yet); `MarkerLocalizer` (solvePnP); ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. |
+| **1. Prototype CV pipeline** | Prototype | 4–6 wks | WiFi phone capture behind `CameraSource` (ARUCO stand-ins only — no YOLO yet); `MarkerLocalizer` (solvePnP); ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. **RGB only — no triangulation, no depth.** |
 | **2. Prototype audio engine** | Prototype | 3–4 wks | Unity scene + HRTF spatializer, earcon library, always-on + beacon mode (keyboard first), distance cues, `AudioSink` over BT earbuds. |
 | **3. Prototype integration & performance** | Prototype | 3–4 wks | SceneState/UDP contract defined and **frozen**; threaded/async pipeline; end-to-end latency measured & mitigated on wired and wireless paths; validates the two risky unknowns: (A) is head-rotation-tracked spatial audio intuitive enough to locate objects? (B) does marker-based head tracking hold up at 30–60 Hz? **Built against the contracts, not the hardware — every piece must swap cleanly later.** |
 | — | *Financial gate* | — | All Production components purchased (§7.3–§7.4); per-item approvals recorded in §7.2. |
-| **4. Production CV pipeline** | Production | 4–6 wks | Specialized cameras (wired array and/or wireless nodes); multi-camera room-scale world-frame calibration; trained YOLO + real-object localization; IMU-fused 6DoF head pose with smoothing and camera-handoff stability. Validate CV accuracy vs tape-measure/ARUCO ground truth. |
+| **4. Production CV pipeline** | Production | 4–6 wks | Specialized cameras (wired array and/or wireless nodes); multi-camera room-scale world-frame calibration; trained YOLO + real-object localization (one-shot registration escalating to multi-view triangulation; depth only if insufficient); IMU-fused 6DoF head pose with smoothing and camera-handoff stability. Validate CV accuracy vs tape-measure/ARUCO ground truth. |
 | **5. Production audio & integration** | Production | 3–4 wks | Engines ported behind unchanged contracts onto production gear; full-room deployment; end-to-end latency verified per interconnect path. |
 | **6. User study & thesis writing** | — | 6–10 wks | See §6. |
 
@@ -197,23 +197,21 @@ The Prototype stage buys **only** the items approved below — everything else m
 
 Goal: a fixed, calibrated room installation accurate enough for formal evaluation, with every component swappable behind its contract.
 
-**Depth camera array — Intel RealSense D435 (×2–3) — capture (`CameraSource`)**
-- What/why: active infrared-stereo depth cameras giving metric depth per pixel, so `DepthLocalizer` obtains world-frame object positions directly at any height — no plane assumption — and the same array tracks the user's head through turns and walks.
-- Specs: global shutter, up to 90 fps depth, ~87°×58° FOV, USB-C 3.1, SDK 2.0 on Linux. The D435i variant adds an onboard IMU (handy reference, not required).
-- Placement: two cameras cover opposite room diagonals; **three recommended** so the walking user's body rarely occludes every view at once.
-- If plain RGB proves sufficient in Phase 2 (concept.md's sanctioned fallback), switch to the RGB array below — same contracts, different localization backend.
-
-**RGB camera array (OR-alternative) — Arducam OV9782 color global shutter (×3)**
-- What/why: concept.md's sanctioned alternative — if plain RGB proves sufficient in Phase 2, three calibrated color cameras localize objects via **multi-view triangulation** instead of per-pixel depth. Same `CameraSource` / `ObjectLocalizer` contracts; only the backend swaps.
+**RGB camera array — Arducam OV9782 color global shutter (×3) — recommended wired path (`CameraSource`)**
+- What/why: primary production capture, tier ① of the ladder. Three calibrated color cameras detect objects with YOLO and localize them via one-shot setup registration escalating to **multi-view triangulation** — same `CameraSource` / `ObjectLocalizer` contracts throughout.
 - Specs: OV9782 1 MP color global-shutter sensor, UVC (driverless on Linux), low-distortion M12 lens; external-trigger sync is supported across Arducam's global-shutter family, while software sync is acceptable for a near-static room.
-- Trade-offs vs the D435: cuts roughly ₱45,000–57,000 off the camera subsystem and removes depth-map dependence; costs more integration effort (triangulation pipeline, stricter sync discipline) and gives no out-of-the-box metric depth.
 - Cheaper mono variant (OV9281) exists but complicates standard color-based YOLO — choose it only if grayscale retraining is acceptable.
 
-**Wireless camera array — Raspberry Pi 5 + Camera Module 3 edge nodes (×3) — wireless OR-alternative (`CameraSource`)**
-- What/why: the fully-wireless capture path. Each node streams tuned MJPEG/raw-UDP (MediaMTX/WebRTC class) over a dedicated WiFi 6 AP into the same `Frame` contract — no USB tethering anywhere.
+**Wireless camera array — Raspberry Pi 5 + Camera Module 3 edge nodes (×3) — recommended wireless path (`CameraSource`)**
+- What/why: the same RGB-first design fully cut loose from cables. Each node streams tuned MJPEG/raw-UDP (MediaMTX/WebRTC class) over a dedicated WiFi 6 AP into the same `Frame` contract — no USB tethering anywhere.
 - Specs per node: RPi 5 (4 GB) + Camera Module 3 + PSU/microSD/case ≈ ₱7,000–9,000 landed; stream latency floors around ~200 ms even when tuned.
 - Budget alternative: commercial RTSP IP cameras (₱2,500–6,000/unit) — cheapest per unit but typical 200–300 ms stream latency, rolling shutter, and no control over frame sync.
-- Trade-offs vs the USB arrays: total cable freedom for room-corner placement; pays a ~₱8k+ premium over the OV9782 array and accepts higher stream latency (§3.6).
+- Trade-offs vs wired USB arrays: total cable freedom for room-corner placement; pays a ~₱8k+ premium over the OV9782 array and accepts higher stream latency (§3.6).
+
+**Dedicated depth array — Intel RealSense D435 (×2–3) — optional upgrade (`CameraSource`)**
+- What/why: tier ③ of the ladder — bought only if one-shot registration and multi-view triangulation both prove insufficient in Phase 4. Its unique value is single-view robustness: metric depth per pixel means one unoccluded view still yields a world-frame position when the walking user blocks every other camera.
+- Specs: global shutter, up to 90 fps depth, ~87°×58° FOV, USB-C 3.1, SDK 2.0 on Linux; the D435i variant adds an onboard IMU (handy reference, not required).
+- Placement if used: two cameras cover opposite room diagonals; three so the walking user's body rarely occludes every view at once.
 
 **Camera mounting & USB infrastructure**
 - What/why: extrinsic calibration is only valid while cameras stay perfectly still; and every USB camera demands dependable bandwidth.
@@ -241,7 +239,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 
 **Ground-truth & validation kit**
 - What/why: thesis evaluation needs independent truth to score CV accuracy against.
-- Specs: laser distance meter + steel tape (object-position ground truth); spare printed markers (head-pose validation reference in Phase 2).
+- Specs: laser distance meter + steel tape (object-position ground truth); spare printed markers (head-pose validation reference in Phase 4).
 
 ### 7.4 Cost breakdown (Philippine Pesos)
 
@@ -273,15 +271,15 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 | Laser meter + validation markers | 1,500 – 2,500 | |
 | **Common subtotal** (headset counted once) | **≈ 11,000 – 20,800** | |
 
-**Camera subsystem — pick one:**
+**Camera subsystem — pick one (listed in priority order):**
 
 | Option | Est. cost (₱) | Notes |
 |---|---|---|
-| Depth ×2 — RealSense D435 (USB wired) | 42,000 – 50,000 | $314 ea. list + landing; mini tripod included |
-| Depth ×3 — RealSense D435 (USB wired) *(recommended)* | 63,000 – 75,000 | occlusion-robust coverage |
-| RGB ×3 — Arducam OV9782 color GS (USB wired) | 10,500 – 18,000 | ≈ ₱3,500–6,000/unit landed; triangulation backend |
-| Wireless RGB ×3 — RPi 5 + Camera Module 3 edge nodes | 21,000 – 27,000 | ≈ ₱7,000–9,000/node; MediaMTX/WebRTC, ~200 ms floor |
+| RGB ×3 — Arducam OV9782 color GS (USB wired) *(recommended wired)* | 10,500 – 18,000 | ≈ ₱3,500–6,000/unit landed; registration → triangulation backend |
+| Wireless RGB ×3 — RPi 5 + Camera Module 3 edge nodes *(recommended wireless)* | 21,000 – 27,000 | ≈ ₱7,000–9,000/node; MediaMTX/WebRTC, ~200 ms floor |
 | Wireless RGB ×3 — RTSP IP cameras *(budget alt)* | 7,500 – 18,000 | ₱2,500–6,000/unit; 200–300 ms typical |
+| Depth ×2 — RealSense D435 (USB wired; optional upgrade) | 42,000 – 50,000 | $314 ea. list + landing; mini tripod included |
+| Depth ×3 — RealSense D435 (USB wired; optional upgrade) | 63,000 – 75,000 | single-view occlusion redundancy |
 
 **Compute — pick one:**
 
@@ -292,21 +290,21 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 
 **Grand totals** (common + camera choice + compute choice):
 
-| Camera choice | + GPU upgrade | + Dedicated workstation |
+| Camera choice (priority order) | + GPU upgrade | + Dedicated workstation |
 |---|---|---|
-| Depth ×2 (USB) | ≈ 75,000 – 100,800 | ≈ 113,000 – 160,800 |
-| Depth ×3 (USB) | ≈ 96,000 – 125,800 | **≈ 134,000 – 185,800** *(reference build)* |
-| RGB ×3 OV9782 (USB) | ≈ 43,500 – 71,800 | ≈ 81,500 – 131,800 |
+| RGB ×3 OV9782 (USB) | ≈ 43,500 – 71,800 | **≈ 81,500 – 131,800** *(reference build)* |
 | Wireless ×3 RPi nodes | ≈ 54,000 – 77,800 | ≈ 92,000 – 137,800 |
+| Depth ×2 (optional upgrade) | ≈ 75,000 – 100,800 | ≈ 113,000 – 160,800 |
+| Depth ×3 (optional upgrade) | ≈ 96,000 – 125,800 | ≈ 134,000 – 185,800 |
 
 *(The IP-camera budget alternative lands between the OV9782 and RPi-node totals.)*
 
 **Cost notes:**
 
-- In the depth configurations **cameras dominate** (~45–55%); the RGB paths cut total system cost by roughly 40%.
+- The RGB-first priority ladder keeps the reference build affordable; depth upgrades add **₱31,000–57,000** over the OV9782 array and dominate cost if chosen.
 - **Dual-path premium:** buying both network kits and specifying wired *and* wireless cameras adds flexibility for measurement and study conditions; the wired array remains the lowest-latency reference while wireless nodes trade ~₱8–12k and +100–200 ms of stream latency for placement freedom.
 - **OV9782 chosen over mono OV9281** to keep standard color-based YOLO; mono would force grayscale retraining.
-- The RGB-vs-depth decision gate is the Phase 4 RGB-sufficiency test — but the D435's official store flags a **2–3 week lead time and tariff surcharge**, so a depth decision must be ordered well before Phase 4 starts.
+- Depth remains an *upgrade*, not a default: add D435s only if Phase 4 shows registration and triangulation insufficient. If ordering them, note the official store flags a **2–3 week lead time and tariff surcharge**.
 - Reusing the Prototype laptop as the Unity host can shave ₱10,000–25,000 off any cell above.
 
 ---
@@ -316,7 +314,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - **Generic HRTF accuracy** → use a good generic HRTF; individualized HRTF is natural *future work*.
 - **YOLO dataset effort** → keep object set small (≤ 5–8 classes) for the study.
 - **Head pose drift when the face turns away** → headset-attached device fallback in Production.
-- **Room-scale occlusion / camera coverage** → user body or head rotation can hide markers from a single camera → multiple cameras, marker placement validated in Phase 2; multi-camera handoff must not cause audio jumps.
+- **Room-scale occlusion / camera coverage** → user body or head rotation can hide markers from a single camera → multiple cameras, marker placement validated in Phase 4; multi-camera handoff must not cause audio jumps.
 - **Classic-BT earbud latency (~150–250 ms)** → measured early in the Prototype; Production wireless audio uses 2.4 GHz dongle/LC3 instead.
 - **Wireless links add latency/jitter** → measured reality: tuned MJPEG/raw-UDP ~80–150 ms, RTSP/IP-cam 200–300 ms, RPi-edge WebRTC ~200 ms; classic-BT audio 150–250 ms vs 2.4 GHz dongle 15–40 ms. Both interconnects are built and measured (Phase 3 Prototype, Phase 5 Production); the gap vs the 100 ms target is mitigated (dedicated AP, tuned streams, codec choice) and reported honestly, not studied.
 - **Prototype hacks leaking into Production** → prevented contract-first; see §4 and the handoff rule in §5 Phase 3.

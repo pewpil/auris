@@ -32,6 +32,7 @@ Development in the **Prototype stage must be considerate of transitioning to the
 ## Key facts
 
 - One shared room/world frame via multi-camera extrinsic calibration; no dominant-plane shortcut.
+- Capture priority: ① RGB (+ one-shot registration) → ② multi-view RGB triangulation → ③ dedicated depth cameras. The Prototype stage is pinned to ① only (RGB-only, ARUCO solvePnP; no triangulation, no depth).
 - All spatial math in Python; Unity renders audio only; UDP localhost at 30–60 Hz.
 - Head-relative azimuth/elevation/distance per object is what Unity receives.
 - Latency < 100 ms is an engineering target verified on both interconnect paths — not a research topic.
