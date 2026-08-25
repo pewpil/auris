@@ -21,6 +21,14 @@ The Prototype/Production split exists **for financial reasons**, not primarily r
 - End-to-end latency **< 100 ms** remains the verified engineering target. Measured reality: wired USB cameras ≈ negligible link latency; wireless camera links ~80–150 ms tuned MJPEG/raw-UDP, 200–300 ms RTSP/IP-cam, ~200 ms RPi-edge WebRTC floor; audio 2.4 GHz dongle 15–40 ms vs classic BT 150–250 ms.
 - A fully-wireless chain measures ~150–400 ms — the gap is mitigated (dedicated WiFi 6 AP, tuned streams, codec choice) and reported per path, never studied as thesis content.
 
+## Prototype compute & escalation ladder
+
+Contributed researcher hardware serves as Prototype compute, with a fixed escalation order. **Standing instruction: whenever YOLO dataset/training/inference stalls on compute during the Prototype stage, remind the user of this ladder and escalate one rung at a time.**
+
+1. **No-swap (primary, tentative):** Desktop PC #1 — Ryzen 5 3500 + RTX 4060 (8 GB) + 64 GB RAM — hosts Python CV, YOLO inference, and Unity simultaneously. YOLO **training is offloaded to Google Colab (free T4)** so it never competes with live sessions; local training is the offline fallback (dataloader workers ≈ 4). Keep live streams at 720 p when all cameras are active.
+2. **Two-box split:** move Unity/audio to Desktop PC #2 (i7-10700 + RTX 3050, 16 GB); SceneState UDP shifts from localhost to LAN — contract unchanged.
+3. **Parts swap (last resort):** consolidate i7-10700 + RTX 4060 + 64 GB into one chassis; Cooler Master MWE 750 (230 V) verified adequate (~300–350 W system peak vs 750 W capacity).
+
 ## Transition-first development (non-negotiable)
 
 Development in the **Prototype stage must be considerate of transitioning to the Production stage as seamlessly as possible**:

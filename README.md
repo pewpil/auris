@@ -46,7 +46,7 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 
 ### 3.2 Object perception
 
-- **Prototype (`MarkerLocalizer`, RGB-only):** ARUCO markers stand in for real objects. A marker's solvePnP pose gives its 3D position directly in the camera/world frame — no plane assumption, works at any height.
+- **Prototype (`MarkerLocalizer` + `ObjectDetector` bring-up, RGB-only):** ARUCO markers stand in for real objects — a marker's solvePnP pose gives its 3D position directly in the camera/world frame, no plane assumption, any height. In parallel, YOLO (v8/v11) object identification is brought up early on contributed GPUs: small custom dataset (~100–300 images/class), **training offloaded to Google Colab (free T4), inference local on the RTX 4060**.
 - **Production (`ObjectLocalizer` backends follow the capture ladder):** YOLO (v8/v11, Ultralytics) fine-tuned on a small custom dataset (~100–300 images/class) detects objects. World-frame positions escalate: ① one-shot setup registration of static objects (temporary ARUCO tags / laser meter), ② `TriangulatedLocalizer` — multi-view RGB triangulation for live re-localization when objects move, ③ a depth-camera backend only if both prove insufficient.
 - **Tracking:** Kalman filter / ByteTrack on detections for temporal stability, so audio positions don't flicker between frames or across camera handoffs.
 
@@ -102,7 +102,7 @@ The stages exist for **financial reasons**: everything is built first on existin
 | Phase | Stage | Duration | Milestone / exit criterion |
 |---|---|---|---|
 | **0. Literature review** | — | 2–3 wks | HRTF/binaural rendering, sonification & earcons, assistive object-locating systems. Gap analysis → justifies design choices. |
-| **1. Prototype CV pipeline** | Prototype | 4–6 wks | WiFi phone capture behind `CameraSource` (ARUCO stand-ins only — no YOLO yet); `MarkerLocalizer` (solvePnP); ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. **RGB only — no triangulation, no depth.** |
+| **1. Prototype CV pipeline** | Prototype | 4–6 wks | WiFi phone capture behind `CameraSource`; `MarkerLocalizer` (solvePnP); early `ObjectDetector` bring-up — YOLO v8/v11, small custom dataset, training via Google Colab T4 / inference on the RTX 4060; ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. **RGB only — no triangulation, no depth.** |
 | **2. Prototype audio engine** | Prototype | 3–4 wks | Unity scene + HRTF spatializer, earcon library, always-on + beacon mode (keyboard first), distance cues, `AudioSink` over BT earbuds. |
 | **3. Prototype integration & performance** | Prototype | 3–4 wks | SceneState/UDP contract defined and **frozen**; threaded/async pipeline; end-to-end latency measured & mitigated on wired and wireless paths; validates the two risky unknowns: (A) is head-rotation-tracked spatial audio intuitive enough to locate objects? (B) does marker-based head tracking hold up at 30–60 Hz? **Built against the contracts, not the hardware — every piece must swap cleanly later.** |
 | — | *Financial gate* | — | All Production components purchased (§7.3–§7.4); per-item approvals recorded in §7.2. |
@@ -156,9 +156,10 @@ Goal: run the entire stack — CV pipeline, audio engine, integration & performa
 - What/why: the listening device for the spatialized soundscape; good enough to judge intuitiveness, cheap enough to be throwaway.
 - Specs: any TWS set. Expect SBC codec latency of ~100–200 ms — measure it early; this is a Prototype-only concern and never informs Production design.
 
-**Laptop — compute**
-- What/why: hosts Python CV, the UDP streamer, and Unity simultaneously.
-- Specs: existing laptop is fine — Prototype CV is *classical* OpenCV (ARUCO detection + solvePnP, a few ms/frame on CPU), and Unity only renders one spatialized audio scene (HRTF is CPU/DSP work); no neural nets run until Production Phase 4 brings YOLO. Python 3.10+, Unity 2022 LTS; discrete GPU not required at this stage — a co-researcher's existing GPU is enlisted as an optional §7.2 asset for early YOLO experimentation (e.g., dataset collection/trial runs ahead of Phase 4). If multi-phone MJPEG decode ever lags an older CPU, drop camera streams to 720p.
+**Desktop PCs — compute**
+- What/why: primary hosts for Python CV, the UDP streamer, Unity, and YOLO object-ID work — two researcher-owned machines (§7.2). **PC #1 (Ryzen 5 3500 + RTX 4060, 64 GB)** leads: YOLO inference runs on its GPU while **training is offloaded to Google Colab (free T4)** so it never competes with live sessions; local training is the offline fallback. **PC #2 (i7-10700 + RTX 3050, 16 GB)** is the fallback host per the §7.2 escalation ladder.
+- Specs floor met: ARUCO solvePnP costs a few ms/frame on CPU; YOLOv8n/s trains comfortably at this dataset scale on an 8 GB-class GPU; HRTF rendering is CPU/DSP work. Python 3.10+, Unity 2022 LTS. If multi-phone MJPEG decode ever lags during all-camera sessions, drop streams to 720p.
+- The laptop remains a backup / stream-test client only.
 
 **Home WiFi router**
 - What/why: transports the phone's video stream to the laptop.
@@ -176,8 +177,9 @@ The Prototype stage buys **only** the items approved below — everything else m
 |---|---|---|---|---|---|---|---|---|
 | Smartphone #1 | Capture (wireless) | 1 | 0 *(existing; buy-alt 4,000 – 8,000)* | 0 | Required | yes | | |
 | Smartphone #2 *(optional second camera)* | Capture (wireless) | 1 | 0 *(existing)* | 0 | Optional | yes | | |
-| Laptop (Python + Unity host) | Compute | 1 | 0 *(existing)* | 0 | Required | yes  | | |
-| Discrete GPU *(co-researcher's, for early YOLO experiments)* | Compute | 1 | 0 *(existing)* | 0 | Optional | yes | | |
+| Desktop PC #1 — Ryzen 5 3500 + RTX 4060, 64 GB | Compute | 1 | 0 *(existing)* | 0 | Required *(primary compute host)* | yes | | |
+| Desktop PC #2 — i7-10700 + RTX 3050, 16 GB | Compute | 1 | 0 *(existing)* | 0 | Optional *(fallback host; see compute ladder below)* | yes | | |
+| Laptop | Compute | 1 | 0 *(existing)* | 0 | Optional *(backup / stream-test client)* | yes | | |
 | Home WiFi router | Networking (wireless) | 1 | 0 *(existing)* | 0 | Required | yes | | |
 | Bluetooth TWS earbuds | Audio output (wireless) | 1 | 0 *(existing; buy-alt 800 – 2,500)* | 0 | Required | yes | | |
 | Phone tripod mounts | Mounting | 2 | 150 – 350 | 300 – 700 | Required | yes | | |
@@ -192,6 +194,8 @@ The Prototype stage buys **only** the items approved below — everything else m
 | **Required-purchase subtotal** | | | | **≈ 580 – 1,450** | | yes | | |
 
 *The Subsystem field says what the component handles; networking items are marked wired, wireless, or either. Prices surveyed August 2026 via Shopee/Lazada PH street channels.*
+
+*Compute escalation ladder if YOLO/pipeline work stalls on compute: **① no-swap** — PC #1 hosts everything, training offloaded to Google Colab (free T4), inference local on the RTX 4060; **② two-box split** — CV stays on PC #1 while Unity/audio moves to PC #2 over LAN UDP; **③ parts swap** — consolidate i7-10700 + RTX 4060 + 64 GB into one chassis (Cooler Master MWE 750 230V verified adequate at ~300–350 W system peak vs 750 W). Escalate one rung only when limits are actually hit.*
 
 ### 7.3 Production system (Stage 2)
 
@@ -305,7 +309,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - **Dual-path premium:** buying both network kits and specifying wired *and* wireless cameras adds flexibility for measurement and study conditions; the wired array remains the lowest-latency reference while wireless nodes trade ~₱8–12k and +100–200 ms of stream latency for placement freedom.
 - **OV9782 chosen over mono OV9281** to keep standard color-based YOLO; mono would force grayscale retraining.
 - Depth remains an *upgrade*, not a default: add D435s only if Phase 4 shows registration and triangulation insufficient. If ordering them, note the official store flags a **2–3 week lead time and tariff surcharge**.
-- Reusing the Prototype laptop as the Unity host can shave ₱10,000–25,000 off any cell above.
+- Reusing existing researcher hardware (desktops/laptop) as Prototype dev hosts keeps Stage 1 near-zero cost; Production compute is still purchased new at the financial gate.
 
 ---
 
