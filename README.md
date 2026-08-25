@@ -2,7 +2,7 @@
 
 A system that helps visually impaired users locate objects in a room through simulated auditory cues. The user stands in a room containing various objects; a camera array tracks both the objects and the user's head — position **and** rotation, since a standing user can turn and walk; a headset renders a 3D soundscape where every object continuously emits a distinctive sound anchored to its real position. Turning the head rotates the sound field correctly so it stays fixed to the world.
 
-**Context:** Thesis project. Development runs in two stages: a throwaway **Prototype** on non-specialized gear (phones as cameras, ARUCO markers, Bluetooth earbuds) that validates the two risky unknowns, followed by the **Production** system on specialized gear, which carries all formal evaluation and the user study. Stack: Python CV → Unity spatial audio over UDP localhost. End-to-end latency < 100 ms is an engineering target that is verified, not researched.
+**Context:** Thesis project. Development runs in two stages, split for **financial reasons**: the **Prototype** stage builds and integrates the *entire* stack — CV pipeline, audio engine, integration & performance — using only existing hardware plus items approved for purchase (§7.2), validating the two risky unknowns end-to-end; the **Production** stage then purchases **all** system components on specialized gear, re-platforms the same contracts, and carries every formal evaluation and the user study. Stack: Python CV → Unity spatial audio over UDP localhost; wired **and** wireless interconnects are supported at every stage. End-to-end latency < 100 ms is an engineering target that is verified, not researched.
 
 ---
 
@@ -12,7 +12,7 @@ A standing, blindfolded (or visually impaired) user in a room with objects place
 
 Measured outcomes for the thesis:
 
-- End-to-end latency **< 100 ms** (verified engineering target — see §6)
+- End-to-end latency **< 100 ms** (verified engineering target — see §6); both wired and wireless interconnect paths are measured
 - Object localization **< 15° angular error**; absolute distance-error target set once room size/object spread are fixed (provisionally ≤ 0.5 m)
 - Blindfolded users locate a named object in **< 30 s** while standing/walking (provisional)
 - A quantitative **user study with statistical analysis** (ANOVA / t-tests)
@@ -69,13 +69,17 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
   - *Always-on (core concept):* each object class gets a distinctive continuous earcon (water bottle = soft bubbling, mug = chime, book = page rustle) rendered through the HRTF spatializer at the object's head-relative position.
   - *Query/beacon mode (extension):* keyboard first, then speech recognition in Python (Whisper/Vosk) or a button → target object emits periodic ~100 ms pings (noise bursts are easy to localize).
   - *Distance cues:* gain attenuation, low-pass filtering, slight reverb as distance grows.
-- **Devices (`AudioSink`):** BT earbuds in Prototype (SBC codec adds ~100–200 ms — measure it early; Prototype-only concern); Production headset wired or low-latency codec (LDAC/aptX Low Latency).
+- **Devices (`AudioSink`):** BT earbuds in Prototype (classic-BT SBC adds ~150–250 ms — measure it early). Production supports two sanctioned paths: a **wired** headset (zero codec latency) or a **wireless** headset using a proprietary 2.4 GHz USB dongle (~15–40 ms, gaming-grade) or LE Audio/LC3 (< 40 ms) — classic Bluetooth codecs (SBC/AAC/LDAC ≈ 100–250 ms) are the wireless option to avoid.
 
-### 3.6 Networking & interconnect decision
+### 3.6 Networking & interconnect
 
 - Python → Unity over **UDP** localhost with a compact binary protocol (protobuf/msgpack) at ~30–60 Hz.
-- Camera links may be wired or wireless in Production; **the choice is made by measured end-to-end latency against the < 100 ms standard** (Phase 4). Wireless stays only if it meets the standard.
-- This is an engineering verification step, **not a thesis chapter**: latency is a requirement to satisfy, not a research question.
+- **Both wired and wireless interconnects are supported at every stage**, and §7 specifies components for both. The < 100 ms end-to-end target is kept; measured reality per link type:
+  - *Wired cameras (USB):* negligible link latency — the path most likely to meet the target.
+  - *Wireless cameras:* tuned MJPEG/raw-UDP over a dedicated WiFi 6 AP measures ~80–150 ms best case; naive RTSP/H.264 lands at 200–300 ms or worse (decoder buffering); Raspberry Pi edge-node WebRTC floors around ~200 ms.
+  - *Wireless audio:* 2.4 GHz dongle ~15–40 ms vs classic BT ~150–250 ms.
+  - A fully-wireless end-to-end chain therefore realistically measures ~150–400 ms. The gap is documented honestly: mitigations (dedicated AP, tuned low-latency streams, codec selection) are applied and measurements reported per path — the networking itself stays outside thesis scope.
+- This is an engineering verification step, **not a thesis chapter**: latency is a requirement to satisfy and report, not a research question.
 
 ---
 
@@ -93,14 +97,18 @@ Data schemas are defined **before** writing either implementation; both stages c
 
 ## 5. Development phases
 
-| Phase | Duration | Milestone / exit criterion |
-|---|---|---|
-| **0. Literature review** | 2–3 wks | HRTF/binaural rendering, sonification & earcons, assistive object-locating systems. Gap analysis → justifies design choices. |
-| **1. Prototype (thin vertical slice)** | ~3 wks | Validates ONLY the two risky unknowns: (A) is head-rotation-tracked spatial audio intuitive enough to locate objects? (B) does ARUCO-marker head tracking hold up at 30–60 Hz on ordinary cameras? Scope: 1 phone camera + ARUCO markers on the sides of the head + one marker "object" + one spatialized loop in Unity + BT earbuds. NO YOLO, NO speech, NO hybrid modes, NO full room calibration. SceneState/UDP contract defined here and frozen. **Built against the contracts, not the hardware — every piece must swap cleanly later.** |
-| **2. Production CV pipeline** | 4–6 wks | Specialized cameras; multi-camera world-frame calibration (room scale); trained YOLO + DepthLocalizer; 6DoF head pose with smoothing and camera-handoff stability; head-relative transform. Validate CV accuracy vs tape-measure/ARUCO ground truth. |
-| **3. Production audio engine** | 3–4 wks | Unity scene, 3D Tune-In integration, earcon library, hybrid always-on + beacon mode (keyboard first, then speech), UDP protocol, distance cues. |
-| **4. Integration & performance** | 3–4 wks | Threaded/async pipeline; tune to end-to-end < 100 ms; measure and decide wired vs wireless interconnect. Latency is an engineering target, not a thesis chapter. |
-| **5. User study & thesis writing** | 6–10 wks | See §6. |
+The stages exist for **financial reasons**: everything is built first on existing + approved hardware (Prototype), and all components are purchased only once the design has proven itself (Production). Both stages perform CV, audio, and integration/performance work.
+
+| Phase | Stage | Duration | Milestone / exit criterion |
+|---|---|---|---|
+| **0. Literature review** | — | 2–3 wks | HRTF/binaural rendering, sonification & earcons, assistive object-locating systems. Gap analysis → justifies design choices. |
+| **1. Prototype CV pipeline** | Prototype | 4–6 wks | WiFi phone capture behind `CameraSource` (ARUCO stand-ins only — no YOLO yet); `MarkerLocalizer` (solvePnP); ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. |
+| **2. Prototype audio engine** | Prototype | 3–4 wks | Unity scene + HRTF spatializer, earcon library, always-on + beacon mode (keyboard first), distance cues, `AudioSink` over BT earbuds. |
+| **3. Prototype integration & performance** | Prototype | 3–4 wks | SceneState/UDP contract defined and **frozen**; threaded/async pipeline; end-to-end latency measured & mitigated on wired and wireless paths; validates the two risky unknowns: (A) is head-rotation-tracked spatial audio intuitive enough to locate objects? (B) does marker-based head tracking hold up at 30–60 Hz? **Built against the contracts, not the hardware — every piece must swap cleanly later.** |
+| — | *Financial gate* | — | All Production components purchased (§7.3–§7.4); per-item approvals recorded in §7.2. |
+| **4. Production CV pipeline** | Production | 4–6 wks | Specialized cameras (wired array and/or wireless nodes); multi-camera room-scale world-frame calibration; trained YOLO + real-object localization; IMU-fused 6DoF head pose with smoothing and camera-handoff stability. Validate CV accuracy vs tape-measure/ARUCO ground truth. |
+| **5. Production audio & integration** | Production | 3–4 wks | Engines ported behind unchanged contracts onto production gear; full-room deployment; end-to-end latency verified per interconnect path. |
+| **6. User study & thesis writing** | — | 6–10 wks | See §6. |
 
 **Total: ~9–12 months** (part-time schedule roughly doubles this).
 
@@ -111,7 +119,7 @@ Data schemas are defined **before** writing either implementation; both stages c
 All formal evaluation runs on the **Production system only**.
 
 1. **CV accuracy:** detection precision/recall; object-position error vs tape-measure ground truth; head-pose error (position + orientation °) vs ARUCO/IMU ground truth.
-2. **System performance (verification):** end-to-end latency < 100 ms — this measurement also decides the Production interconnect; audio-position stability during head turns and camera handoffs.
+2. **System performance (verification):** end-to-end latency < 100 ms, measured separately for the wired and wireless interconnect paths; audio-position stability during head turns and camera handoffs.
 3. **User study (N ≈ 10–15, blindfolded sighted + optionally VI participants):** named-object localization while standing/walking in the room. Metrics: angular error, distance error, time-to-locate, path efficiency. Questionnaires: SUS, NASA-TLX.
 4. **Hybrid-mode comparison:** always-on vs beacon vs both.
 5. **Statistics:** ANOVA / t-tests on the above.
@@ -122,11 +130,11 @@ All formal evaluation runs on the **Production system only**.
 
 ## 7. Hardware requirements & cost breakdown
 
-The two-stage hardware strategy mirrors the development stages: the Prototype runs on whatever non-specialized gear is available, while the Production system is specified once, acquired deliberately, and carries every formal evaluation. Each component below states what it is, which contract it fulfills, and why it is needed.
+The two-stage hardware strategy exists for **financial reasons**: the Prototype stage uses only what already exists plus individually approved small purchases (§7.1–§7.2), while the Production stage buys **all** system components once the prototype has proven the design (§7.3–§7.4). Wired and wireless variants of network-facing components are specified for both stages. Each component below states what it is, which contract it fulfills, and why it is needed.
 
 ### 7.1 Prototype rig (Stage 1)
 
-Goal: validate the two risky unknowns (head-rotation-tracked audio intuitiveness; ARUCO-marker head tracking at 30–60 Hz) with minimal spend, reusing personal devices wherever possible.
+Goal: run the entire stack — CV pipeline, audio engine, integration & performance — on existing devices plus approved purchases (§7.2), validating the two risky unknowns end-to-end before any major spend.
 
 **Smartphone(s) — capture (`CameraSource`)**
 - What/why: the rig's imaging devices. Each streams video over WiFi so the Python pipeline receives `Frame`s exactly as it will from Production cameras.
@@ -134,7 +142,7 @@ Goal: validate the two risky unknowns (head-rotation-tracked audio intuitiveness
 - **Android route:** **IP Webcam** (or similar) serving native RTSP/MJPEG.
 - **iPhone route:** DroidCam iOS app + official Linux client (droidcam), or an iOS MJPEG-server app feeding OpenCV directly. iOS has no native RTSP server, so the route's added stream latency must be measured early (same treatment as the BT earbuds).
 - **Mixed fleets work:** each device is just an independent `CameraSource` backend. Synchronization is host-timestamp based, calibration registers every camera into the shared world frame regardless of brand, and per-source latency/color differences are absorbed by per-camera capture threads plus smoothing filters.
-- One phone suffices for the Phase 1 slice; a second (any OS) approximates multi-camera handoff later.
+- One phone suffices to start; a second (any OS) approximates multi-camera handoff.
 
 **Phone tripod mounts**
 - What/why: hold the phone rigidly and repeatably — loose, handheld cameras break both calibration and marker tracking.
@@ -160,7 +168,31 @@ Goal: validate the two risky unknowns (head-rotation-tracked audio intuitiveness
 - What/why: sanity-check ground truth (is the sound where the marker actually is?) and calibration input.
 - Specs: steel tape measure; printed OpenCV chessboard; tape/adhesive for markers.
 
-### 7.2 Production system (Stage 2)
+### 7.2 Prototype hardware purchase approval
+
+The Prototype stage buys **only** the items approved below — everything else must come from existing personal equipment (marked ₱0). Each researcher marks **yes** in their column to approve that item's purchase for the prototype stage; purchases happen jointly.
+
+| Component | Subsystem | Qty | Price/unit (₱) | Cost (₱) | Requirement | Researcher 1 | Researcher 2 | Researcher 3 |
+|---|---|---|---|---|---|---|---|---|
+| Smartphone #1 | Capture (wireless) | 1 | 0 *(existing; buy-alt 4,000 – 8,000)* | 0 | Required | | | |
+| Smartphone #2 *(optional second camera)* | Capture (wireless) | 1 | 0 *(existing)* | 0 | Optional | | | |
+| Laptop (Python + Unity host) | Compute | 1 | 0 *(existing)* | 0 | Required | | | |
+| Home WiFi router | Networking (wireless) | 1 | 0 *(existing)* | 0 | Required | | | |
+| Bluetooth TWS earbuds | Audio output (wireless) | 1 | 0 *(existing; buy-alt 800 – 2,500)* | 0 | Required | | | |
+| Phone tripod mounts | Mounting | 2 | 150 – 350 | 300 – 700 | Required | | | |
+| Mini desk tripods *(alt to clamps)* | Mounting | 2 | 100 – 250 | 200 – 500 | Optional | | | |
+| Matte A4 ARUCO prints | Perception consumables | 10 | 10 – 20 | 100 – 200 | Required | | | |
+| Cap/headband for side markers | Head tracking | 1 | 50 – 150 | 50 – 150 | Required | | | |
+| Steel tape measure | Calibration / ground truth | 1 | 80 – 250 | 80 – 250 | Required | | | |
+| Chessboard print + tape/adhesive | Calibration consumables | 1 | 50 – 150 | 50 – 150 | Required | | | |
+| Dedicated WiFi 6 router (Archer AX23-class) | Networking (wireless) | 1 | 2,700 – 3,000 | 2,700 – 3,000 | Conditional *(only if home AP proves congested)* | | | |
+| Gigabit switch + Ethernet patch cables | Networking (wired) | 1 | 800 – 1,500 | 800 – 1,500 | Optional *(wired laptop↔router stability path)* | | | |
+| Power bank (long streaming sessions) | Power | 1 | 500 – 1,200 | 500 – 1,200 | Optional | | | |
+| **Required-purchase subtotal** | | | | **≈ 580 – 1,450** | | | | |
+
+*The Subsystem field says what the component handles; networking items are marked wired, wireless, or either. Prices surveyed August 2026 via Shopee/Lazada PH street channels.*
+
+### 7.3 Production system (Stage 2)
 
 Goal: a fixed, calibrated room installation accurate enough for formal evaluation, with every component swappable behind its contract.
 
@@ -176,14 +208,21 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - Trade-offs vs the D435: cuts roughly ₱45,000–57,000 off the camera subsystem and removes depth-map dependence; costs more integration effort (triangulation pipeline, stricter sync discipline) and gives no out-of-the-box metric depth.
 - Cheaper mono variant (OV9281) exists but complicates standard color-based YOLO — choose it only if grayscale retraining is acceptable.
 
+**Wireless camera array — Raspberry Pi 5 + Camera Module 3 edge nodes (×3) — wireless OR-alternative (`CameraSource`)**
+- What/why: the fully-wireless capture path. Each node streams tuned MJPEG/raw-UDP (MediaMTX/WebRTC class) over a dedicated WiFi 6 AP into the same `Frame` contract — no USB tethering anywhere.
+- Specs per node: RPi 5 (4 GB) + Camera Module 3 + PSU/microSD/case ≈ ₱7,000–9,000 landed; stream latency floors around ~200 ms even when tuned.
+- Budget alternative: commercial RTSP IP cameras (₱2,500–6,000/unit) — cheapest per unit but typical 200–300 ms stream latency, rolling shutter, and no control over frame sync.
+- Trade-offs vs the USB arrays: total cable freedom for room-corner placement; pays a ~₱8k+ premium over the OV9782 array and accepts higher stream latency (§3.6).
+
 **Camera mounting & USB infrastructure**
 - What/why: extrinsic calibration is only valid while cameras stay perfectly still; and every USB camera demands dependable bandwidth.
 - Specs: sturdy tripods or wall clamps (¼"-20 UNC); powered USB-C hub; active extensions beyond 2 m; plan host-controller lanes so cameras don't share bandwidth.
 - Carry-over facts: retail D435 units include their own mini tripod (bench use), and any prototype tripod with a standard ¼"-20 screw can hold a D435 (~72 g) — partial reuse is real. Phone cradles do not transfer: they clamp a handset shape rather than a threaded mount, and desk stands don't suit room-corner placement.
 
-**Wired headset — output (`AudioSink`)**
-- What/why: delivers the binaural soundscape with zero wireless-codec latency; HRTF rendering happens host-side.
-- Specs: closed-back wired headphones (ATH-M20x class or similar). Low-latency Bluetooth (aptX-LL/LDAC) is acceptable only if it survives the Phase 4 latency measurement.
+**Production headset — output (`AudioSink`, wired or wireless)**
+- What/why: delivers the binaural soundscape; HRTF rendering happens host-side. Both sanctioned paths keep added latency far below classic Bluetooth.
+- Wired: closed-back headphones (ATH-M20x class, ₱2,000–4,500) — zero codec latency, the safest path for the latency budget.
+- Wireless: gaming-grade **2.4 GHz USB-dongle** headset (~15–40 ms, ₱1,500–4,500 locally) or LE Audio/LC3 (< 40 ms) where available. Avoid classic-BT codecs (SBC/AAC/LDAC = 100–250 ms).
 
 **Headset-attached orientation device (fallback)**
 - What/why: concept.md's designated fallback — when cameras lose the face (turned away, occluded), a head-worn IMU keeps *orientation* accurate. Head *position* still comes from the camera array; the device contributes rotation only.
@@ -194,15 +233,16 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - Specs floor: 8 GB VRAM GPU (RTX 4060 class), 6-core CPU, 32 GB RAM, Ubuntu 22.04+, multiple USB 3.1 ports.
 - Options: (a) drop the GPU into an existing desktop; (b) purpose-built tower; (c) gaming laptop — verify sustained thermals for hours-long inference sessions.
 
-**Wired network kit**
-- What/why: default camera→host interconnect chosen to protect the < 100 ms budget before wireless is even considered.
-- Specs: Cat6 patch cables + 5-port gigabit switch. Wireless remains a candidate only if Phase 4 measures end-to-end latency under the standard with it.
+**Network kit — wired and wireless**
+- What/why: both interconnects are supported, so both kits are specified; per-experiment choice is made by measurement (§3.6).
+- Wired: Cat6 patch cables + 5-port gigabit switch (₱1,000–2,000) — the lowest-latency camera→host path.
+- Wireless: dedicated WiFi 6 access point (TP-Link Archer AX23-class, ₱2,700–3,000) on its own SSID/channel so camera streams never share airtime with household traffic.
 
 **Ground-truth & validation kit**
 - What/why: thesis evaluation needs independent truth to score CV accuracy against.
 - Specs: laser distance meter + steel tape (object-position ground truth); spare printed markers (head-pose validation reference in Phase 2).
 
-### 7.3 Cost breakdown (Philippine Pesos)
+### 7.4 Cost breakdown (Philippine Pesos)
 
 > **Assumptions:** prices surveyed August 2026 via Philippine street channels (Shopee/Lazada/official stores), USD converted at **₱61/USD** (Aug 2026 mid-market). Import shipping, customs duties, and FX movement (2026 band ≈ ₱57–62) are **not** included. Items marked *(existing)* assume personal assets are reused at zero cost.
 
@@ -223,20 +263,24 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 
 | Item | Est. cost (₱) | Notes |
 |---|---|---|
-| Mounts, powered hub, cables | 3,000 – 6,000 | room-scale rigging; see carry-over facts in §7.2 |
-| Wired headset | 2,000 – 4,500 | |
-| IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | |
-| Network kit (Cat6 + gigabit switch) | 1,000 – 2,000 | |
+| Mounts, powered hub, cables | 3,000 – 6,000 | room-scale rigging; see carry-over facts in §7.3 |
+| Headset — wired *(buy one of the two)* | 2,000 – 4,500 | zero-codec-latency path |
+| Headset — 2.4 GHz dongle wireless *(buy one of the two)* | 1,500 – 4,500 | wireless path |
+| IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | BLE stream — already wireless-capable |
+| Network kit — wired (Cat6 + gigabit switch) | 1,000 – 2,000 | both network kits are bought: dual-path policy |
+| Network kit — wireless (dedicated WiFi 6 AP) | 2,700 – 3,000 | Archer AX23-class |
 | Laser meter + validation markers | 1,500 – 2,500 | |
-| **Common subtotal** | **≈ 8,800 – 17,800** | |
+| **Common subtotal** (headset counted once) | **≈ 11,000 – 20,800** | |
 
 **Camera subsystem — pick one:**
 
 | Option | Est. cost (₱) | Notes |
 |---|---|---|
-| Depth ×2 — RealSense D435 | 42,000 – 50,000 | $314 ea. list + landing; mini tripod included |
-| Depth ×3 — RealSense D435 *(recommended)* | 63,000 – 75,000 | occlusion-robust coverage |
-| RGB ×3 — Arducam OV9782 color GS *(OR-alternative)* | 10,500 – 18,000 | ≈ ₱3,500–6,000/unit landed; triangulation backend |
+| Depth ×2 — RealSense D435 (USB wired) | 42,000 – 50,000 | $314 ea. list + landing; mini tripod included |
+| Depth ×3 — RealSense D435 (USB wired) *(recommended)* | 63,000 – 75,000 | occlusion-robust coverage |
+| RGB ×3 — Arducam OV9782 color GS (USB wired) | 10,500 – 18,000 | ≈ ₱3,500–6,000/unit landed; triangulation backend |
+| Wireless RGB ×3 — RPi 5 + Camera Module 3 edge nodes | 21,000 – 27,000 | ≈ ₱7,000–9,000/node; MediaMTX/WebRTC, ~200 ms floor |
+| Wireless RGB ×3 — RTSP IP cameras *(budget alt)* | 7,500 – 18,000 | ₱2,500–6,000/unit; 200–300 ms typical |
 
 **Compute — pick one:**
 
@@ -247,17 +291,21 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 
 **Grand totals** (common + camera choice + compute choice):
 
-| | GPU upgrade | Dedicated workstation |
+| Camera choice | + GPU upgrade | + Dedicated workstation |
 |---|---|---|
-| Depth ×2 | ≈ 73,000 – 98,000 | ≈ 111,000 – 158,000 |
-| Depth ×3 | ≈ 94,000 – 123,000 | **≈ 132,000 – 183,000** *(reference build)* |
-| RGB ×3 (OV9782) | **≈ 41,000 – 66,000** | ≈ 79,000 – 126,000 |
+| Depth ×2 (USB) | ≈ 75,000 – 100,800 | ≈ 113,000 – 160,800 |
+| Depth ×3 (USB) | ≈ 96,000 – 125,800 | **≈ 134,000 – 185,800** *(reference build)* |
+| RGB ×3 OV9782 (USB) | ≈ 43,500 – 71,800 | ≈ 81,500 – 131,800 |
+| Wireless ×3 RPi nodes | ≈ 54,000 – 77,800 | ≈ 92,000 – 137,800 |
+
+*(The IP-camera budget alternative lands between the OV9782 and RPi-node totals.)*
 
 **Cost notes:**
 
-- In the depth configurations **cameras dominate** (~45–55%); the RGB-first path cuts total system cost by roughly 40%.
+- In the depth configurations **cameras dominate** (~45–55%); the RGB paths cut total system cost by roughly 40%.
+- **Dual-path premium:** buying both network kits and specifying wired *and* wireless cameras adds flexibility for measurement and study conditions; the wired array remains the lowest-latency reference while wireless nodes trade ~₱8–12k and +100–200 ms of stream latency for placement freedom.
 - **OV9782 chosen over mono OV9281** to keep standard color-based YOLO; mono would force grayscale retraining.
-- The RGB-vs-depth decision gate is the Phase 2 RGB-sufficiency test — but the D435's official store flags a **2–3 week lead time and tariff surcharge**, so a depth decision must be ordered well before Phase 2 starts.
+- The RGB-vs-depth decision gate is the Phase 4 RGB-sufficiency test — but the D435's official store flags a **2–3 week lead time and tariff surcharge**, so a depth decision must be ordered well before Phase 4 starts.
 - Reusing the Prototype laptop as the Unity host can shave ₱10,000–25,000 off any cell above.
 
 ---
@@ -268,9 +316,9 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - **YOLO dataset effort** → keep object set small (≤ 5–8 classes) for the study.
 - **Head pose drift when the face turns away** → headset-attached device fallback in Production.
 - **Room-scale occlusion / camera coverage** → user body or head rotation can hide markers from a single camera → multiple cameras, marker placement validated in Phase 2; multi-camera handoff must not cause audio jumps.
-- **BT earbud latency (~100–200 ms)** → Prototype-only concern; irrelevant to the production headset.
-- **Wireless links add latency/jitter** → prototype phone-stream routes (Android RTSP/MJPEG, iOS/DroidCam-over-WiFi) are measured early as Prototype-only concerns; in Production, wireless is measured in Phase 4 and stays only if end-to-end latency < 100 ms holds, otherwise the system goes wired.
-- **Prototype hacks leaking into Production** → prevented contract-first; see §4 and the handoff rule in §5 Phase 1.
+- **Classic-BT earbud latency (~150–250 ms)** → measured early in the Prototype; Production wireless audio uses 2.4 GHz dongle/LC3 instead.
+- **Wireless links add latency/jitter** → measured reality: tuned MJPEG/raw-UDP ~80–150 ms, RTSP/IP-cam 200–300 ms, RPi-edge WebRTC ~200 ms; classic-BT audio 150–250 ms vs 2.4 GHz dongle 15–40 ms. Both interconnects are built and measured (Phase 3 Prototype, Phase 5 Production); the gap vs the 100 ms target is mitigated (dedicated AP, tuned streams, codec choice) and reported honestly, not studied.
+- **Prototype hacks leaking into Production** → prevented contract-first; see §4 and the handoff rule in §5 Phase 3.
 
 Open questions:
 
