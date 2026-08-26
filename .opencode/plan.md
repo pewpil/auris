@@ -2,7 +2,7 @@
 
 > **Canonical plan:** [`README.md`](../README.md) at the repository root holds the full in-depth development plan. This file is a compact summary kept for opencode's session context; keep the two consistent when either changes.
 >
-> **Diagrams:** Markdown files with fenced Mermaid blocks live in `docs/` (`architecture.md`, `scenestate-update.md`, `prototype-production-swap.md`, `phases-gantt.md`); renderers draw them natively and the source pastes into Lucidchart's Diagram-as-code editor.
+> **Diagrams:** Markdown files with fenced Mermaid blocks live in `docs/` (`architecture.md`, `scenestate-update.md`, `prototype-production-swap.md`, `phases-gantt-m1-m4-prototype.md`, `phases-gantt-m5-m8-production.md`); renderers draw them natively and the source pastes into Lucidchart's Diagram-as-code editor.
 
 ## Project overview
 
@@ -12,12 +12,12 @@ Thesis project: a visually impaired (or blindfolded) user stands in a room conta
 
 The Prototype/Production split exists **for financial reasons**, not primarily risk isolation:
 
-- **Prototype stage** builds and integrates the *entire* stack — CV pipeline, audio engine, and integration & performance — using only **existing hardware plus individually approved purchases** (approval table: README §7.2). It validates risks (A) head-rotation-tracked spatial-audio intuitiveness and (B) marker-based head tracking at 30–60 Hz, end-to-end.
+- **Prototype stage** builds and integrates the *entire* stack — CV pipeline, audio engine, and integration & performance — using only **existing hardware plus individually approved purchases** (approval table: [README §7.2](../README.md#72-prototype-hardware-purchase-approval)). It validates risks (A) head-rotation-tracked spatial-audio intuitiveness and (B) marker-based head tracking at 30–60 Hz, end-to-end.
 - **Production stage** is where **all** system components are purchased. The engines are re-platformed behind unchanged contracts onto specialized gear, and every formal evaluation + user study happens here.
 
 ## Interconnect policy
 
-- **Wired AND wireless are supported at every stage**; components for both are specified (README §7).
+- **Wired AND wireless are supported at every stage**; components for both are specified ([README §7](../README.md#7-hardware-requirements--cost-breakdown)).
 - End-to-end latency **< 100 ms** remains the verified engineering target. Measured reality: wired USB cameras ≈ negligible link latency; wireless camera links ~80–150 ms tuned MJPEG/raw-UDP, 200–300 ms RTSP/IP-cam, ~200 ms RPi-edge WebRTC floor; audio 2.4 GHz dongle 15–40 ms vs classic BT 150–250 ms.
 - A fully-wireless chain measures ~150–400 ms — the gap is mitigated (dedicated WiFi 6 AP, tuned streams, codec choice) and reported per path, never studied as thesis content.
 
@@ -44,6 +44,7 @@ Development in the **Prototype stage must be considerate of transitioning to the
 - All spatial math in Python; Unity renders audio only; UDP localhost at 30–60 Hz.
 - Head-relative azimuth/elevation/distance per object is what Unity receives.
 - Latency < 100 ms is an engineering target verified on both interconnect paths — not a research topic.
-- Phases: 0 literature review → 1 Prototype CV pipeline → 2 Prototype audio engine → 3 Prototype integration & performance → *financial gate: purchase all Production components* → 4 Production CV pipeline → 5 Production audio & integration → 6 user study & writing. Total ~9–12 months (part-time roughly doubles).
-- Prototype purchases require researcher approval: README §7.2 table columns are Component | Subsystem | Qty | Price | Cost | Requirement | Researcher 1/2/3 (each marks *yes*); networking items marked wired/wireless/either.
+- Phases: 0 literature review (+ ethics filing) → 1 Prototype CV pipeline → 2 Prototype audio engine → 3 Prototype integration & performance → *financial gate (components ordered during Phase 3)* → 4 Production CV pipeline → 5 Production audio & integration → 6 user study & writing. **Total: 8 months full-time, Aug 31 2026 – Apr 30 2027** — Prototype = months 1–4, Production Dec–Feb (Phase 4 stretches across the PH December holidays), study+writing Mar–Apr, final two weeks are defense buffer.
+- Prototype purchases require researcher approval: [README §7.2](../README.md#72-prototype-hardware-purchase-approval) table columns are Component | Subsystem | Qty | Price | Cost | Requirement | Researcher 1/2/3 (each marks *yes*); networking items marked wired/wireless/either.
 - Evaluation (Production only): CV accuracy vs ground truth, latency verification per path, user study N ≈ 10–15 (angular/distance error, time-to-locate, path efficiency), hybrid-mode comparison, ANOVA/t-tests.
+- **Thesis-paper linking rule (standing reminder):** while writing the thesis, internal references use **§ symbols together with hyperlinks** — but **all links will be stripped from the final submitted paper**. Before final formatting/submission, remind the user to remove every hyperlink (self-references and outside resources), keeping plain-text § numbers. Full policy in `.opencode/instruction.md`.

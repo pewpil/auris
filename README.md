@@ -2,7 +2,7 @@
 
 A system that helps visually impaired users locate objects in a room through simulated auditory cues. The user stands in a room containing various objects; a camera array tracks both the objects and the user's head — position **and** rotation, since a standing user can turn and walk; a headset renders a 3D soundscape where every object continuously emits a distinctive sound anchored to its real position. Turning the head rotates the sound field correctly so it stays fixed to the world.
 
-**Context:** Thesis project. Development runs in two stages, split for **financial reasons**: the **Prototype** stage builds and integrates the *entire* stack — CV pipeline, audio engine, integration & performance — using only existing hardware plus items approved for purchase (§7.2), validating the two risky unknowns end-to-end; the **Production** stage then purchases **all** system components on specialized gear, re-platforms the same contracts, and carries every formal evaluation and the user study. Stack: Python CV → Unity spatial audio over UDP localhost; wired **and** wireless interconnects are supported at every stage. End-to-end latency < 100 ms is an engineering target that is verified, not researched.
+**Context:** Thesis project. Development runs in two stages, split for **financial reasons**: the **Prototype** stage builds and integrates the *entire* stack — CV pipeline, audio engine, integration & performance — using only existing hardware plus items approved for purchase ([§7.2](#72-prototype-hardware-purchase-approval)), validating the two risky unknowns end-to-end; the **Production** stage then purchases **all** system components on specialized gear, re-platforms the same contracts, and carries every formal evaluation and the user study. Stack: Python CV → Unity spatial audio over UDP localhost; wired **and** wireless interconnects are supported at every stage. End-to-end latency < 100 ms is an engineering target that is verified, not researched.
 
 ---
 
@@ -12,7 +12,7 @@ A standing, blindfolded (or visually impaired) user in a room with objects place
 
 Measured outcomes for the thesis:
 
-- End-to-end latency **< 100 ms** (verified engineering target — see §6); both wired and wireless interconnect paths are measured
+- End-to-end latency **< 100 ms** (verified engineering target — see [§6](#6-evaluation-plan-thesis)); both wired and wireless interconnect paths are measured
 - Object localization **< 15° angular error**; absolute distance-error target set once room size/object spread are fixed (provisionally ≤ 0.5 m)
 - Blindfolded users locate a named object in **< 30 s** while standing/walking (provisional)
 - A quantitative **user study with statistical analysis** (ANOVA / t-tests)
@@ -30,9 +30,9 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 - **All spatial math lives in Python.** Unity is a "dumb" audio renderer that receives head-relative object positions and places audio sources there; it never computes poses.
 - **ONE shared world frame**, fixed to the room and established by multi-camera extrinsic calibration. Every pose — objects and head — lives in this frame. There is no dominant-plane shortcut; objects sit at different heights.
 - **Contract-first hardware abstraction.** Cameras, localizers, head-pose estimators, and audio devices sit behind interfaces (`CameraSource`, `AudioSink`, etc.), so Prototype gear swaps to Production gear without touching pipeline code.
-- **Transition-first development.** The Prototype is built *against the contracts, not against its hardware*, so moving to Production is a backend swap, not a rewrite (§4, §5).
+- **Transition-first development.** The Prototype is built *against the contracts, not against its hardware*, so moving to Production is a backend swap, not a rewrite ([§4](#4-data-contracts-contract-first-critical-for-the-transition), [§5](#5-development-phases)).
 
-**Diagrams:** maintained as Markdown files with fenced Mermaid blocks in [`docs/architecture.md`](docs/architecture.md) (system pipeline), [`docs/scenestate-update.md`](docs/scenestate-update.md) (one runtime update cycle), [`docs/prototype-production-swap.md`](docs/prototype-production-swap.md) (kept-vs-swapped components), and [`docs/phases-gantt.md`](docs/phases-gantt.md) (first-4-months Gantt). Markdown renderers draw them natively; the source also pastes into Lucidchart's *Diagram as code* editor.
+**Diagrams:** maintained as Markdown files with fenced Mermaid blocks in [`docs/architecture.md`](docs/architecture.md) (system pipeline), [`docs/scenestate-update.md`](docs/scenestate-update.md) (one runtime update cycle), [`docs/prototype-production-swap.md`](docs/prototype-production-swap.md) (kept-vs-swapped components), and the two schedule Gantts [`docs/phases-gantt-m1-m4-prototype.md`](docs/phases-gantt-m1-m4-prototype.md) / [`docs/phases-gantt-m5-m8-production.md`](docs/phases-gantt-m5-m8-production.md). Markdown renderers draw them natively; the source also pastes into Lucidchart's *Diagram as code* editor.
 
 ---
 
@@ -40,8 +40,8 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 
 ### 3.1 Camera capture & calibration
 
-- **Prototype:** any smartphone ≥1080p streaming MJPEG over WiFi — Android via native RTSP/MJPEG (e.g., IP Webcam app), iPhone via DroidCam's Linux client or an iOS MJPEG-server app; Android and iPhone units can be mixed freely (§7.1). **RGB only** — object positions come from ARUCO solvePnP (markers act as one-shot registration stand-ins); no triangulation and no depth at this stage.
-- **Production:** specialized cameras covering the room from several angles so objects *and* the user's head stay visible during turns and walks. Capture priority ladder: **① RGB primary → ② multi-view RGB triangulation for live 3D → ③ dedicated depth cameras last** (§7.3).
+- **Prototype:** any smartphone ≥1080p streaming MJPEG over WiFi — Android via native RTSP/MJPEG (e.g., IP Webcam app), iPhone via DroidCam's Linux client or an iOS MJPEG-server app; Android and iPhone units can be mixed freely ([§7.1](#71-prototype-rig-stage-1)). **RGB only** — object positions come from ARUCO solvePnP (markers act as one-shot registration stand-ins); no triangulation and no depth at this stage.
+- **Production:** specialized cameras covering the room from several angles so objects *and* the user's head stay visible during turns and walks. Capture priority ladder: **① RGB primary → ② multi-view RGB triangulation for live 3D → ③ dedicated depth cameras last** ([§7.3](#73-production-system-stage-2)).
 - **Calibration:** per-camera intrinsics via OpenCV chessboard; then joint **multi-camera extrinsic calibration** registering all cameras into the room/world frame. No dominant-plane shortcut exists at room scale.
 
 ### 3.2 Object perception
@@ -74,7 +74,7 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 ### 3.6 Networking & interconnect
 
 - Python → Unity over **UDP** localhost with a compact binary protocol (protobuf/msgpack) at ~30–60 Hz.
-- **Both wired and wireless interconnects are supported at every stage**, and §7 specifies components for both. The < 100 ms end-to-end target is kept; measured reality per link type:
+- **Both wired and wireless interconnects are supported at every stage**, and [§7](#7-hardware-requirements--cost-breakdown) specifies components for both. The < 100 ms end-to-end target is kept; measured reality per link type:
   - *Wired cameras (USB):* negligible link latency — the path most likely to meet the target.
   - *Wireless cameras:* tuned MJPEG/raw-UDP over a dedicated WiFi 6 AP measures ~80–150 ms best case; naive RTSP/H.264 lands at 200–300 ms or worse (decoder buffering); Raspberry Pi edge-node WebRTC floors around ~200 ms.
   - *Wireless audio:* 2.4 GHz dongle ~15–40 ms vs classic BT ~150–250 ms.
@@ -101,16 +101,20 @@ The stages exist for **financial reasons**: everything is built first on existin
 
 | Phase | Stage | Duration | Milestone / exit criterion |
 |---|---|---|---|
-| **0. Literature review** | — | 2–3 wks | HRTF/binaural rendering, sonification & earcons, assistive object-locating systems. Gap analysis → justifies design choices. |
-| **1. Prototype CV pipeline** | Prototype | 4–6 wks | WiFi phone capture behind `CameraSource`; `MarkerLocalizer` (solvePnP); early `ObjectDetector` bring-up — YOLO v8/v11, small custom dataset, training via Google Colab T4 / inference on the RTX 4060; ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. **RGB only — no triangulation, no depth.** |
-| **2. Prototype audio engine** | Prototype | 3–4 wks | Unity scene + HRTF spatializer, earcon library, always-on + beacon mode (keyboard first), distance cues, `AudioSink` over BT earbuds. |
-| **3. Prototype integration & performance** | Prototype | 3–4 wks | SceneState/UDP contract defined and **frozen**; threaded/async pipeline; end-to-end latency measured & mitigated on wired and wireless paths; validates the two risky unknowns: (A) is head-rotation-tracked spatial audio intuitive enough to locate objects? (B) does marker-based head tracking hold up at 30–60 Hz? **Built against the contracts, not the hardware — every piece must swap cleanly later.** |
-| — | *Financial gate* | — | All Production components purchased (§7.3–§7.4); per-item approvals recorded in §7.2. |
-| **4. Production CV pipeline** | Production | 4–6 wks | Specialized cameras (wired array and/or wireless nodes); multi-camera room-scale world-frame calibration; trained YOLO + real-object localization (one-shot registration escalating to multi-view triangulation; depth only if insufficient); IMU-fused 6DoF head pose with smoothing and camera-handoff stability. Validate CV accuracy vs tape-measure/ARUCO ground truth. |
-| **5. Production audio & integration** | Production | 3–4 wks | Engines ported behind unchanged contracts onto production gear; full-room deployment; end-to-end latency verified per interconnect path. |
-| **6. User study & thesis writing** | — | 6–10 wks | See §6. |
+| **0. Literature review** *(+ ethics filing)* | — | 3 wks | HRTF/binaural rendering, sonification & earcons, assistive object-locating systems. Gap analysis → justifies design choices. **Ethics/IRB application filed in this phase** (see [§6](#6-evaluation-plan-thesis)). |
+| **1. Prototype CV pipeline** | Prototype | 4 wks | WiFi phone capture behind `CameraSource`; `MarkerLocalizer` (solvePnP); early `ObjectDetector` bring-up — YOLO v8/v11, small custom dataset, training via Google Colab T4 / inference on the RTX 4060; ARUCO side-of-head `HeadPoseEstimator` (6DoF, 30–60 Hz); calibration tooling establishing the room/world frame. **RGB only — no triangulation, no depth.** |
+| **2. Prototype audio engine** | Prototype | 3 wks | Unity scene + HRTF spatializer, earcon library, always-on + beacon mode (keyboard first), distance cues, `AudioSink` over BT earbuds. |
+| **3. Prototype integration & performance** | Prototype | 3 wks | SceneState/UDP contract defined and **frozen**; threaded/async pipeline; end-to-end latency measured & mitigated on wired and wireless paths; validates the two risky unknowns: (A) is head-rotation-tracked spatial audio intuitive enough to locate objects? (B) does marker-based head tracking hold up at 30–60 Hz? **Built against the contracts, not the hardware — every piece must swap cleanly later.** |
+| — | *Financial gate* | — | Production components **ordered during Phase 3** so lead times run out before Phase 4 starts; per-item approvals recorded in [§7.2](#72-prototype-hardware-purchase-approval); purchases finalized at the gate ([§7.3](#73-production-system-stage-2)–[§7.4](#74-cost-breakdown-philippine-pesos)). |
+| **4. Production CV pipeline** | Production | 4 wks *(stretches across the December holidays)* | Specialized cameras (wired array and/or wireless nodes); multi-camera room-scale world-frame calibration; trained YOLO + real-object localization (one-shot registration escalating to multi-view triangulation; depth only if insufficient); IMU-fused 6DoF head pose with smoothing and camera-handoff stability. Validate CV accuracy vs tape-measure/ARUCO ground truth. |
+| **5. Production audio & integration** | Production | 3 wks | Engines ported behind unchanged contracts onto production gear; full-room deployment; end-to-end latency verified per interconnect path. |
+| **6. User study & thesis writing** | — | 8 wks | See [§6](#6-evaluation-plan-thesis). Pilot sessions → data collection → statistics → writing, with a final buffer for defense preparation. |
 
-**Total: ~9–12 months** (part-time schedule roughly doubles this).
+**Calendar:** development runs full-time from **Monday, Aug 31, 2026 to Friday, Apr 30, 2027** — the fixed thesis envelope. Prototype stage occupies months 1–4 (through late November), procurement overlaps Phase 3, Production runs December–February with Phase 4 deliberately stretched across the Philippine December holidays, and the study + writing fill March–April. The last two weeks of April are held as defense-preparation buffer.
+
+**Total: 8 months (Aug 2026 – Apr 2027).**
+
+**Gantt charts:** [`docs/phases-gantt-m1-m4-prototype.md`](docs/phases-gantt-m1-m4-prototype.md) and [`docs/phases-gantt-m5-m8-production.md`](docs/phases-gantt-m5-m8-production.md).
 
 ---
 
@@ -124,17 +128,17 @@ All formal evaluation runs on the **Production system only**.
 4. **Hybrid-mode comparison:** always-on vs beacon vs both.
 5. **Statistics:** ANOVA / t-tests on the above.
 
-> ⚠️ If human participants are included, check the institution's ethics/IRB approval early — it affects scheduling.
+> ⚠️ If human participants are included, **file the ethics/IRB application during Phase 0 (September 2026)** — in the 8-month schedule, clearance must be in hand before the Phase 6 study window opens in March.
 
 ---
 
 ## 7. Hardware requirements & cost breakdown
 
-The two-stage hardware strategy exists for **financial reasons**: the Prototype stage uses only what already exists plus individually approved small purchases (§7.1–§7.2), while the Production stage buys **all** system components once the prototype has proven the design (§7.3–§7.4). Wired and wireless variants of network-facing components are specified for both stages. Each component below states what it is, which contract it fulfills, and why it is needed.
+The two-stage hardware strategy exists for **financial reasons**: the Prototype stage uses only what already exists plus individually approved small purchases ([§7.1](#71-prototype-rig-stage-1)–[§7.2](#72-prototype-hardware-purchase-approval)), while the Production stage buys **all** system components once the prototype has proven the design ([§7.3](#73-production-system-stage-2)–[§7.4](#74-cost-breakdown-philippine-pesos)). Wired and wireless variants of network-facing components are specified for both stages. Each component below states what it is, which contract it fulfills, and why it is needed.
 
 ### 7.1 Prototype rig (Stage 1)
 
-Goal: run the entire stack — CV pipeline, audio engine, integration & performance — on existing devices plus approved purchases (§7.2), validating the two risky unknowns end-to-end before any major spend.
+Goal: run the entire stack — CV pipeline, audio engine, integration & performance — on existing devices plus approved purchases ([§7.2](#72-prototype-hardware-purchase-approval)), validating the two risky unknowns end-to-end before any major spend.
 
 **Smartphone(s) — capture (`CameraSource`)**
 - What/why: the rig's imaging devices. Each streams video over WiFi so the Python pipeline receives `Frame`s exactly as it will from Production cameras.
@@ -157,7 +161,7 @@ Goal: run the entire stack — CV pipeline, audio engine, integration & performa
 - Specs: any TWS set. Expect SBC codec latency of ~100–200 ms — measure it early; this is a Prototype-only concern and never informs Production design.
 
 **Desktop PCs — compute**
-- What/why: primary hosts for Python CV, the UDP streamer, Unity, and YOLO object-ID work — two researcher-owned machines (§7.2). **PC #1 (Ryzen 5 3500 + RTX 4060, 64 GB)** leads: YOLO inference runs on its GPU while **training is offloaded to Google Colab (free T4)** so it never competes with live sessions; local training is the offline fallback. **PC #2 (i7-10700 + RTX 3050, 16 GB)** is the fallback host per the §7.2 escalation ladder.
+- What/why: primary hosts for Python CV, the UDP streamer, Unity, and YOLO object-ID work — two researcher-owned machines ([§7.2](#72-prototype-hardware-purchase-approval)). **PC #1 (Ryzen 5 3500 + RTX 4060, 64 GB)** leads: YOLO inference runs on its GPU while **training is offloaded to Google Colab (free T4)** so it never competes with live sessions; local training is the offline fallback. **PC #2 (i7-10700 + RTX 3050, 16 GB)** is the fallback host per the [§7.2](#72-prototype-hardware-purchase-approval) escalation ladder.
 - Specs floor met: ARUCO solvePnP costs a few ms/frame on CPU; YOLOv8n/s trains comfortably at this dataset scale on an 8 GB-class GPU; HRTF rendering is CPU/DSP work. Python 3.10+, Unity 2022 LTS. If multi-phone MJPEG decode ever lags during all-camera sessions, drop streams to 720p.
 - The laptop remains a backup / stream-test client only.
 
@@ -210,7 +214,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - What/why: the same RGB-first design fully cut loose from cables. Each node streams tuned MJPEG/raw-UDP (MediaMTX/WebRTC class) over a dedicated WiFi 6 AP into the same `Frame` contract — no USB tethering anywhere.
 - Specs per node: RPi 5 (4 GB) + Camera Module 3 + PSU/microSD/case ≈ ₱7,000–9,000 landed; stream latency floors around ~200 ms even when tuned.
 - Budget alternative: commercial RTSP IP cameras (₱2,500–6,000/unit) — cheapest per unit but typical 200–300 ms stream latency, rolling shutter, and no control over frame sync.
-- Trade-offs vs wired USB arrays: total cable freedom for room-corner placement; pays a ~₱8k+ premium over the OV9782 array and accepts higher stream latency (§3.6).
+- Trade-offs vs wired USB arrays: total cable freedom for room-corner placement; pays a ~₱8k+ premium over the OV9782 array and accepts higher stream latency ([§3.6](#36-networking--interconnect)).
 
 **Dedicated depth array — Intel RealSense D435 (×2–3) — optional upgrade (`CameraSource`)**
 - What/why: tier ③ of the ladder — bought only if one-shot registration and multi-view triangulation both prove insufficient in Phase 4. Its unique value is single-view robustness: metric depth per pixel means one unoccluded view still yields a world-frame position when the walking user blocks every other camera.
@@ -237,7 +241,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - Options: (a) drop the GPU into an existing desktop; (b) purpose-built tower; (c) gaming laptop — verify sustained thermals for hours-long inference sessions.
 
 **Network kit — wired and wireless**
-- What/why: both interconnects are supported, so both kits are specified; per-experiment choice is made by measurement (§3.6).
+- What/why: both interconnects are supported, so both kits are specified; per-experiment choice is made by measurement ([§3.6](#36-networking--interconnect)).
 - Wired: Cat6 patch cables + 5-port gigabit switch (₱1,000–2,000) — the lowest-latency camera→host path.
 - Wireless: dedicated WiFi 6 access point (TP-Link Archer AX23-class, ₱2,700–3,000) on its own SSID/channel so camera streams never share airtime with household traffic.
 
@@ -266,7 +270,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 
 | Item | Est. cost (₱) | Notes |
 |---|---|---|
-| Mounts, powered hub, cables | 3,000 – 6,000 | room-scale rigging; see carry-over facts in §7.3 |
+| Mounts, powered hub, cables | 3,000 – 6,000 | room-scale rigging; see carry-over facts in [§7.3](#73-production-system-stage-2) |
 | Headset — wired *(buy one of the two)* | 2,000 – 4,500 | zero-codec-latency path |
 | Headset — 2.4 GHz dongle wireless *(buy one of the two)* | 1,500 – 4,500 | wireless path |
 | IMU fallback kit (BNO085 + ESP32 + strap) | 1,300 – 2,800 | BLE stream — already wireless-capable |
@@ -308,7 +312,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - The RGB-first priority ladder keeps the reference build affordable; depth upgrades add **₱31,000–57,000** over the OV9782 array and dominate cost if chosen.
 - **Dual-path premium:** buying both network kits and specifying wired *and* wireless cameras adds flexibility for measurement and study conditions; the wired array remains the lowest-latency reference while wireless nodes trade ~₱8–12k and +100–200 ms of stream latency for placement freedom.
 - **OV9782 chosen over mono OV9281** to keep standard color-based YOLO; mono would force grayscale retraining.
-- Depth remains an *upgrade*, not a default: add D435s only if Phase 4 shows registration and triangulation insufficient. If ordering them, note the official store flags a **2–3 week lead time and tariff surcharge**.
+- Depth remains an *upgrade*, not a default: add D435s only if Phase 4 shows registration and triangulation insufficient. If ordering them, note the official store flags a **2–3 week lead time and tariff surcharge** — under the 8-month calendar, the RGB-sufficiency call and any depth order must land by **end of Phase 3 (late November)**.
 - Reusing existing researcher hardware (desktops/laptop) as Prototype dev hosts keeps Stage 1 near-zero cost; Production compute is still purchased new at the financial gate.
 
 ---
@@ -321,7 +325,7 @@ Goal: a fixed, calibrated room installation accurate enough for formal evaluatio
 - **Room-scale occlusion / camera coverage** → user body or head rotation can hide markers from a single camera → multiple cameras, marker placement validated in Phase 4; multi-camera handoff must not cause audio jumps.
 - **Classic-BT earbud latency (~150–250 ms)** → measured early in the Prototype; Production wireless audio uses 2.4 GHz dongle/LC3 instead.
 - **Wireless links add latency/jitter** → measured reality: tuned MJPEG/raw-UDP ~80–150 ms, RTSP/IP-cam 200–300 ms, RPi-edge WebRTC ~200 ms; classic-BT audio 150–250 ms vs 2.4 GHz dongle 15–40 ms. Both interconnects are built and measured (Phase 3 Prototype, Phase 5 Production); the gap vs the 100 ms target is mitigated (dedicated AP, tuned streams, codec choice) and reported honestly, not studied.
-- **Prototype hacks leaking into Production** → prevented contract-first; see §4 and the handoff rule in §5 Phase 3.
+- **Prototype hacks leaking into Production** → prevented contract-first; see [§4](#4-data-contracts-contract-first-critical-for-the-transition) and the handoff rule in [§5](#5-development-phases) Phase 3.
 
 Open questions:
 
