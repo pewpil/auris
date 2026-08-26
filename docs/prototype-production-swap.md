@@ -1,5 +1,8 @@
-%% Auris Prototype-to-Production transition — what swaps vs what is kept
-%% Paste into Lucidchart via "Diagram as code" -> "+ New Mermaid diagram"
+# Auris — Prototype-to-Production Transition
+
+What swaps vs what is kept across the hardware transition. Paste the Mermaid source below into Lucidchart via *Diagram as code* if needed.
+
+```mermaid
 flowchart LR
     subgraph PROTO["Prototype rig (throwaway feasibility slice)"]
         direction TB
@@ -23,10 +26,10 @@ flowchart LR
 
     subgraph PROD["Production system (thesis deliverable)"]
         direction TB
-        R1["Specialized RGB/depth room cameras"]
-        R2["YOLO detection + DepthLocalizer"]
+        R1["Room camera array (RGB-first: wired/wireless; depth optional upgrade)"]
+        R2["YOLO detection + registration / TriangulatedLocalizer"]
         R3["Markerless CV head pose; headset-attached device if unreliable"]
-        R4["Low-latency headset"]
+        R4["Low-latency headset (wired or 2.4 GHz dongle)"]
     end
 
     P1 -. "implements" .-> K1
@@ -38,3 +41,4 @@ flowchart LR
     R2 -. "implements" .-> K2
     R3 -. "implements" .-> K3
     R4 -. "implements" .-> K5
+```

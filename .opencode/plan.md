@@ -2,7 +2,7 @@
 
 > **Canonical plan:** [`README.md`](../README.md) at the repository root holds the full in-depth development plan. This file is a compact summary kept for opencode's session context; keep the two consistent when either changes.
 >
-> **Diagrams:** Mermaid sources live in `docs/*.mmd` (`architecture.mmd`, `scenestate-update.mmd`, `prototype-production-swap.mmd`, `phases-gantt.mmd`) and paste into Lucidchart's Diagram-as-code editor.
+> **Diagrams:** Markdown files with fenced Mermaid blocks live in `docs/` (`architecture.md`, `scenestate-update.md`, `prototype-production-swap.md`, `phases-gantt.md`); renderers draw them natively and the source pastes into Lucidchart's Diagram-as-code editor.
 
 ## Project overview
 

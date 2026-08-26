@@ -1,11 +1,14 @@
-%% Auris system architecture — main runtime pipeline
-%% Paste into Lucidchart via "Diagram as code" -> "+ New Mermaid diagram"
+# Auris — System Architecture
+
+Main runtime pipeline. Paste the Mermaid source below into Lucidchart via *Diagram as code* if needed.
+
+```mermaid
 flowchart LR
     subgraph PY["Python host — all spatial math lives here"]
         direction LR
         CAM["Room camera array (N cameras)"]
         CAL["World-frame calibration (multi-camera extrinsics, no dominant plane)"]
-        OBJ["Object perception: MarkerLocalizer (Prototype) / YOLO + DepthLocalizer (Production)"]
+        OBJ["Object perception: MarkerLocalizer (Prototype) / YOLO + registration/triangulation (Production)"]
         HEAD["HeadPoseEstimator: full 6DoF (position + orientation), smoothed"]
         SCENE["Scene model in ONE shared room/world frame"]
         XF["Head-relative transform: azimuth, elevation, distance per object"]
@@ -31,3 +34,4 @@ flowchart LR
     TX --> AUD
     AUD --> SINK
     SINK --> HS
+```

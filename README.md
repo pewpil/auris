@@ -32,7 +32,7 @@ Runtime pipeline: camera array → capture → two CV pipelines (object percepti
 - **Contract-first hardware abstraction.** Cameras, localizers, head-pose estimators, and audio devices sit behind interfaces (`CameraSource`, `AudioSink`, etc.), so Prototype gear swaps to Production gear without touching pipeline code.
 - **Transition-first development.** The Prototype is built *against the contracts, not against its hardware*, so moving to Production is a backend swap, not a rewrite (§4, §5).
 
-**Diagrams:** maintained as Mermaid source in [`docs/architecture.mmd`](docs/architecture.mmd) (system pipeline), [`docs/scenestate-update.mmd`](docs/scenestate-update.mmd) (one runtime update cycle), and [`docs/prototype-production-swap.mmd`](docs/prototype-production-swap.mmd) (kept-vs-swapped components). Each file pastes directly into Lucidchart's *Diagram as code* editor.
+**Diagrams:** maintained as Markdown files with fenced Mermaid blocks in [`docs/architecture.md`](docs/architecture.md) (system pipeline), [`docs/scenestate-update.md`](docs/scenestate-update.md) (one runtime update cycle), [`docs/prototype-production-swap.md`](docs/prototype-production-swap.md) (kept-vs-swapped components), and [`docs/phases-gantt.md`](docs/phases-gantt.md) (first-4-months Gantt). Markdown renderers draw them natively; the source also pastes into Lucidchart's *Diagram as code* editor.
 
 ---
 

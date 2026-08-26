@@ -1,5 +1,8 @@
-%% Auris runtime — one SceneState update cycle (repeats per camera frame)
-%% Paste into Lucidchart via "Diagram as code" -> "+ New Mermaid diagram"
+# Auris — One SceneState Update Cycle
+
+Runtime sequence, repeating per camera frame. Paste the Mermaid source below into Lucidchart via *Diagram as code* if needed.
+
+```mermaid
 sequenceDiagram
     autonumber
     participant Cam as CameraSource
@@ -20,3 +23,4 @@ sequenceDiagram
         AU->>AU: move earcon sources, HRTF binaural render
         AU->>HS: rendered audio via AudioSink
     end
+```

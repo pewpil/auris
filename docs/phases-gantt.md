@@ -1,3 +1,8 @@
+# Auris — First 4 Months Development Gantt
+
+Phase timeline for the first four months (Sep–Dec 2026), matching the revised development phases.
+
+```mermaid
 gantt
     title Auris — First 4 Months Development (Sep–Dec 2026)
     dateFormat YYYY-MM-DD
@@ -23,3 +28,4 @@ gantt
     Latency measurement & mitigation (wired/wireless paths)   :p3b, after p3a, 10d
     Feasibility test — risk A (audio intuitiveness) & risk B (marker tracking) :p3c, after p3b, 7d
     Milestone — full-stack Prototype validated                :m1, 2026-12-31, 0d
+```
