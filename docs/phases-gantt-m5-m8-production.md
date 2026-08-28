@@ -23,11 +23,17 @@ gantt
     Latency verification per interconnect path                :p5b, after p5a, 7d
     Milestone — system verified at room scale                 :m3, after p5b, 0d
 
-    section Phase 6 — User study & thesis writing (8 wks)
+    section Phase 6 — User study & final thesis integration (8 wks)
     Pilot sessions + participant scheduling (ethics cleared since Sep) :p6a, after m3, 7d
     Study data collection                                     :p6b, after p6a, 14d
     Statistical analysis (ANOVA / t-tests)                    :p6c, after p6b, 10d
-    Thesis writing + revisions                                :p6d, after p6c, 20d
+    Final thesis integration & revisions                     :p6d, after p6c, 20d
     Buffer — defense preparation                              :buf, after p6d, 12d
     Milestone — thesis complete                               :m4, 2027-04-30, 0d
+
+    section Thesis writing (concurrent)
+    §3.6 production components + §4.1 CV results              :t3, after asm, 21d
+    §3.6 audio/net + final diagrams + §4.2 latency           :t4, after m2, 12d
+    §4.3–§4.5 study results, §5 conclusions, Abstract        :t5, after p6c, 20d
+    Front matter finalize + TOC/lists + link-strip           :t6, after t5, 12d
 ```

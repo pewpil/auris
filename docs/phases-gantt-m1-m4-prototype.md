@@ -33,4 +33,9 @@ gantt
 
     section Financial gate
     Order all Production components (lead times run in parallel) :gate, 2026-11-16, 20d
+
+    section Thesis writing (concurrent)
+    §1 Problem & Setting + §2 Literature + App D      :t0, 2026-08-31, 21d
+    §3.1–3.6 methodology & proto component write-ups   :t1, after p2b, 18d
+    §3.3/3.4/3.6 networking + diagrams + proto results  :t2, after p3a, 12d
 ```
