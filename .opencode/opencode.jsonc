@@ -8,21 +8,6 @@
     ".opencode/concept.md",
     ".opencode/plan.md",
     ".opencode/instruction.md",
+    ".opencode/manuscript.md",
   ],
-  // "provider": {
-  //   "opencode": {
-  //     "options": {
-  //       "apiKey": "{file:opencode.key}"
-  //     },
-  //     "models": {
-  //       "deepseek-v4-flash": {
-  //         "name": "DeepSeek V4 Flash",
-  //         "reasoning": true,
-  //         "options": {
-  //           "reasoningEffort": "max"
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
 }
