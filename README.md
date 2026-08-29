@@ -116,7 +116,7 @@ The stages exist for **financial reasons**: everything is built first on existin
 
 **Total: 8 months (Aug 2026 – Apr 2027).**
 
-**Gantt charts:** [`docs/phases-gantt-m1-m4-prototype.md`](docs/phases-gantt-m1-m4-prototype.md) and [`docs/phases-gantt-m5-m8-production.md`](docs/phases-gantt-m5-m8-production.md).
+**Gantt charts:** [`docs/phases-gantt-m1-m4-prototype.md`](docs/phases-gantt-m1-m4-prototype.md) and [`docs/phases-gantt-m5-m8-production.md`](docs/phases-gantt-m5-m8-production.md). **Process checklist (list form):** [`docs/development-process.md`](docs/development-process.md).
 
 ---
 
