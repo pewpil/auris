@@ -9,7 +9,7 @@ Check boxes are for progress tracking; they do not change the schedule.
 
 ## Phase 0 — Literature review & ethics (3 wks)
 
-- [ ] Literature review — HRTF/binaural rendering, sonification & earcons, assistive object-localization systems
+- [ ] Literature review
 - [ ] Gap analysis → justifies the design choices
 - [ ] Concept consolidation
 - [ ] Ethics/IRB application prepared & filed
