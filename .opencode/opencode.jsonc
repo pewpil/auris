@@ -8,6 +8,14 @@
     ".opencode/concept.md",
     ".opencode/plan.md",
     ".opencode/instruction.md",
-    ".opencode/man.md",
+    ".opencode/man.md"
   ],
+  "provider": {
+    "opencode-go": {
+      "name": "OpenCode Go",
+      "options": {
+        "apiKey": "{file:opencode.key}"
+      }
+    }
+  }
 }
