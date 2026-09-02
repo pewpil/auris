@@ -8,6 +8,7 @@
     ".opencode/plan.md",
     ".opencode/instruction.md",
     ".opencode/man.md",
+    ".opencode/coding.md",
   ],
   "provider": {
     "opencode-go": {
