@@ -1,57 +1,68 @@
-## About the project
+# Auris — Concept (consolidated)
 
-The project is a system that aids user's visual sense to locate desired objects with the use of simulated auditory cues. 
+> **Canonical, detailed plan: [`README.md`](../README.md)** (end-state vision §1, architecture §2,
+> per-subsystem design §3, contracts §4). This file is a session-context summary kept consistent
+> with it — the pre-plan early draft (triangulate-depth wording, etc.) is retired.
 
-## The User
+## What Auris is
 
-The project is centered around the idea of helping people (one of these people in this case is the user) who are visually impaired. Though, the project allows for a user to be blind-folded replicating a visually impaired user.
+A system that helps visually impaired users locate objects in a room through simulated auditory
+cues. A camera array tracks every object **and** the user's head as full 6DoF poses in one shared
+room/world frame; a headset renders a 3D soundscape in which each object continuously emits a
+distinctive earcon anchored to its real position. Turning or walking the user rotates/moves the
+sound field with them, so sounds stay fixed to the world. An optional beacon mode lets the user
+request a specific object ("find the bottle"), which then pings periodically for directed search.
 
-## User setup
+## The user & goal
 
-The user is standing in the room. The room contains various objects.
-
-## Project setup
-
-The following is what have been identified that sets up the system as of the time being. 
-
-1. **Mutiple RGB cameras** or **depth cameras**
-    - These are used for object identification and location
-    - Captures the user's head.
-1. **Headset**
-    - This are used to project audio cues that represents the objects in the room.
-1. **Computer Unit**
-    - This is used for computing processes. For example. computer vision is used to compute for the user's real-time head orientation from what Multiple cameras in (1) captured. 
-1. **Computer networking devices.**
-    - This is used for data transfer.
-    - The system may use wired or wireless connections. Wireless is acceptable if the measured end-to-end latency still meets the system's latency standard; otherwise the system uses wired connections.
-
-## User goal
-
-The user finds desired objects blind-folded/visually impaired with the only use of the projected sounds through the headsets.
+The user is visually impaired — or blindfolded (replicating VI for the study) — standing (and
+walking) in a room containing objects on the floor, shelves, and furniture at varied heights. The
+goal: locate named objects using **only** the projected sounds through the headset.
 
 ## System functions
 
-1. The system uses **computer vision**.
-    - To determine what the objects are and where they are located. 
-    - To calculate the user's head rotation so that where the user is facing is indicated and position. 
-2. Projects sound to the user according to the position and rotation of the user's head and the object's individual position and what the object is.
-    - Sounds projected are simulation as if the objects project sounds in real life. For example, if a water bottle is at the user's top-left side of their head, a type of sound assigned to the water bottle will be projected to the top-left side of the user
+1. **Computer vision (Python — all spatial math lives here):**
+   - Determine what each object is and where it is located.
+   - Compute the user's real-time 6DoF head pose (position + rotation) from the camera array.
+   - Everything is registered into ONE shared world frame; per object, compute head-relative
+     azimuth φ, elevation θ, distance r.
+2. **Auditory projection (Unity — a "dumb" renderer):**
+   - Place each object's assigned earcon at its head-relative position via HRTF binaural
+     rendering — simulating the objects emitting their own sounds (a water bottle at the top-left
+     sounds from the top-left).
+   - Interaction is **hybrid**: always-on earcons for ambient awareness + query/beacon mode
+     (keyboard first, then speech) for directed search.
 
-## Development Stages
+## Project setup
 
-1. ###  Prototype
+- **Multiple RGB cameras** (array) — object identification/localization and head capture.
+  Capture priority ladder: ① RGB primary → ② multi-view RGB triangulation → ③ dedicated depth
+  cameras last.
+- **Computer unit** — runs the CV pipeline, transforms, and YOLO inference.
+- **Headset** — renders the binaural soundscape (HRTF spatializer, earcon library, distance cues).
+- **Networking devices** — Python → Unity over UDP; **wired and wireless interconnects are both
+  supported at every stage**. Wireless is acceptable if the measured end-to-end latency still
+  meets the system's **< 100 ms** standard — an engineering target that is verified, not researched.
 
-- Uses **non-specialized gears** for the system's development.
-    - For example, cameras of phones may be used instead of specialized cameras.
-    - If depth imaging is needed, phone cameras are used to test its capabilities limited to RGB to triangulate depth image.
-- **Head Orientation**
-    - Calculation of the head's orientation will be done through the cameras with computer vision.
-- **Aruco markers** for pre object identification and head orientation.
-    - Aruco markers are used instead in the place of actual objects.
-    - Aruco marker on each side of the user's head for head orientation.
+## Development stages (split for financial reasons)
 
-2. ### Production
-- High-end / specialized gears will be used.
-    - If cameras limited to RGB capabilities are enough, RGB Cameras will be used. 
-- System identifies actual objects instead of the aruco markers
-- If computer vision is not reliable for the head's orientation, a device attached to the headset for more acurate relative head orientation Calculation.
+1. **Prototype** — the entire stack (CV, audio, integration, performance) on existing +
+   individually approved hardware: phone cameras streaming MJPEG/RTSP, **ARUCO markers as object
+   stand-ins and a side-of-head marker pair as a rigid body for head tracking (30–60 Hz)**.
+   Pinned constraint: **RGB only — no triangulation, no depth**.
+2. **Production** — all components purchased on specialized gear: camera array covering the room,
+   YOLO on real objects (one-shot registration → multi-view triangulation → depth only if
+   insufficient), markerless CV head tracking with a headset-attached IMU fallback for orientation.
+   All formal evaluation and the user study happen here.
+
+## Standing rules
+
+- **Contract-first:** `Frame`, `ObjectLocalizer`, `HeadPoseEstimator`, `SceneState` (frozen UDP
+  schema in the Prototype), `AudioSink` — defined before implementation so the hardware swap never
+  touches pipeline code or Unity.
+- **Transition-first:** Prototype code is built against the contracts, not its hardware;
+  Prototype-only hacks (BT earbud latency, phone intrinsics) never leak into Production assumptions.
+- **Latency < 100 ms** is a verified engineering requirement on both interconnect paths — outside
+  thesis research scope.
+- Formal evaluation (Production only): CV accuracy, latency verification per path, user study
+  (N ≈ 10–15 blindfolded), hybrid-mode comparison, ANOVA/t-tests.
