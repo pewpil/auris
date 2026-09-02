@@ -9,8 +9,8 @@ Check boxes are for progress tracking; they do not change the schedule.
 
 ## Phase 0 — Literature review & ethics (3 wks)
 
-- [ ] Literature review
-- [ ] Gap analysis → justifies the design choices
+- [x] Literature review (drafted with PRISMA 2020 apparatus in thesis.md §2 + Appendix E; institutional re-runs owed — see `.opencode/man.md`)
+- [x] Gap analysis → justifies the design choices (design-choice justification matrix, Table 2.1, in thesis.md §2.5)
 - [ ] Concept consolidation
 - [ ] Ethics/IRB application prepared & filed
 - [ ] Stand up the contract-first repo skeleton (`Frame`, `SceneState`, `AudioSink`)
