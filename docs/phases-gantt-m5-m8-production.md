@@ -3,10 +3,15 @@
 Full-time development, Dec 2026 – Apr 30, 2027. Companion chart: [`phases-gantt-m1-m4-prototype.md`](phases-gantt-m1-m4-prototype.md). Phase 4 is deliberately stretched across the Philippine December holidays; late April is defense-preparation buffer.
 
 ```mermaid
+---
+config:
+  gantt:
+    topAxis: true
+---
 gantt
     title Auris — Months 5-8 · Production & Evaluation (Dec 2026 - Apr 2027)
     dateFormat YYYY-MM-DD
-    axisFormat %b %y
+    axisFormat %b %d
 
     section Transition
     Gear arrival & assembly (ordered Nov 16)                  :asm, 2026-12-07, 12d

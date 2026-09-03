@@ -3,10 +3,15 @@
 Full-time development, Aug 31 – Dec 2026. Companion chart: [`phases-gantt-m5-m8-production.md`](phases-gantt-m5-m8-production.md).
 
 ```mermaid
+---
+config:
+  gantt:
+    topAxis: true
+---
 gantt
     title Auris — Months 1-4 · Prototype Stage (Aug 31 - Dec 2026)
     dateFormat YYYY-MM-DD
-    axisFormat %b
+    axisFormat %b %d
 
     section Phase 0 — Foundations
     Literature review & concept consolidation                 :p0, 2026-08-31, 14d
