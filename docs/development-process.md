@@ -12,8 +12,8 @@ Check boxes are for progress tracking; they do not change the schedule.
 - [x] Literature review (drafted with PRISMA 2020 apparatus in thesis.md §2 + Appendix E; institutional re-runs owed — see `.opencode/man.md`)
 - [x] Gap analysis → justifies the design choices (design-choice justification matrix, Table 2.1, in thesis.md §2.5)
 - [x] Concept consolidation — absorbed into README (canonical: end-state vision §1, architecture §2, per-subsystem design §3, contracts §4). `.opencode/concept.md` refreshed 2026-09-02 as a compact session-context summary kept consistent with README — the stale early draft (triangulate-depth wording) is retired.
-- [ ] Ethics/IRB application prepared & filed
-- [ ] Stand up the contract-first repo skeleton (`Frame`, `SceneState`, `AudioSink`)
+- [ ] Ethics/IRB application prepared & filed (skipped)
+- [x] Stand up the contract-first repo skeleton (`Frame`, `SceneState`, `AudioSink`) — delivered 2026-09-02 as `system/`: all six contracts + `conventions.md`, transform + scene model + runner, synthetic reference backends, UDP streamer, mirrored Unity receiver/decoder/renderer; verified by 52 tests, strict mypy, ruff (see [`system/README.md`](../system/README.md))
 - Thesis draft (concurrent): [§1 The Problem & Its Setting](auris-thesis/thesis.md#1-the-problem-and-its-setting); [§2 Review of Related Literature](auris-thesis/thesis.md#2-review-of-related-literature); Appendix D (ethics/IRB); front-matter skeleton
 
 ## Phase 1 — Prototype CV pipeline (4 wks)
