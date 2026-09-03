@@ -3,7 +3,6 @@
   "model": "opencode/deepseek-v4-flash",
   "default_agent": "build",
   "instructions": [
-    ".opencode/context.md",
     ".opencode/concept.md",
     ".opencode/plan.md",
     ".opencode/instruction.md",
