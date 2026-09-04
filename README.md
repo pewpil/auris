@@ -236,7 +236,7 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 #### Phase 7a: Production hardware bring-up
 
 - **Goal** — the new head unit streams and benches at least as well as the iPhone did.
-- **Tasks** — purchase the D435i (D9); design and print the head-mounted wearable (rigid mount; measure the camera→head-center transform once — [§10](#10-risks-and-mitigations)); wire `pyrealsense2` ingest (native USB); **re-run the Phase 0 bench protocol** on the new sensor (latency, depth quality, IMU rate).
+- **Tasks** — purchase the D435i (D9; ≈ ₱24,000–27,000 landed — [§6.2](#62-production-purchases-stage-2)); design and print the head-mounted wearable (rigid mount; measure the camera→head-center transform once — [§10](#10-risks-and-mitigations)); wire `pyrealsense2` ingest (native USB); **re-run the Phase 0 bench protocol** on the new sensor (latency, depth quality, IMU rate).
 - **Deliverables** — Production head unit; bench report in the Phase 0 format.
 - **Exit criteria** — sensor→desktop ≤ Phase 0 tether numbers; depth quality ≥ Prototype within the room; the mount holds calibration across a full session.
 
@@ -256,24 +256,48 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 
 ## 6. Hardware plan
 
-### 6.1 Prototype bill of materials (already available)
+Costs are in **Philippine pesos** from local sources (Lazada PH / Shopee PH / DataBlitz / PC Express / JG Superstore / local 3D-print services), researched 2026-09-04. FX reference: **US$1 ≈ ₱62.49** (Xe mid-market, 2026-09-03). Prices are **indicative** — re-quote at purchase time; imported items additionally incur freight + 12% VAT/clearance.
 
-| Item | Role | Status |
+### 6.1 Prototype bill of materials (Stage 1)
+
+| Item                                                                                                                                                                                                        | Role                                                                                                                                          | Source                                                                       | Est. cost    | Status                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
+| LiDAR iPhone (12 Pro / 13 Pro class)                                                                                                                                                                        | RGB + depth (ARKit `sceneDepth`) + 6-DoF head pose (ARKit VIO — the phone's **built-in IMU** fused with its camera; no separate IMU hardware) | —                                                                            | —            | owned                                                      |
+| Desktop with NVIDIA GPU (≥ 6 GB VRAM — verify)                                                                                                                                                              | computing unit (detection, mapping, localization, Unity audio, recorder)                                                                      | —                                                                            | —            | owned                                                      |
+| Perforated over-ear headphones                                                                                                                                                                              | audio output (D3), wired to the desktop                                                                                                       | —                                                                            | —            | owned                                                      |
+| Smartphone **head-strap mount** (rigid harness preferred — mount stability is a tracked risk, [§10](#10-risks-and-mitigations))                                                                             | head mount for the iPhone                                                                                                                     | Lazada/Shopee PH (basic straps ₱116–184; rigid harness mounts ~₱1,000–2,600) | ₱150–800     | purchase                                                   |
+| **Dedicated Wi-Fi 6 travel router** (5 GHz hotspot for the dual-channel link, [§2.2](#22-link); gigabit LAN port to the desktop)                                                                            | e.g., TP-Link TL-WR1502X AX1500                                                                                                               | TP-Link official store, Lazada PH                                            | ₱3,290       | purchase                                                   |
+| **Tether kit**: USB-C data cable 2 m (UGREEN, DataBlitz/PC Express ₱240–375) + **USB 3.0 active extension 5 m** (Baseus AirJoy ₱450 DataBlitz; PC4Me ₱490; Vention ₱820 JG Superstore; UGREEN booster ₱950) | wireless-first fallback link (D2)                                                                                                             | Lazada PH / DataBlitz / PC4Me / JG Superstore                                | ₱700–1,325   | purchase                                                   |
+| **Power bank 10,000 mAh** (on-strap iPhone power for long streaming sessions — power-draw risk, [§10](#10-risks-and-mitigations))                                                                           | e.g., Awei P106K / Xiaomi 10000 22.5 W / Anker PowerCore 10000                                                                                | Lazada PH                                                                    | ₱550–1,800   | purchase                                                   |
+| **Recording SSD 1 TB NVMe** (session recorder storage sizing, [§3](#3-data-flow-and-module-contracts))                                                                                                      | e.g., Kingston NV3 1 TB                                                                                                                       | Lazada PH                                                                    | ₱5,499–6,833 | purchase                                                   |
+| 3.5 mm headphone extension 5 m (headphones wired to the desktop, cable routed per [§2.2](#22-link))                                                                                                         | audio output cabling                                                                                                                          | Lazada PH                                                                    | ₱150–400     | purchase                                                   |
+| Voice-query capture — **default: the iPhone's microphone streamed with the sensor feed (₱0)**; optional desktop-side USB condenser mic (e.g., FIFINE K669B ₱1,398) as the noisy-room fallback               | query input (D7)                                                                                                                              | Lazada PH                                                                    | ₱0–1,398     | Phase 0 decision                                           |
+| ~~Standalone 9-DoF IMU module~~                                                                                                                                                                             | ~~head-pose IMU~~                                                                                                                             | —                                                                            | —            | **not required** — ARKit VIO uses the phone's built-in IMU |
+
+**Prototype cash outlay: ≈ ₱10,300 – 15,900** (everything else is already owned — the financial rationale of D1 in action).
+
+### 6.2 Production purchases (Stage 2)
+
+| Item | Role | Source | Est. cost | Notes |
+|---|---|---|---|---|
+| Intel RealSense **D435i** (D9) | RGB-D + IMU sensor | RealSense store (US$334, ships to PH); RX Electronics PH (US$343.75–355, HK-shipped) | ≈ ₱21,000–22,200 + freight/clearance → **≈ ₱24,000–27,000 landed** | native USB, 90 FPS depth, head-mount friendly; **built-in IMU — buy the "i" variant specifically** (pose estimation requires it); precedented by Fei et al. 2024 and Lee & Medioni 2016 |
+| **3D-printed head-mounted wearable** | enclosure/mount | local FDM services (Make It 3D, Flarelab Manila: **₱5–15/gram** FDM; instant-quote workflows available) | ₱1,000–5,000 (150–400 g enclosure + iteration prints); DIY alternative: PLA 1 kg spool ₱549–799 (Creality/Elegoo/FlashForge/Polymaker) | the custom head unit (retained old-concept element); measure the camera→head-center transform after assembly ([§10](#10-risks-and-mitigations)) |
+| USB 3.0 cable + **active extension 5 m** for the D435i (head-worn camera to desktop) | sensor link | DataBlitz / PC4Me / JG Superstore | ₱450–950 | same SKUs as the Prototype tether kit; active extension covers USB 3.0's ~3 m passive limit |
+| Straps, fasteners, foam padding | integration | Lazada/Shopee PH / hardware store | ₱300–800 | — |
+| ~~Standalone 9-DoF IMU module (e.g., BNO085/BMI088 breakout)~~ | ~~head-pose IMU~~ | — | — | **Not required** — the confirmed D435i (D9) has a built-in IMU. Keep this row only as a contingency if the component route is ever revisited (an IMU is mandatory at every stage; standalone purchase only if the camera lacks one) |
+
+**Production cash outlay: ≈ ₱27,000 – 34,000** (dominated by the D435i).
+
+### 6.3 Cost summary
+
+| Stage | Cash outlay | Note |
 |---|---|---|
-| LiDAR iPhone (12 Pro / 13 Pro class) | RGB + depth (ARKit `sceneDepth`) + 6-DoF head pose (ARKit VIO — the phone's **built-in IMU** fused with its camera; no separate IMU hardware) | owned |
-| Head strap / iPhone cradle | head mount | cheap purchase or printed cradle |
-| Desktop with NVIDIA GPU (≥ 6 GB VRAM — verify) | computing unit | owned |
-| Perforated over-ear headphones | audio output (D3) | owned |
-| Long USB-C cable + Wi-Fi access point | data link (D2) | owned |
+| Prototype (Stages 0–6 + evaluation) | **≈ ₱10,300 – 15,900** | built on owned hardware (D1); only mounts, link, power, and storage are purchased |
+| Production (Phase 7) | **≈ ₱27,000 – 34,000** | D435i ≈ 75–80% of the stage cost |
+| **Total project hardware** | **≈ ₱37,300 – 49,900** | — |
+| Software | **₱0** | Unity Personal (free tier), ROS 2, RTAB-Map, Ultralytics YOLOv8, faster-whisper, ZeroMQ, Open3D — all free/open-source |
 
-### 6.2 Production purchases
-
-| Item | Role | Est. cost | Rationale |
-|---|---|---|---|
-| Intel RealSense **D435i** (D9) | RGB-D + IMU sensor | ~USD 300–350 | native USB, 90 FPS depth, head-mount friendly; **built-in IMU — buy the "i" variant specifically** (pose estimation requires it); precedented by Fei et al. 2024 and Lee & Medioni 2016 |
-| 3D-printed head-mounted wearable | enclosure/mount | filament cost | the custom head unit (retained old-concept element) |
-| Cables, straps, fasteners | integration | ~USD 30 | — |
-| ~~Standalone 9-DoF IMU module (e.g., BNO085/BMI088 breakout)~~ | ~~head-pose IMU~~ | — | **Not required** — the confirmed D435i (D9) has a built-in IMU. Keep this row only as a contingency if the component route is ever revisited (an IMU is mandatory at every stage; standalone purchase only if the camera lacks one) |
+Participant incentives and consumables for the evaluation are study costs, not hardware, and are not listed here.
 
 ## 7. Software stack
 
@@ -380,6 +404,7 @@ Working notes: [`docs/auris-thesis/notes/`](docs/auris-thesis/notes/) (index in 
 
 ## 12. Change log
 
+- **2026-09-04 (rev. 4)** — **Hardware BOM researched and priced in PHP from local sources** ([§6](#6-hardware-plan)): Prototype purchases ≈ ₱10,300–15,900 (head-strap mount, dedicated AX1500 hotspot, tether kit, power bank, 1 TB recorder SSD, headphone extension, optional USB mic); Production ≈ ₱27,000–34,000 (D435i ≈ ₱24–27k landed via RealSense store / RX Electronics PH; FDM print service ₱5–15/g); software stack ₱0; FX reference ₱62.49/US$ (2026-09-03). Voice-query capture identified as a Phase 0 decision (iPhone mic via stream vs desktop USB mic).
 - **2026-09-04 (rev. 3)** — **D6 implementation fixed to Unity + Steam Audio**: the audio-simulation module becomes a thin Unity renderer (room-map scene, head-tracked `AudioListener` via NetMQ bridge, SOFA HRTF import, attenuation-based distance encoding) driven by Python decision logic; Phase 0 loopback and Phase 4 reworked around the Unity path (motion-to-sound ≤ ~30 ms through Unity); Ubuntu 22.04+ confirmed to host Unity; new Unity-audio-latency risk row.
 - **2026-09-04 (rev. 2)** — Decisions locked: D9 (D435i confirmed), D10 (spatial-audio-only evaluation — non-verbal guidance, no speech-only baseline); desktop OS fixed to Ubuntu 22.04+ LTS; dual-channel link design; near-field/terminal-guidance behavior specified; participant structure set (blindfolded-sighted main study + VI pilot); **Phase 7 restructured into the gated ARKit → ROS 2 transition sub-phases (7a–7c)** with the transition map in [§4.3](#43-the-arkit-to-ros-2-transition); transition hooks added to Phases 0 and 2; expanded risk register.
 - **2026-09-04** — New development plan written (this document) from the consolidated concept and the literature consolidation; former plan cleared 2026-09-03.

@@ -43,7 +43,8 @@ prompted to look around more.
 ## Standing rules
 
 - Stage rationale is **financial**: available hardware first, purchases at
-  Production.
+  Production. Hardware budget (README §6): Prototype ≈ ₱10.3–15.9k,
+  Production ≈ ₱27–34k, software ₱0.
 - End-to-end latency budget **< 100 ms** (Sound of Vision benchmark).
 - The 12 classes (all COCO): bottle, cup/mug, cell phone, book, chair, laptop,
   remote, keyboard, clock, potted plant, vase, backpack.
