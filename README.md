@@ -5,7 +5,7 @@
 ## Retained from the former concept
 
 - **User:** visually impaired — or blindfolded (replicating VI for the study).
-- **Development stages:** **Prototype** and **Production** — split for **financial reasons**: the Prototype is built on existing plus approved hardware; all components are purchased at the Production stage, where formal evaluation also happens. (The former phase schedule was dropped, not retained.)
+- **Development stages:** **Prototype** and **Production**. The split rationale is **open** — the former plan assumed financial reasons, which may not hold for the new concept. (The former phase schedule was dropped, not retained.)
 
 ## Where things live now
 
