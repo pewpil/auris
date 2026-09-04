@@ -1,10 +1,50 @@
 # Auris — Development Plan (summary)
 
-> The thesis concept has been **replaced**; the canonical plan in [`README.md`](../README.md) and this summary were cleared on 2026-09-03 and will be rebuilt once the new concept is settled. This stub retains only the points below.
+> Canonical plan: the project [`README.md`](../README.md). This file condenses it
+> into standing session instructions. Consolidated on 2026-09-04 from the
+> concept in [`concept.md`](concept.md) and the literature consolidation
+> ([`docs/auris-thesis/notes/`](../docs/auris-thesis/notes/)).
 
-## Retained from the former concept
+## Concept in one line
 
-- **User:** visually impaired — or blindfolded (replicating VI for the study).
-- **Development stages:** **Prototype** and **Production**. The split rationale is **open** — the former plan assumed financial reasons (build on existing/approved hardware first, purchase everything at Production), which may not hold for the new concept. (The former phase schedule — phases 0–6, calendar, milestones — was dropped, not retained.)
+A blindfolded/VI user asks for one of 12 everyday object classes; the system —
+having mapped the room from head-worn depth — projects that object's
+characteristic sound **spatially, head-tracked, as if the object emits it**;
+the user follows the sound. If the target is absent/moved, the user is
+prompted to look around more.
 
-Everything else from the former plan (architecture, contracts, phases, hardware, evaluation) was cleared; rebuild here and in `README.md` when the new concept is decided.
+## Architecture
+
+- **Head unit:** Prototype = LiDAR iPhone (RGB + depth via ARKit `sceneDepth` +
+  6-DoF pose via ARKit VIO) + perforated over-ear headphones (wired to desktop).
+  Production = 3D-printed head-mounted wearable + RealSense-class RGB-D camera.
+- **Link:** wireless-first (Wi-Fi streaming); long-USB tether fallback; decision
+  gate in Phase 5.
+- **Desktop computing unit (plain-Python processes over ZeroMQ):** sensor
+  ingest → YOLOv8 12-class detection (COCO weights) → Open3D depth-fusion
+  mapping → object localization (map-anchored object states + re-look prompt) →
+  generic-HRTF binaural audio (head-tracked, per-class auditory icons, distance
+  encoded); STT voice query + experimenter-trigger fallback; session
+  recorder/replayer (every session recorded — standing requirement).
+- **Production:** ROS 2 + RTAB-Map only if the camera swaps off ARKit.
+
+## Phases (detail: README §5)
+
+0. Bench & link validation + build the recorder/replayer
+1. Perception (12-class detection)
+2. Room mapping (ARKit pose + Open3D TSDF)
+3. Object localization (+ re-look prompt logic)
+4. Audio simulation (HRTF renderer, 12 sound assets)
+5. Closed-loop integration (<100 ms end-to-end budget; wireless-vs-tether gate)
+6. Evaluation study (blindfolded-sighted, spatial audio vs speech-only)
+7. Production iteration (purchased hardware, ROS 2 + RTAB-Map port)
+
+## Standing rules
+
+- Stage rationale is **financial**: available hardware first, purchases at
+  Production.
+- End-to-end latency budget **< 100 ms** (Sound of Vision benchmark).
+- The 12 classes (all COCO): bottle, cup/mug, cell phone, book, chair, laptop,
+  remote, keyboard, clock, potted plant, vase, backpack.
+- Literature notes live in `docs/auris-thesis/notes/` — consult before writing
+  thesis sections; thesis draft goes to `docs/auris-thesis/paper.md` only.
