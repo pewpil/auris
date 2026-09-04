@@ -20,7 +20,7 @@ Sounds are projected by the head-mounted wearable's hearing apparatus according 
 
 ### The head-mounted wearable 
 
-The user is equipped with a head-mounted wearable that aids their navigation in locating the desired object.
+The user is equipped with a 3d-printed head-mounted wearable that aids their navigation in locating the desired object. Inside the wearable is an embedded system that enables the following functionality listed.
 
 #### Functionality
 
