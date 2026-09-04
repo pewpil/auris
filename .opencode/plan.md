@@ -36,7 +36,7 @@ prompted to look around more.
 3. Object localization (+ re-look prompt logic)
 4. Audio simulation (HRTF renderer, 12 sound assets)
 5. Closed-loop integration (<100 ms end-to-end budget; wireless-vs-tether gate)
-6. Evaluation study (blindfolded-sighted, spatial audio vs speech-only)
+6. Evaluation study (blindfolded-sighted; spatial-audio guidance only — D10)
 7. Production iteration (purchased hardware, ROS 2 + RTAB-Map port)
 
 ## Standing rules
@@ -46,5 +46,9 @@ prompted to look around more.
 - End-to-end latency budget **< 100 ms** (Sound of Vision benchmark).
 - The 12 classes (all COCO): bottle, cup/mug, cell phone, book, chair, laptop,
   remote, keyboard, clock, potted plant, vase, backpack.
+- **Guidance output is strictly non-verbal spatial audio** (D10) — the wearable
+  never speaks directions or object names during guidance; voice is query input
+  only, and there is **no speech-only comparison baseline** (single-condition
+  evaluation).
 - Literature notes live in `docs/auris-thesis/notes/` — consult before writing
   thesis sections; thesis draft goes to `docs/auris-thesis/paper.md` only.

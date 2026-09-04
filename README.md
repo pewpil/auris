@@ -40,6 +40,8 @@ The full concept text lives in [`.opencode/concept.md`](.opencode/concept.md). I
 | D6 | Audio rendering | **Generic-HRTF binaural + head tracking** ([§8](#8-audio-design)) |
 | D7 | Query input | **Voice command** (speech-to-text on desktop) **+ experimenter-trigger fallback** |
 | D8 | Integration | **Staged plain Python** (ZeroMQ messaging) **+ built-in session recorder/replayer** (rosbag-like) as a Phase 0 deliverable; every session recorded — standing requirement |
+| D9 | Production camera | **Intel RealSense D435i confirmed** — built-in IMU covers pose estimation, so no standalone IMU purchase |
+| D10 | Evaluation scope | **Spatial-audio guidance only** — guidance output strictly non-verbal (no spoken directions/object names); no speech-only comparison baseline; voice remains the query input (D7) |
 
 ## 2. System architecture
 
@@ -51,16 +53,18 @@ Two physical units connected by a data link:
 
 - **RGB camera** — real-time imagery for object detection.
 - **Depth** — ARKit `sceneDepth` (LiDAR, ~256×192 metric depth points, effective range ≈ 0.3–5 m; sufficient for a room, degrades with distance/lighting).
-- **Head position and orientation** — ARKit visual-inertial odometry gives 6-DoF head pose for free (device on head ≈ head pose); no separate IMU tracker needed at Prototype.
+- **Head position and orientation** — ARKit visual-inertial odometry (camera fused with the iPhone's **built-in IMU** — gyroscope + accelerometer) gives 6-DoF head pose; the IMU is inside the phone, so no separate IMU hardware is needed at Prototype (device on head ≈ head pose).
 - **Sound output** — perforated over-ear headphones (D3), wired to the desktop's audio interface (long cable accepted; Bluetooth latency ≈ 100–200 ms would break the latency budget, [§8](#8-audio-design)).
 
-**Production.** A custom **3D-printed head-mounted wearable** housing a RealSense-class RGB-D camera + IMU; headphones unchanged.
+**Production.** A custom **3D-printed head-mounted wearable** housing a RealSense-class RGB-D camera — whose **built-in IMU** (the "i" in D435i) replaces the iPhone's for pose estimation via RTAB-Map ([§4.2](#42-production)); headphones unchanged.
 
 ### 2.2 Link
 
-- **Wireless-first** — the iPhone streams RGB + depth + pose over Wi-Fi to the desktop (existing streaming app such as Record3D, or a small custom Swift/ARKit app; decided in Phase 0).
-- **Fallback** — a long USB cable to the desktop (USB ports run to the desk area).
-- A **decision gate in Phase 5** picks the link for the evaluation study based on measured latency and jitter ([§5](#5-development-phases)).
+- **Wireless-first** — the iPhone streams RGB + depth + pose over Wi-Fi to the desktop (existing streaming app such as Record3D, or a small custom Swift/ARKit app; decided in Phase 0). Rationale: the tether alternative is a long cable lying across a room a blindfolded user walks in — trip hazard and behavioral confound. Wi-Fi runs on a **dedicated 5 GHz hotspot** (not building infrastructure).
+- **Dual-channel link** — latency-sensitive and latency-tolerant traffic split: **head pose** travels as tiny UDP packets (~36 bytes) at ~60 Hz on the low-latency path (the motion-to-sound loop, target ≤ ~30 ms — head-tracker lag becomes perceptible around there); **RGB/depth frames** travel on the heavier channel at 15–30 Hz, where Wi-Fi delay (~30–60 ms) is harmless because objects are static and their sound position changes only on re-localization ([§8](#8-audio-design)).
+- **Link watchdog** — loss/dropout raises an audible "signal lost" cue and pauses the trial; the recorder logs the gap.
+- **Fallback** — a long USB cable to the desktop (USB ports run to the desk area), with cable routing overhead/taped to keep the walking area clear.
+- A **decision gate in Phase 5** picks the link for the evaluation study based on measured **motion-to-sound** latency and jitter ([§5](#5-development-phases)).
 
 ### 2.3 Computing unit (desktop)
 
@@ -131,7 +135,7 @@ All messages are timestamped (monotonic + wall clock) and published on the ZeroM
 
 **Coordinate frames** — documented in-repo: *camera frame* (ARKit convention: Y up, −Z forward at session start), *head frame* (co-located with camera), *room/map frame* (the map's origin frame). Units: meters, radians, quaternion (w, x, y, z). The audio node converts map-frame positions to head-relative azimuth/elevation/distance using the latest `HeadPose`.
 
-**Recording format** — HDF5 (video/depth as compressed chunks) + SQLite/JSONL index of non-image messages; the replayer feeds stored streams back through ingest.
+**Recording format** — HDF5 (video/depth as compressed chunks) + SQLite/JSONL index of non-image messages; the replayer feeds stored streams back through ingest. Image and depth payloads travel as **binary buffers with JSON headers** (never JSON-encoded arrays) to keep serialization off the latency budget; recorder storage is sized for full study capture (depth + RGB at 15–30 Hz across N participants × 2 conditions — plan disk space in Phase 0).
 
 ## 4. Development stages
 
@@ -149,7 +153,7 @@ Scope: prove the concept end-to-end ([§5](#5-development-phases), Phases 0–5)
 
 Purchased and integrated only after the Prototype validates the concept:
 
-- RealSense-class RGB-D camera (D435i class) replacing the iPhone — native USB streaming, better depth range/frame rate
+- Intel RealSense **D435i** (confirmed, D9) replacing the iPhone — native USB streaming, better depth range/frame rate, built-in IMU for pose
 - Custom **3D-printed head-mounted wearable** enclosure
 - Software port: ingest via `pyrealsense2`; pose estimation and cross-session relocalization via **ROS 2 + RTAB-Map** (D5) — mechanical swap thanks to the module contracts in [§3](#3-data-flow-and-module-contracts)
 
@@ -169,7 +173,7 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 ### Phase 1: Perception
 
 - **Goal** — reliable 12-class detection on room-scale RGB frames.
-- **Tasks** — integrate Ultralytics YOLOv8 with COCO weights restricted to the 12 classes (D4); test on the live stream; collect sample frames in the target room; fine-tune **only if** class-level misses appear; tune input resolution and FPS against the GPU budget.
+- **Tasks** — integrate Ultralytics YOLOv8 with COCO weights restricted to the 12 classes (D4); test on the live stream; collect sample frames in the target room; fine-tune **only if** class-level misses appear; **confusion-matrix check on the similar pairs** (cup/bottle, laptop/keyboard, remote/phone) with per-class confidence thresholds ([§10](#10-risks-and-mitigations)); tune input resolution and FPS against the GPU budget.
 - **Deliverables** — detection node; per-class detection quality report on sample data.
 - **Exit criteria** — all 12 classes detected on placed objects at room distances at ≥ 10 FPS, with confidence adequate for localization gating.
 
@@ -183,16 +187,16 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 ### Phase 3: Object localization
 
 - **Goal** — the target object's position in the room map, plus the re-look logic.
-- **Tasks** — project detections into the map frame using head pose; object persistence (associate detections across views via class + distance + overlap gating); object state machine (candidate → confirmed → stale); target resolution (highest-confidence candidate; ambiguity handling); **re-look prompt triggers** — no candidate found, target stale/moved ([§8](#8-audio-design) for the prompt sound); experimenter-trigger fallback path (D7).
+- **Tasks** — project detections into the map frame using head pose; object persistence (associate detections across views via class + distance + overlap gating); **ID-stability metric + hysteresis** on the state machine so anchors don't churn ([§10](#10-risks-and-mitigations)); object state machine (candidate → confirmed → stale); target resolution (highest-confidence candidate; ambiguity handling); **re-look prompt triggers** — no candidate found, target stale/moved ([§8](#8-audio-design) for the prompt sound); experimenter-trigger fallback path (D7).
 - **Deliverables** — localization node with object states; localization accuracy test against known object placements.
 - **Exit criteria** — localization error ≤ ~15 cm at typical room distances; re-look prompt fires correctly in scripted not-found/moved scenarios.
 
 ### Phase 4: Audio simulation
 
 - **Goal** — head-tracked spatial sound that makes an object "speak" from its position.
-- **Tasks** — HRTF binaural renderer (custom Python: SOFA HRTF set, FFT convolution via numpy/scipy, `sounddevice` output, head-pose updates; 3DTI Toolkit as fallback — D6); the 12 per-class sound assets ([§8](#8-audio-design)); distance encoding (level + distance-appropriate filtering); re-look prompt sound; audio-path latency measurement.
-- **Deliverables** — audio node; 12 sound assets; audible demo; latency report.
-- **Exit criteria** — a blindfolded listener localizes the sound in azimuth in an informal test; audio-path latency ≤ ~20 ms; full-pipeline budget on track for < 100 ms.
+- **Tasks** — HRTF binaural renderer (custom Python: SOFA HRTF set, FFT convolution via numpy/scipy, `sounddevice` output, head-pose updates; 3DTI Toolkit as fallback — D6); the 12 per-class sound assets ([§8](#8-audio-design)) with loudness normalization + **identification pilot** (blindfolded listeners name each sound's class — [§10](#10-risks-and-mitigations)); distance encoding (level + distance-appropriate filtering); **near-field behavior** (volume cap + discrete closing-pulse guidance inside ~1 m — see [§10](#10-risks-and-mitigations)); re-look prompt sound; audio-path latency measurement.
+- **Deliverables** — audio node; 12 sound assets; audible demo; latency report (motion-to-sound and full chain, per [§8](#8-audio-design)).
+- **Exit criteria** — a blindfolded listener localizes the sound in azimuth in an informal test; motion-to-sound latency ≤ ~30 ms over the link; full-pipeline budget on track for < 100 ms.
 
 ### Phase 5: Closed-loop integration
 
@@ -204,14 +208,14 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 ### Phase 6: Evaluation study
 
 - **Goal** — measure whether spatial-audio guidance helps users find objects.
-- **Tasks** — finalize the protocol ([§9](#9-evaluation-plan)); institutional ethics/IRB if required; recruit blindfolded-sighted participants; run the within-subject conditions; collect metrics; analyze. All sessions recorded (D8) for offline trajectory/latency analysis.
+- **Tasks** — finalize the protocol ([§9](#9-evaluation-plan)); institutional ethics/IRB if required (accessible consent materials for any VI participants); recruit blindfolded-sighted participants + begin VI-organization outreach for the 1–2-participant VI pilot; run the evaluation trials (single spatial-audio condition, D10); collect metrics; analyze (VI pilot analyzed separately). All sessions recorded (D8) for offline trajectory/latency analysis.
 - **Deliverables** — protocol document, consent forms, data, results (feeds the thesis *Results and Discussions* chapter in [`docs/auris-thesis/paper.md`](docs/auris-thesis/paper.md)).
 - **Exit criteria** — target N completed; analysis done.
 
 ### Phase 7: Production iteration
 
 - **Goal** — the integrated 3D-printed head wearable with purchased hardware ([§4.2](#42-production)).
-- **Tasks** — purchase the RealSense-class camera; design and print the head-mounted wearable; port ingest to `pyrealsense2`; introduce ROS 2 + `rtabmap_ros` for pose + cross-session relocalization (D5); re-run the Phase 0 bench (latency); quickly revalidate Phases 1–5.
+- **Tasks** — purchase the D435i (D9); design and print the head-mounted wearable; port ingest to `pyrealsense2`; introduce ROS 2 + `rtabmap_ros` for pose + cross-session relocalization (D5); re-run the Phase 0 bench (latency); quickly revalidate Phases 1–5.
 - **Deliverables** — Production wearable; validation report.
 - **Exit criteria** — the Production system completes the Phase 5 exit task at parity with the Prototype.
 
@@ -221,7 +225,7 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 
 | Item | Role | Status |
 |---|---|---|
-| LiDAR iPhone (12 Pro / 13 Pro class) | RGB + depth (ARKit `sceneDepth`) + 6-DoF head pose (ARKit VIO) | owned |
+| LiDAR iPhone (12 Pro / 13 Pro class) | RGB + depth (ARKit `sceneDepth`) + 6-DoF head pose (ARKit VIO — the phone's **built-in IMU** fused with its camera; no separate IMU hardware) | owned |
 | Head strap / iPhone cradle | head mount | cheap purchase or printed cradle |
 | Desktop with NVIDIA GPU (≥ 6 GB VRAM — verify) | computing unit | owned |
 | Perforated over-ear headphones | audio output (D3) | owned |
@@ -231,9 +235,10 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 
 | Item | Role | Est. cost | Rationale |
 |---|---|---|---|
-| Intel RealSense D435i (class) | RGB-D + IMU sensor | ~USD 300–350 | native USB, 90 FPS depth, head-mount friendly; precedented by Fei et al. 2024 and Lee & Medioni 2016 |
+| Intel RealSense **D435i** (D9) | RGB-D + IMU sensor | ~USD 300–350 | native USB, 90 FPS depth, head-mount friendly; **built-in IMU — buy the "i" variant specifically** (pose estimation requires it); precedented by Fei et al. 2024 and Lee & Medioni 2016 |
 | 3D-printed head-mounted wearable | enclosure/mount | filament cost | the custom head unit (retained old-concept element) |
 | Cables, straps, fasteners | integration | ~USD 30 | — |
+| ~~Standalone 9-DoF IMU module (e.g., BNO085/BMI088 breakout)~~ | ~~head-pose IMU~~ | — | **Not required** — the confirmed D435i (D9) has a built-in IMU. Keep this row only as a contingency if the component route is ever revisited (an IMU is mandatory at every stage; standalone purchase only if the camera lacks one) |
 
 ## 7. Software stack
 
@@ -274,29 +279,49 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 
 The spread across table/desk/floor/wall placements exercises the spatial audio at different directions and heights in the evaluation ([§9](#9-evaluation-plan)).
 
-**Playback behavior.** While a target is active, its sound loops softly (fade-in; no startle); volume scales with distance and distance-appropriate filtering adds a range cue; position renders head-relative so the sound stays anchored to the object as the user turns.
+**Playback behavior.** While a target is active, its sound loops softly (fade-in; no startle); volume scales with distance and distance-appropriate filtering adds a range cue; position renders head-relative so the sound stays anchored to the object as the user turns. **Guidance output is strictly non-verbal** (D10): no spoken directions, object names, or coordinate callouts at any point during guidance — system speech is limited to query-time dialogue (STT confirmation/disambiguation, D7).
 
-**Re-look prompt.** A distinct neutral signal (chime ± short verbal "look around") fired by object localization when the target is absent, ambiguous, or moved ([§3](#3-data-flow-and-module-contracts)). Exact design is finalized in Phase 4 with pilot users — recorded as an open design choice.
+**Terminal guidance (open design decision).** Continuous guidance ends at proximity, but the user still must find exactly where to reach. Planned scheme: as the user closes inside ~1 m, the loop gives way to a **discrete closing pulse** whose rate rises as distance falls (NaviSense-style escalation); when the sound is centered and near, a short **"on target" confirmation** tells the user to explore with their hands. Validate in the Phase 5 pilot; exact thresholds are tuned there.
 
-**Latency budget.** End-to-end target **< 100 ms** (perception→sound lag benchmarked by Sound of Vision, Hoffmann et al. 2018): sensor ~10 ms + link ~20 ms (tether) / ~30–60 ms (Wi-Fi) + perception ~30 ms + localization ~5 ms + audio ~10–20 ms.
+**Re-look prompt.** A distinct non-verbal chime fired by object localization when the target is absent, ambiguous, or moved ([§3](#3-data-flow-and-module-contracts)); non-verbal by scope (D10). Exact design is finalized in Phase 4 with pilot users — recorded as an open design choice.
+
+**Latency budget.** Two paths, two targets ([§2.2](#22-link)):
+
+- **Motion-to-sound** (head pose → audio output): target **≤ ~30 ms** — head-tracker lag is perceptible around ~30 ms (Brungart et al.), and this loop carries the object-anchoring illusion. Pose travels the low-latency UDP channel; audio rendering adds ~10–20 ms.
+- **End-to-end chain** (frame → detection → localization → sound position): target **< 100 ms** (perception→sound lag benchmarked by Sound of Vision, Hoffmann et al. 2018): sensor ~10 ms + link ~20 ms (tether) / ~30–60 ms (Wi-Fi) + perception ~30 ms + localization ~5 ms + audio ~10–20 ms. This loop is latency-tolerant (static objects) but still capped for responsiveness when the target resolves.
 
 ## 9. Evaluation plan
 
-- **Design** — within-subject, two conditions, order counterbalanced:
-  - **A — Spatial audio** (the system as designed, [§8](#8-audio-design));
-  - **B — Speech-only baseline** (equivalent information as spoken directions, e.g., "mug, 10 o'clock, 2 meters" — Qin et al. 2026 precedent).
-- **Participants** — blindfolded sighted (replicating VI; retained old-concept element; precedented by Qin et al. 2026 and Fei et al. 2024), N ≈ 10–12.
+- **Design** — single condition: the spatial-audio system as designed ([§8](#8-audio-design)), evaluated with within-subject repeated trials (counterbalanced object order, randomized placements per trial). **No comparison baseline** (D10): guidance is strictly the projected spatial sound — the system never speaks directions or object names during guidance (voice is query input only, D7). Modality-comparison claims are out of scope; prior comparative evidence (Qin et al. 2026) is cited in the thesis rather than re-run.
+- **P rarticipants** — mostly **blindfolded sighted** (replicating VI; retained old-concept element; precedented by Qin et al. 2026 and Fei et al. 2024), N ≈ 10–12 for the main study; **plus a small VI pilot** (1–2 actual visually impaired users, if recruited) reported separately as qualitative case studies — never pooled with the main sample (statistics stay on the blindfolded-sighted group). VI pilot logistics: accessible consent materials, recruitment via VI organizations (start early), longer device familiarization.
 - **Environment** — one furnished room; objects from the 12 classes placed across table/desk/floor/shelf/wall ([§8](#8-audio-design)).
 - **Task** — map-scan → query → walk to the target → touch it. Success = touches the correct object within a time cap (120 s cap precedent: Coughlan et al. 2020).
 - **Metrics** — time-to-target, success rate, collisions/bumps, path efficiency (walked vs straight-line), SUS, NASA-TLX; semi-structured interview. Sessions recorded for offline head-trajectory analysis (D8).
-- **Hypotheses** — H1: spatial audio reduces time-to-target vs speech-only; H2: lower workload (NASA-TLX); H3: comparable or higher success rate — consistent with Qin et al. 2026 findings.
-- **Safety** — experimenter shadowing; static obstacles during trials; capped audio levels.
+- **Evaluation criteria (descriptive)** — H1: participants locate the requested object with the spatial-audio guide (success rate against a target criterion, e.g., ≥ 80%); H2: time-to-target improves with practice (learning effect); H3: workload acceptable (NASA-TLX) and usability adequate (SUS ≥ 70).
+- **Safety** — experimenter shadowing; static obstacles during trials; capped audio levels; clear walking lanes (no loose cables on the floor — link routing per [§2.2](#22-link)); practice trials to settle veering and cue interpretation before measurement.
+- **Screening** — self-reported normal hearing; no prior experience requirement noted (spatial-audio familiarity recorded as a covariate).
 
 ## 10. Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Wi-Fi latency jitter breaks the < 100 ms budget | guidance feels detached from head motion | Phase 0 measurement; USB-tether fallback; Phase 5 decision gate (D2) |
+| Wi-Fi latency jitter breaks the budget | guidance feels detached from head motion | dual-channel link ([§2.2](#22-link)) keeps the strict pose path off the heavy frame stream; dedicated 5 GHz hotspot; Phase 0 measurement; USB-tether fallback; Phase 5 decision gate (D2) |
+| iOS session interruption / auto-lock → ARKit world reset | map frame jumps; anchored objects "teleport" | keep-awake + Guided Access during sessions; detect ARKit interruption → invalidate map, trigger re-look/re-map |
+| Clock skew between iPhone and desktop clocks | latency measurements and recorder alignment are invalid | sync pings (offset estimation) on link setup; desktop-receipt timestamps for latency accounting; document in the recorder format ([§3](#3-data-flow-and-module-contracts)) |
+| STT misrecognition ("potted plant" vs "plant", room noise) | wrong or unresolved target | vocabulary constrained to the 12 class names; spoken confirmation prompt ("did you say mug?"); experimenter trigger fallback (D7) |
+| Multiple instances of the same class (two chairs) | ambiguous target | ambiguity policy: nearest/most-confident candidate, or spoken disambiguation prompt; logged as `ambiguous` in [§3](#3-data-flow-and-module-contracts) |
+| Near-field audio (target < ~1 m) | generic far-field HRTF renders "in-head"; distance-scaled loudness uncomfortable at reach | volume cap near the target; switch to discrete closing-pulse guidance as the user nears (NaviSense-style escalation); near-field HRTF is a Production refinement |
+| Front–back confusion with generic HRTF (Wenzel 1993) | user walks the wrong way | head-motion parallax resolves it (users naturally turn); practice trials; re-look prompt on no-progress |
+| Occluded / never-seen target after scanning | "look around more" without direction frustrates | scan-coverage awareness from the map (regions with no observations) → directed re-look prompt ("try looking to your left") |
+| Head-mount instability + camera-to-head offset (strap slip, wobble; camera sits on the forehead, not between the ears) | pose ≠ true head pose → sound anchoring drifts; depth misaligns with the audio reference | rigid strap/cradle with fit checks each session; one-time calibration of the fixed camera→head-center transform, applied by the audio node; document in [§3](#3-data-flow-and-module-contracts) |
+| iPhone power draw during continuous LiDAR + camera + streaming (~1 h) | session cut short mid-trial | Phase 0 decision: battery pack on the strap (weight/heat) vs charging cable (a soft tether — tension with D2, must be routed like [§2.2](#22-link) fallback); monitor battery state in the recorder |
+| Face heat / comfort over 30–60 min sessions | participant fatigue contaminates later trials | break schedule; comfort check between trials; session length caps in the protocol |
+| Class confusions among similar pairs (cup/bottle, laptop/keyboard, remote/phone) | confident wrong class → user follows the wrong sound | Phase 1 confusion-matrix check; per-class confidence thresholds; spoken disambiguation prompt for confusable pairs |
+| Object-ID churn (detection flicker at gate boundaries splits/merges IDs) | anchors unstable → the sound jumps between positions | Phase 3 tracking-quality metric (ID survival across frames/seconds); hysteresis on the state machine (candidate → confirmed only after N sightings); recorder logs ID lifetimes for tuning |
+| Terminal-guidance gap (guidance ends at proximity; the last ~30 cm is unsolved) | user is near the object but cannot find exactly where to reach | design decision in [§8](#8-audio-design): closing-pulse escalation → "on target" confirmation when the sound is centered → user's hand exploration; validate in the Phase 5 pilot |
+| Sound-asset indistinctness (similar timbres; loudness mismatch) | classes not identifiable by ear → the mapping fails | Phase 4 mini identification pilot (blindfolded listeners name the sound's class; target ≥ 90% correct) before assets are frozen |
+| Single-condition evaluation — no comparison baseline (D10) | conclusions about spatial audio are descriptive (system performance), not causal vs other modalities | scoped as such; cite prior comparative evidence (Qin et al. 2026) in the thesis discussion; note in limitations |
+| Blindfolded-sighted results may not transfer to actually VI users | external validity of the study's conclusion | main study claims are system-level (non-visual task performance), stated as such; **VI pilot (1–2 participants) reported as qualitative case studies** for feasibility evidence; Qin et al. 2026 / Fei et al. 2024 precedent cited for the replication rationale; note in thesis limitations |
 | ARKit depth noise/range (degrades beyond ~4 m, low light) | poor map, missed objects | room-size limit; controlled lighting; confidence gating in mapping |
 | Head-tracking loss (fast motion) | map/localization breaks | re-look prompt doubles as recovery; moderate-motion guidance in the protocol |
 | Detection misses (small/distant objects) | target unresolved | re-look prompt; fine-tune on collected samples; per-class distance caps |
@@ -310,7 +335,7 @@ The spread across table/desk/floor/wall placements exercises the spatial audio a
 
 Working notes: [`docs/auris-thesis/notes/`](docs/auris-thesis/notes/) (index in its [`README.md`](docs/auris-thesis/notes/README.md)). Module → key studies:
 
-- **Audio simulation** — Qin et al. 2026 (objects speak, SA vs speech-only), Romigh et al. 2015, Wenzel et al. 1993, Gaver 1986 / Blattner et al. 1989
+- **Audio simulation** — Qin et al. 2026 (objects speak, head-tracked spatial-audio guidance), Romigh et al. 2015, Wenzel et al. 1993, Gaver 1986 / Blattner et al. 1989
 - **Object localization / search** — ObjectFinder (Liu et al. 2024), NaviSense (Sridhar et al. 2025), StereoPilot (Hu et al. 2022), CamIO guidance (Coughlan et al. 2020), VizWiz::LocateIt (Bigham et al. 2010)
 - **Room mapping** — Chen et al. 2021 (semantic SLAM wearable), Fei et al. 2024 (ORB-SLAM2 + YOLOv5s), Lee & Medioni 2016, Ou et al. 2022
 - **System benchmarks** — Sound of Vision family (Hoffmann et al. 2018: < 100 ms lag, hours-to-cane-parity training; Zvorișteanu et al. 2021)
