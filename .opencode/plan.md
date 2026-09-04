@@ -23,8 +23,9 @@ prompted to look around more.
 - **Desktop computing unit (plain-Python processes over ZeroMQ):** sensor
   ingest → YOLOv8 12-class detection (COCO weights) → Open3D depth-fusion
   mapping → object localization (map-anchored object states + re-look prompt) →
-  generic-HRTF binaural audio (head-tracked, per-class auditory icons, distance
-  encoded); STT voice query + experimenter-trigger fallback; session
+  generic-HRTF binaural audio rendered in **Unity (Steam Audio)** — head-tracked,
+  per-class auditory icons, distance encoded; decision logic in Python over
+  the bus (thin renderer); STT voice query + experimenter-trigger fallback; session
   recorder/replayer (every session recorded — standing requirement).
 - **Production:** ROS 2 + RTAB-Map only if the camera swaps off ARKit.
 
@@ -34,10 +35,10 @@ prompted to look around more.
 1. Perception (12-class detection)
 2. Room mapping (ARKit pose + Open3D TSDF)
 3. Object localization (+ re-look prompt logic)
-4. Audio simulation (HRTF renderer, 12 sound assets)
+4. Audio simulation (Unity + Steam Audio scene, NetMQ bridge, 12 sound assets)
 5. Closed-loop integration (<100 ms end-to-end budget; wireless-vs-tether gate)
 6. Evaluation study (blindfolded-sighted; spatial-audio guidance only — D10)
-7. Production iteration (purchased hardware, ROS 2 + RTAB-Map port)
+7. Production iteration (7a hardware bring-up · 7b ROS 2 + RTAB-Map port · 7c revalidation)
 
 ## Standing rules
 

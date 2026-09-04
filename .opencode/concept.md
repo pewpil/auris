@@ -53,7 +53,8 @@ heard at the left). Each object class carries its own characteristic sound
 1. **Computer vision** — identifies objects (12 everyday classes, YOLOv8) from
    the mapped-out room.
 2. **Audio simulation** — projects each object's characteristic sound at its
-   position (generic-HRTF binaural, head-tracked); encodes distance.
+   position (generic-HRTF binaural, head-tracked; rendered in Unity with
+   Steam Audio, driven by the desktop's decision logic); encodes distance.
 3. **Mapped-out room** — depth + head pose accumulate into a room map
    (Prototype: Open3D fusion; Production: RTAB-Map with relocalization).
 4. **Object localization** — anchors detections in the map and resolves the

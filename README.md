@@ -37,7 +37,7 @@ The full concept text lives in [`.opencode/concept.md`](.opencode/concept.md). I
 | D3 | Audio output | **Perforated over-ear headphones** (Sound of Vision precedent — keeps ambient hearing) |
 | D4 | Object detection | **COCO-pretrained YOLOv8 restricted to 12 everyday classes**; fine-tune only if evaluation shows misses ([§7](#7-software-stack)) |
 | D5 | Room mapping | **Staged** — Prototype: ARKit 6-DoF pose + Open3D depth fusion; Production: ROS 2 + RTAB-Map only if the camera swaps off ARKit ([§2.3](#23-computing-unit), [§4](#4-development-stages)) |
-| D6 | Audio rendering | **Generic-HRTF binaural + head tracking** ([§8](#8-audio-design)) |
+| D6 | Audio rendering | **Generic-HRTF binaural + head tracking**, rendered in **Unity (Steam Audio)** — decision logic stays in Python ([§8](#8-audio-design)) |
 | D7 | Query input | **Voice command** (speech-to-text on desktop) **+ experimenter-trigger fallback** |
 | D8 | Integration | **Staged plain Python** (ZeroMQ messaging) **+ built-in session recorder/replayer** (rosbag-like) as a Phase 0 deliverable; every session recorded — standing requirement |
 | D9 | Production camera | **Intel RealSense D435i confirmed** — built-in IMU covers pose estimation, so no standalone IMU purchase |
@@ -74,7 +74,7 @@ Plain-Python processes over ZeroMQ (D5, D8). At Production, mapping/localization
 2. **Perception (computer vision)** — YOLOv8 (COCO-pretrained, restricted to the 12 classes) detects objects in RGB imagery.
 3. **Mapping (mapped-out room)** — fuses depth + head pose into a 3D room map (Open3D TSDF at Prototype); supports map save/load; at Production, RTAB-Map adds pose estimation and cross-session relocalization.
 4. **Object localization** — anchors detections in the map, maintains object states across views, resolves the requested target, and fires the **re-look prompt** when the target is absent, ambiguous, or moved.
-5. **Audio simulation** — renders the target's characteristic sound binaurally at the object's position, updated by head pose; encodes distance; renders the re-look prompt sound.
+5. **Audio simulation** — rendered by a **Unity application (Steam Audio)**: the room map laid out as a scene, audio sources positioned at object states, an `AudioListener` driven by head pose (~60 Hz) for head-tracked HRTF binaural output; encodes distance via attenuation curves; renders the re-look prompt and closing-pulse behaviors on command from the Python decision logic (thin renderer — logic in Python, DSP in Unity).
 6. **Query handling** — speech-to-text maps the user's utterance to one of the 12 classes; experimenter keyboard trigger as fallback (D7).
 7. **Session recorder / replayer** — subscribes to every stream and writes a timestamped log to disk; replays sessions through the pipeline offline (D8).
 
@@ -95,7 +95,7 @@ flowchart LR
     MAP["Mapping (depth + pose fusion)"]
     LOC["Object localization"]
     QRY["Query handling (STT + trigger)"]
-    AUD["Audio simulation (HRTF binaural)"]
+    AUD["Audio simulation (Unity + Steam Audio, HRTF)"]
     REC["Session recorder / replayer"]
   end
   CAM --> LINK
@@ -135,7 +135,9 @@ All messages are timestamped (monotonic + wall clock) and published on the ZeroM
 
 **Coordinate frames** — documented in-repo: *camera frame* (ARKit convention: Y up, −Z forward at session start), *head frame* (co-located with camera), *room/map frame* (the map's origin frame). Units: meters, radians, quaternion (w, x, y, z). The audio node converts map-frame positions to head-relative azimuth/elevation/distance using the latest `HeadPose`.
 
-**Recording format** — HDF5 (video/depth as compressed chunks) + SQLite/JSONL index of non-image messages; the replayer feeds stored streams back through ingest. Image and depth payloads travel as **binary buffers with JSON headers** (never JSON-encoded arrays) to keep serialization off the latency budget; recorder storage is sized for full study capture (depth + RGB at 15–30 Hz across N participants × 2 conditions — plan disk space in Phase 0).
+**Unity bridge.** The audio-simulation module runs as a Unity application (D6). A NetMQ bridge (ZeroMQ for C#) inside Unity subscribes to the same bus: `HeadPose` drives the `AudioListener` transform at ~60 Hz, `ObjectStates` position the audio sources, and `AudioCommand` triggers loops, pulse rates, and the prompt chime. Decision logic stays in Python; Unity is the rendering engine only. If NetMQ proves heavy inside Unity, the Phase 4 spike falls back to a tiny UDP bridge carrying the same schemas.
+
+**Recording format** — HDF5 (video/depth as compressed chunks) + SQLite/JSONL index of non-image messages; the replayer feeds stored streams back through ingest. Image and depth payloads travel as **binary buffers with JSON headers** (never JSON-encoded arrays) to keep serialization off the latency budget; recorder storage is sized for full study capture (depth + RGB at 15–30 Hz across the main study + VI pilot — plan disk space in Phase 0).
 
 ## 4. Development stages
 
@@ -157,7 +159,22 @@ Purchased and integrated only after the Prototype validates the concept:
 - Custom **3D-printed head-mounted wearable** enclosure
 - Software port: ingest via `pyrealsense2`; pose estimation and cross-session relocalization via **ROS 2 + RTAB-Map** (D5) — mechanical swap thanks to the module contracts in [§3](#3-data-flow-and-module-contracts)
 
-Scope: Phase 7 — revalidate the full loop at parity with the Prototype.
+Scope: Phase 7 — executed as the **ARKit → ROS 2 transition** ([§4.3](#43-the-arkit-to-ros-2-transition), Phases 7a–7c), revalidating the full loop at parity with the Prototype.
+
+### 4.3 The ARKit to ROS 2 transition (Prototype → Production)
+
+The Prototype→Production move is the project's single largest architectural change: it swaps the sensing and pose stack while everything downstream is preserved by the module contracts ([§3](#3-data-flow-and-module-contracts)). The swap map:
+
+| Concern | Prototype (ARKit / iPhone) | Production (D435i + ROS 2) | Preserved unchanged |
+|---|---|---|---|
+| Sensor ingest | Record3D / custom Swift stream over Wi-Fi or USB → ZeroMQ | `pyrealsense2` ingest, native USB → message bus | `Frame` / `DepthFrame` schemas |
+| Head pose | ARKit VIO (on-device, streamed at ~60 Hz) | RTAB-Map VIO (`rtabmap_ros`, camera + D435i built-in IMU) | `HeadPose` schema; calibrated camera→head-center transform ([§10](#10-risks-and-mitigations)) |
+| Room mapping | Open3D TSDF fusion | RTAB-Map graph SLAM | map save/load interface |
+| Relocalization | single-session only (ARKit world maps not portable) | **cross-session** (RTAB-Map map database) | object-localization logic |
+| Link | dual-channel Wi-Fi + USB tether, decision gate ([§2.2](#22-link)) | native USB tether (D435i has no wireless link) | watchdog; latency budget; wireless revisit only if worn compute is ever added (open) |
+| Everything downstream | — | — | detection, object localization, audio simulation, query handling, session recorder — byte-identical modules |
+
+This is why the phases carry transition hooks: the bench protocol is **re-runnable** (Phase 0), the mapping node consumes `HeadPose` from the bus — **pose-source agnostic by contract** (Phase 2), and the swap itself is executed as three gated sub-phases **7a–7c** ([§5](#5-development-phases)).
 
 ## 5. Development phases
 
@@ -166,7 +183,7 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 ### Phase 0: Bench and link validation
 
 - **Goal** — prove the sensing pipeline's quality and latency before any system building.
-- **Tasks** — choose the streaming route (Record3D vs custom Swift/ARKit app); stream RGB + depth + pose over Wi-Fi and over USB; measure latency and frame rate for both links; set up the Python project skeleton, ZeroMQ bus, and message schemas ([§3](#3-data-flow-and-module-contracts)); **build the session recorder/replayer** (D8); audio loopback test (render an HRTF tone through the headphones from the desktop).
+- **Tasks** — choose the streaming route (Record3D vs custom Swift/ARKit app); stream RGB + depth + pose over Wi-Fi and over USB; measure latency and frame rate for both links; set up the Python project skeleton, ZeroMQ bus, and message schemas ([§3](#3-data-flow-and-module-contracts)); **build the session recorder/replayer** (D8); audio loopback test (**Unity + Steam Audio renders an HRTF tone head-tracked through the headphones; measure Unity's audio output latency**); write the bench protocol to be **re-runnable on Production hardware** (Phase 7a, [§4.3](#43-the-arkit-to-ros-2-transition)).
 - **Deliverables** — streaming-route decision + bench report (latency table, wireless vs tether); recorder/replayer; repo skeleton; schema documentation.
 - **Exit criteria** — sensor→desktop ≤ ~30 ms over tether; wireless latency characterized; a sample session recorded and replayed successfully.
 
@@ -180,7 +197,7 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 ### Phase 2: Room mapping
 
 - **Goal** — build the mapped-out room from depth + ARKit pose.
-- **Tasks** — integrate Open3D TSDF fusion; align depth to RGB; choose voxel size; map save/load; visualize; assess drift over a room-scale scan.
+- **Tasks** — integrate Open3D TSDF fusion; align depth to RGB; choose voxel size; map save/load; visualize; assess drift over a room-scale scan; keep the fusion **pose-source agnostic by contract** — it consumes `HeadPose` from the bus (ARKit now, RTAB-Map later: [§4.3](#43-the-arkit-to-ros-2-transition)).
 - **Deliverables** — mapping node; saved maps; drift assessment.
 - **Exit criteria** — a room scan yields a geometrically consistent map (walls flat, objects within ~10 cm at 3 m); map save/load round-trips.
 
@@ -194,9 +211,9 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 ### Phase 4: Audio simulation
 
 - **Goal** — head-tracked spatial sound that makes an object "speak" from its position.
-- **Tasks** — HRTF binaural renderer (custom Python: SOFA HRTF set, FFT convolution via numpy/scipy, `sounddevice` output, head-pose updates; 3DTI Toolkit as fallback — D6); the 12 per-class sound assets ([§8](#8-audio-design)) with loudness normalization + **identification pilot** (blindfolded listeners name each sound's class — [§10](#10-risks-and-mitigations)); distance encoding (level + distance-appropriate filtering); **near-field behavior** (volume cap + discrete closing-pulse guidance inside ~1 m — see [§10](#10-risks-and-mitigations)); re-look prompt sound; audio-path latency measurement.
-- **Deliverables** — audio node; 12 sound assets; audible demo; latency report (motion-to-sound and full chain, per [§8](#8-audio-design)).
-- **Exit criteria** — a blindfolded listener localizes the sound in azimuth in an informal test; motion-to-sound latency ≤ ~30 ms over the link; full-pipeline budget on track for < 100 ms.
+- **Tasks** — **Unity audio scene + NetMQ bridge** (room-map scene; `AudioListener` driven by `HeadPose` at ~60 Hz; audio sources positioned from `ObjectStates`; `AudioCommand` handling — D6, [§3](#3-data-flow-and-module-contracts)); **Steam Audio** configured with a generic SOFA HRTF set; the 12 per-class sound assets ([§8](#8-audio-design)) with loudness normalization + **identification pilot** (blindfolded listeners name each sound's class — [§10](#10-risks-and-mitigations)); distance encoding (attenuation curves + distance-appropriate filtering); **near-field behavior** (volume cap + discrete closing-pulse guidance inside ~1 m — pulse *logic* in Python, rendering in Unity; see [§10](#10-risks-and-mitigations)); re-look prompt chime; motion-to-sound latency measurement **through the full Unity path** (pose → NetMQ → Unity → DAC), tuning Unity's DSP buffer/"best latency" settings.
+- **Deliverables** — Unity audio scene + bridge; 12 sound assets; audible demo; latency report (motion-to-sound and full chain, per [§8](#8-audio-design)).
+- **Exit criteria** — a blindfolded listener localizes the sound in azimuth in an informal test; **motion-to-sound latency ≤ ~30 ms through the Unity path over the link**; full-pipeline budget on track for < 100 ms.
 
 ### Phase 5: Closed-loop integration
 
@@ -214,9 +231,27 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 
 ### Phase 7: Production iteration
 
-- **Goal** — the integrated 3D-printed head wearable with purchased hardware ([§4.2](#42-production)).
-- **Tasks** — purchase the D435i (D9); design and print the head-mounted wearable; port ingest to `pyrealsense2`; introduce ROS 2 + `rtabmap_ros` for pose + cross-session relocalization (D5); re-run the Phase 0 bench (latency); quickly revalidate Phases 1–5.
-- **Deliverables** — Production wearable; validation report.
+- **Goal** — the integrated 3D-printed head wearable with purchased hardware ([§4.2](#42-production)), executed as the ARKit → ROS 2 transition ([§4.3](#43-the-arkit-to-ros-2-transition)) in three gated sub-phases.
+
+#### Phase 7a: Production hardware bring-up
+
+- **Goal** — the new head unit streams and benches at least as well as the iPhone did.
+- **Tasks** — purchase the D435i (D9); design and print the head-mounted wearable (rigid mount; measure the camera→head-center transform once — [§10](#10-risks-and-mitigations)); wire `pyrealsense2` ingest (native USB); **re-run the Phase 0 bench protocol** on the new sensor (latency, depth quality, IMU rate).
+- **Deliverables** — Production head unit; bench report in the Phase 0 format.
+- **Exit criteria** — sensor→desktop ≤ Phase 0 tether numbers; depth quality ≥ Prototype within the room; the mount holds calibration across a full session.
+
+#### Phase 7b: Software port (ROS 2 + RTAB-Map)
+
+- **Goal** — pose estimation and mapping move off ARKit behind unchanged contracts.
+- **Tasks** — introduce ROS 2 + `rtabmap_ros` for VIO pose, graph-SLAM mapping, and **cross-session relocalization** (D5); keep `HeadPose` / `DepthFrame` / map interfaces identical; **regression-test against recorded Prototype sessions** — the replayer (D8) drives the port proof.
+- **Deliverables** — ported pose/mapping stack; regression report from replayed sessions.
+- **Exit criteria** — replayed Prototype sessions yield equivalent localization results under RTAB-Map; cross-session relocalization demonstrated (map today, relocalize tomorrow).
+
+#### Phase 7c: Revalidation
+
+- **Goal** — the full Production loop matches Prototype performance.
+- **Tasks** — re-run the Phase 1–5 exit checks on Production hardware; re-check the latency budgets ([§8](#8-audio-design): < 100 ms chain, ≤ ~30 ms motion-to-sound); pilot find-an-object run with a blindfolded experimenter.
+- **Deliverables** — validation report; updated latency breakdown.
 - **Exit criteria** — the Production system completes the Phase 5 exit task at parity with the Prototype.
 
 ## 6. Hardware plan
@@ -251,14 +286,14 @@ Each phase lists goal, tasks, deliverables, and exit criteria.
 | Mapping (Production) | ROS 2 + **RTAB-Map** (`rtabmap_ros`) | only if the camera swaps off ARKit; adds relocalization (D5) |
 | Object localization | custom Python | contracts in [§3](#3-data-flow-and-module-contracts) |
 | Query input | **faster-whisper** (small model) constrained to class keywords + keyboard trigger | D7 |
-| Audio rendering | **python-sounddevice** + numpy/scipy FFT convolution with SOFA HRTFs (`pysofaconventions`); 3DTI Toolkit fallback | D6 |
+| Audio rendering | **Unity + Steam Audio** (HRTF binaural, head-tracked `AudioListener`, SOFA custom-HRTF import, distance-attenuation curves) as the audio runtime, driven over the bus (NetMQ) by Python decision logic; fallback: Unity's built-in spatializer; last resort: custom Python renderer (`sounddevice` + SOFA convolution) | D6 |
 | Recorder/replayer | **HDF5** (`h5py`) + SQLite index | D8 |
-| OS | Ubuntu 22.04+ (desktop); iOS 16+ (iPhone) | — |
+| OS | Desktop: **Ubuntu 22.04+ LTS** (official CUDA driver setup; native ROS 2 support at Production; **Unity Hub + Editor supported**); iOS 16+ (iPhone) | dependency lockfile (uv/pip-tools) kept for reproducibility regardless of distro |
 | Deferred (Production) | `pyrealsense2`, ROS 2 Humble+, `rtabmap_ros` | [§4.2](#42-production) |
 
 ## 8. Audio design
 
-**Rendering.** Generic-HRTF binaural rendering with head tracking (D6), justified psychoacoustically: azimuth localization remains accurate with non-individualized HRTFs (Wenzel et al. 1993 — [`docs/auris-thesis/notes/wenzel1993-hrtf.md`](docs/auris-thesis/notes/wenzel1993-hrtf.md)), and head-tracked virtual auditory displays approach free-field performance (Romigh et al. 2015 — [`docs/auris-thesis/notes/romigh2015-head-tracked-vad.md`](docs/auris-thesis/notes/romigh2015-head-tracked-vad.md)). Perforated over-ear headphones keep the room audible (Sound of Vision precedent; D3).
+**Rendering.** Generic-HRTF binaural rendering with head tracking (D6), implemented in **Unity with the Steam Audio spatializer** (free; imports custom SOFA HRTFs, so a generic set is used per the psychoacoustic justification: azimuth localization remains accurate with non-individualized HRTFs — Wenzel et al. 1993, [`docs/auris-thesis/notes/wenzel1993-hrtf.md`](docs/auris-thesis/notes/wenzel1993-hrtf.md) — and head-tracked virtual auditory displays approach free-field performance — Romigh et al. 2015, [`docs/auris-thesis/notes/romigh2015-head-tracked-vad.md`](docs/auris-thesis/notes/romigh2015-head-tracked-vad.md)). Head pose drives the `AudioListener` transform; each object state is an audio source; distance encoding uses Unity's attenuation curves plus distance-appropriate filtering. Perforated over-ear headphones keep the room audible (Sound of Vision precedent; D3). The Unity scene doubles as a **live visual debug view** (map, object states, sound positions) for the experimenter — not part of the user-facing system.
 
 **Sound assignment — the 12 classes.** Each class gets a characteristic **auditory icon** — the sound the object would plausibly emit (Gaver 1986 — [`docs/auris-thesis/notes/sound-design-foundations.md`](docs/auris-thesis/notes/sound-design-foundations.md)); an earcon-style fallback (Blattner et al. 1989) covers any class without a natural sound. All 12 are COCO classes, so no custom training data is required (D4).
 
@@ -287,7 +322,7 @@ The spread across table/desk/floor/wall placements exercises the spatial audio a
 
 **Latency budget.** Two paths, two targets ([§2.2](#22-link)):
 
-- **Motion-to-sound** (head pose → audio output): target **≤ ~30 ms** — head-tracker lag is perceptible around ~30 ms (Brungart et al.), and this loop carries the object-anchoring illusion. Pose travels the low-latency UDP channel; audio rendering adds ~10–20 ms.
+- **Motion-to-sound** (head pose → audio output): target **≤ ~30 ms** — head-tracker lag is perceptible around ~30 ms (Brungart et al.), and this loop carries the object-anchoring illusion. Pose travels the low-latency UDP channel; Unity's render + output buffer adds ~10–20 ms (tuned via Steam Audio/DSP buffer settings — measured in Phase 4).
 - **End-to-end chain** (frame → detection → localization → sound position): target **< 100 ms** (perception→sound lag benchmarked by Sound of Vision, Hoffmann et al. 2018): sensor ~10 ms + link ~20 ms (tether) / ~30–60 ms (Wi-Fi) + perception ~30 ms + localization ~5 ms + audio ~10–20 ms. This loop is latency-tolerant (static objects) but still capped for responsiveness when the target resolves.
 
 ## 9. Evaluation plan
@@ -328,7 +363,8 @@ The spread across table/desk/floor/wall placements exercises the spatial audio a
 | Audio masking by ambient noise | cue inaudible | level calibration; quiet-room protocol; perforated cups preserve localization while leaking less than open air |
 | Map drift over long sessions | stale object positions | ARKit VIO is strong indoors; Phase 2 drift assessment; Production RTAB-Map adds loop closure |
 | Object moved between mapping and search | "found" position wrong | object state machine re-detects on sight; re-look prompt (the [§1.1](#11-task-loop-one-session) step-3 behavior) |
-| GPU contention (detection + STT + audio) | frame drops, latency spikes | frame throttling; measure in Phases 1/5 |
+| GPU/CPU contention (detection + STT + Unity scene) | frame drops, latency spikes | frame throttling; Unity audio DSP is CPU-bound and the debug view is lightweight — measure in Phases 1/5 |
+| Unity audio output latency on Ubuntu (PulseAudio buffering) | motion-to-sound budget blown by output buffering | Unity "best latency" DSP-buffer setting; measure the full Unity path in Phase 4; if unresolvable, the custom Python renderer is the documented last-resort fallback ([§7](#7-software-stack)) |
 | iPhone thermal throttling on long sessions | streaming degradation | session time limits; monitor in Phase 0 bench |
 
 ## 11. Literature map
@@ -344,4 +380,6 @@ Working notes: [`docs/auris-thesis/notes/`](docs/auris-thesis/notes/) (index in 
 
 ## 12. Change log
 
+- **2026-09-04 (rev. 3)** — **D6 implementation fixed to Unity + Steam Audio**: the audio-simulation module becomes a thin Unity renderer (room-map scene, head-tracked `AudioListener` via NetMQ bridge, SOFA HRTF import, attenuation-based distance encoding) driven by Python decision logic; Phase 0 loopback and Phase 4 reworked around the Unity path (motion-to-sound ≤ ~30 ms through Unity); Ubuntu 22.04+ confirmed to host Unity; new Unity-audio-latency risk row.
+- **2026-09-04 (rev. 2)** — Decisions locked: D9 (D435i confirmed), D10 (spatial-audio-only evaluation — non-verbal guidance, no speech-only baseline); desktop OS fixed to Ubuntu 22.04+ LTS; dual-channel link design; near-field/terminal-guidance behavior specified; participant structure set (blindfolded-sighted main study + VI pilot); **Phase 7 restructured into the gated ARKit → ROS 2 transition sub-phases (7a–7c)** with the transition map in [§4.3](#43-the-arkit-to-ros-2-transition); transition hooks added to Phases 0 and 2; expanded risk register.
 - **2026-09-04** — New development plan written (this document) from the consolidated concept and the literature consolidation; former plan cleared 2026-09-03.
