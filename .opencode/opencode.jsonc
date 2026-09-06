@@ -16,5 +16,16 @@
         "apiKey": "{file:opencode.key}",
       },
     },
+    "omniroute": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OmniRoute",
+      "options": {
+        "baseURL": "http://localhost:20128/v1",
+        "apiKey": "sk-d22e8b23e034942d-407cbf-d1780010",
+      },
+      "models": {
+        "auto": { "name": "agy/gemini-3.7-flash-high" },
+      },
+    },
   },
 }
