@@ -1,4 +1,4 @@
-# Cane
+# Auris
 
 > **The former concept (Auris) has been replaced.** The former development
 > plan, architecture, phases, hardware/cost breakdowns, evaluation plan,
@@ -9,3 +9,5 @@
 
 - Session context stubs: [`.opencode/concept.md`](.opencode/concept.md),
   [`.opencode/plan.md`](.opencode/plan.md)
+- Thesis skeleton: [`docs/auris-thesis/paper.md`](docs/auris-thesis/paper.md)
+  (IEEE twin: [`docs/auris-thesis/ieee.md`](docs/auris-thesis/ieee.md))
