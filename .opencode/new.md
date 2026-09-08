@@ -22,14 +22,19 @@ It is 3d printed along the components required and it is worn by the user.
 
 #### Functionalities
 
-1. **Head position and orientation.**
+1. **Head position and orientation**
     - The wearable is able to extract the user's head position and orientation
 2. **Audio simulation**
     - The wearable is equipped with an audio apparatus for sound to be broadcasted to the user's ears
 
 ### Pointer
 
-The pointer shoots out an imaginary/invisible laser towards the obstacles
+#### Functionalities
+
+1. **Laser**
+    - The pointer shoots out an imaginary/invisible laser towards the obstacles
+2. **Button**
+    - The pointer is only shot when the pointer's button is pushed. Laser is stopped shooting when the button is let go.
 
 ## System Goal
 
