@@ -158,17 +158,76 @@ instrumentation are required.
 
 ## 3. Hardware (component-level)
 
-Cost breakdown and purchase approval are deferred (see
-[§9 Open items](#9-open-items)).
+Prices surveyed **2026-09-08** from Philippine retailers, in Philippine
+pesos (₱). Quantities are for **one complete build** — 1 pointer + 1
+wearable — plus consumables; the 20% contingency covers spares, shipping,
+and promo drift. Prices with a store link were verified against the
+listing this date; items marked *(est)* are typical Philippine-market
+prices to pin down at purchase time.
 
-| Slot | Pointer | Wearable | Notes |
-|---|---|---|---|
-| MCU | ESP32-C3 (or S3) | ESP32 (classic, for I²S out) | both BLE-capable |
-| Ranging | VL53L1X ToF | — | 940 nm VCSEL = invisible to the eye; ~4 m class |
-| IMU | 9-DoF (accel + gyro + mag) | 9-DoF (same part) | one part number for both devices simplifies fusion |
-| Audio | — | stereo earphones (air conduction) + I²S DAC/amp | air conduction preserves localization quality, per Ferrand 2019 / Planinec 2023 in [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md) |
-| Power | Li-Po + regulator | Li-Po + regulator | sized in the budget pass |
-| Housing | 3D-printed PLA shell | 3D-printed PLA shell | headband strap; pointer grip |
+### 3.1 Pointer — bill of materials
+
+| # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
+|---|---|---|---|---|---|
+| 1 | ESP32-C3 SuperMini (BLE MCU) | 1 | 355 | 355 | [Circuitrocks](https://circuit.rocks/products/esp32-c3-super-mini-development-board); ₱151 on [Lazada PH](https://h5.lazada.com.ph/products/esp32-c3-development-board-esp32-c3-supermini-wifi-bluetooth-for-arduino-i4393598793.html) |
+| 2 | VL53L1X ToF rangefinder (940 nm, ~4 m) | 1 | 525 | 525 | [Shopee PH](https://shopee.ph/COD-VL53L1X-laser-sensor-module-TOF-time-of-flight-4-meter-ranging-i.1804393363.53909554436) |
+| 3 | GY-9250 (MPU-9250, 9-DoF IMU) | 1 | 400 | 400 | [Lazada PH](https://www.lazada.com.ph/products/mpu9250-mpu6500-9-9-dof-16-bit-gyroscope-acceleration-magnetic-sensor-accelerator-module-iicspi-i15524063344.html) |
+| 4 | Tactile trigger button (6×6 mm) | 1 | 10 *(est)* | 10 | Lazada/Shopee PH (assortment kits) |
+| 5 | TP4056 USB-C charge board (w/ protection) | 1 | 30 | 30 | [Makerlab PH](https://makerlab.ph/products/type-c-micro-usb-5v-1a-18650-tp4056-lithium-battery-charger-module-charging-board-with-protection) |
+| 6 | 18650 Li-ion 2600 mAh cell (Kaizen 2-pc pack ₱369) | 1 | 185 | 185 | [Kaizen PH](https://kaizenphilippines.com/products/kaizen-3-7v-18650-2600mah-15a-rechargeable-battery-2pc-lithium-ion-battery) |
+| 7 | Misc: perfboard, dupont/hookup wire, slide switch | — | 120 *(est)* | 120 | Lazada/Shopee PH |
+| | **Pointer subtotal** | | | **1,625** | |
+
+### 3.2 Wearable — bill of materials
+
+| # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
+|---|---|---|---|---|---|
+| 1 | ESP32 DevKit 38-pin (WROOM-32, I²S out) | 1 | 187 | 187 | [Lazada PH](https://s.lazada.com.ph/s.N28i1); ₱355 [Circuitrocks 30-pin CH9102](https://circuit.rocks/products/esp32-dev-board-ch9102-30-pin-micro-usb) |
+| 2 | GY-9250 (MPU-9250, 9-DoF IMU) — same part as pointer | 1 | 400 | 400 | [Lazada PH](https://www.lazada.com.ph/products/mpu9250-mpu6500-9-9-dof-16-bit-gyroscope-acceleration-magnetic-sensor-accelerator-module-iicspi-i15524063344.html) |
+| 3 | MAX98357A I²S 3 W Class-D amp | 1 | 499 | 499 | [Circuitrocks (Adafruit breakout)](https://circuit.rocks/products/i2s-3w-class-d-amplifier-breakout-max98357a-adafruit); generic clones cheaper on Lazada/Shopee |
+| 4 | Stereo wired earphones, 3.5 mm (BAVIN HX820) | 1 | 118 | 118 | [Lazada PH](https://www.lazada.com.ph/products/pdp-i3057481002.html) |
+| 5 | TP4056 USB-C charge board (w/ protection) | 1 | 30 | 30 | [Makerlab PH](https://makerlab.ph/products/type-c-micro-usb-5v-1a-18650-tp4056-lithium-battery-charger-module-charging-board-with-protection) |
+| 6 | 18650 Li-ion 2600 mAh cell | 1 | 185 | 185 | [Kaizen PH](https://kaizenphilippines.com/products/kaizen-3-7v-18650-2600mah-15a-rechargeable-battery-2pc-lithium-ion-battery) |
+| 7 | Elastic headband + fasteners | — | 75 *(est)* | 75 | Lazada/Shopee PH |
+| 8 | Misc: perfboard, wires, 3.5 mm jack breakout | — | 120 *(est)* | 120 | Lazada/Shopee PH |
+| | **Wearable subtotal** | | | **1,614** | |
+
+### 3.3 Shared consumables
+
+| # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
+|---|---|---|---|---|---|
+| 1 | PLA filament 1.75 mm, 1 kg (Creality Ender PLA) | 1 | 700 *(est)* | 700 | [Lazada PH](https://www.lazada.com.ph/products/creality-ender-pla-filament-1kg-175mm-i4337055224.html) / Shopee PH — pin exact price at purchase |
+| 2 | Consumables: solder, heatshrink, zip ties | — | 100 *(est)* | 100 | Lazada/Shopee PH |
+| | **Shared subtotal** | | | **800** | |
+
+### 3.4 Total
+
+| Block | ₱ |
+|---|---|
+| Pointer | 1,625 |
+| Wearable | 1,614 |
+| Shared | 800 |
+| **Build subtotal** | **4,039** |
+| Contingency 20% (spares, shipping, promo drift) | 808 |
+| **Grand total (one full build)** | **≈ 4,850** |
+
+### 3.5 Component notes
+
+- **IMU (both devices)** — GY-9250/MPU-9250 is one part number across both
+  devices to simplify fusion. Upgrade path if P2 magnetometer fusion proves
+  noisy in the actual room: BNO055/BNO085 (factory-fused, ~₱1,200–2,000
+  each) — a budget-relevant decision gate at P2.
+- **MCU alternates** — the ESP32-C3 SuperMini also lists at ₱151 on Lazada
+  PH; wearable ESP32 DevKits have many equivalent listings in the
+  ₱180–360 range.
+- **Amplifier** — the ₱499 line is the Adafruit breakout; generic MAX98357A
+  modules on Lazada/Shopee are substantially cheaper — buy two, keep a
+  spare.
+- **Ranging** — VL53L0X (2 m) is cheaper but undershoots the ~4 m
+  room-scale task; the VL53L1X (4 m, 940 nm invisible VCSEL) is kept.
+- **Audio** — air-conduction stereo earphones preserve localization
+  quality (Ferrand 2019; Planinec et al. 2023, see
+  [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md)).
 
 ## 4. Software
 
@@ -264,9 +323,10 @@ Paradigm justified by the consolidated literature
 
 ## 9. Open items
 
-- **Budget & purchase approval** — component-level cost breakdown and a
-  purchase-approval section follow after component bench tests narrow the
-  parts list (P2). Deferred by decision 2026-09-08.
+- **Budget & purchase approval** — component-level cost breakdown with
+  Philippine-market pricing is complete in
+  [§3](#3-hardware-component-level) (researched 2026-09-08); the remaining
+  open item is the purchase-approval sign-off itself.
 - **Thesis writing schedule** — section→phase drafting schedule to be
   rebuilt in [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md)
   once P1 is frozen.
