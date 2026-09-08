@@ -4,6 +4,7 @@
   "default_agent": "build",
   "instructions": [
     ".opencode/concept.md",
+    ".opencode/new.md",
     ".opencode/plan.md",
     ".opencode/instruction.md",
     ".opencode/man.md",
