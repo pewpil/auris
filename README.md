@@ -156,16 +156,17 @@ too fast for absolute room-scale tracking (Harle 2013; Foxlin 2005, see
 This keeps the device self-contained: no beacons, cameras, or room
 instrumentation are required.
 
-## 3. Hardware (component-level)
+## 3. Hardware
 
-Prices surveyed **2026-09-08** from Philippine retailers, in Philippine
-pesos (₱). Quantities are for **one complete build** — 1 pointer + 1
-wearable — plus consumables; the 20% contingency covers spares, shipping,
-and promo drift. Prices with a store link were verified against the
-listing this date; items marked *(est)* are typical Philippine-market
-prices to pin down at purchase time.
+Everything required to **build and run** Cane — not only the electronics:
+the two devices' electronics, the 3D-printed structures that house them,
+one-time assembly/bench tools, and the evaluation hardware. Prices
+surveyed **2026-09-08** from Philippine retailers, in Philippine pesos
+(₱). Prices with a store link were verified against the listing this
+date; items marked *(est)* are typical Philippine-market prices to pin
+down at purchase time.
 
-### 3.1 Pointer — bill of materials
+### 3.1 Pointer — electronics
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
@@ -178,7 +179,7 @@ prices to pin down at purchase time.
 | 7 | Misc: perfboard, dupont/hookup wire, slide switch | — | 120 *(est)* | 120 | Lazada/Shopee PH |
 | | **Pointer subtotal** | | | **1,625** | |
 
-### 3.2 Wearable — bill of materials
+### 3.2 Wearable — electronics
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
@@ -188,30 +189,65 @@ prices to pin down at purchase time.
 | 4 | Stereo wired earphones, 3.5 mm (BAVIN HX820) | 1 | 118 | 118 | [Lazada PH](https://www.lazada.com.ph/products/pdp-i3057481002.html) |
 | 5 | TP4056 USB-C charge board (w/ protection) | 1 | 30 | 30 | [Makerlab PH](https://makerlab.ph/products/type-c-micro-usb-5v-1a-18650-tp4056-lithium-battery-charger-module-charging-board-with-protection) |
 | 6 | 18650 Li-ion 2600 mAh cell | 1 | 185 | 185 | [Kaizen PH](https://kaizenphilippines.com/products/kaizen-3-7v-18650-2600mah-15a-rechargeable-battery-2pc-lithium-ion-battery) |
-| 7 | Elastic headband + fasteners | — | 75 *(est)* | 75 | Lazada/Shopee PH |
-| 8 | Misc: perfboard, wires, 3.5 mm jack breakout | — | 120 *(est)* | 120 | Lazada/Shopee PH |
+| 7 | Misc: perfboard, wires, 3.5 mm jack breakout | — | 120 *(est)* | 120 | Lazada/Shopee PH |
 | | **Wearable subtotal** | | | **1,614** | |
 
-### 3.3 Shared consumables
+### 3.3 Structural & mechanical
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
-| 1 | PLA filament 1.75 mm, 1 kg (Creality Ender PLA) | 1 | 700 *(est)* | 700 | [Lazada PH](https://www.lazada.com.ph/products/creality-ender-pla-filament-1kg-175mm-i4337055224.html) / Shopee PH — pin exact price at purchase |
-| 2 | Consumables: solder, heatshrink, zip ties | — | 100 *(est)* | 100 | Lazada/Shopee PH |
-| | **Shared subtotal** | | | **800** | |
+| 1 | FDM 3D printer — Creality Ender 3 V3 SE (one-time capital) | 1 | 11,199 | 11,199 | [Makerlab PH](https://www.makerlab.ph/products/ender-3-v3-se-3d-printer) — official Creality PH distributor, 1-yr warranty, free-filament promo. Alternative: print service such as [Flarelab](https://flarelab.com) (quote-based) |
+| 2 | PLA filament 1.75 mm, 1 kg (Creality Ender PLA) | 1 | 700 *(est)* | 700 | [Lazada PH](https://www.lazada.com.ph/products/creality-ender-pla-filament-1kg-175mm-i4337055224.html) / Shopee PH — pin exact price at purchase |
+| 3 | Elastic headband + adjustment fasteners | — | 75 *(est)* | 75 | Lazada/Shopee PH |
+| 4 | 18650 battery holders | 2 | 15 *(est)* | 30 | Lazada/Shopee PH |
+| 5 | M2/M3 screws, nuts, velcro, zip ties | — | 100 *(est)* | 100 | Lazada/Shopee PH |
+| 6 | Adhesive: hot glue/epoxy, double-sided tape | — | 100 *(est)* | 100 | Lazada/Shopee PH |
+| | **Structural subtotal (excl. printer)** | | | **1,005** | |
 
-### 3.4 Total
+### 3.4 Assembly & bench tools (one-time)
+
+| # | Tool | Qty | Unit ₱ | Subtotal ₱ | Source |
+|---|---|---|---|---|---|
+| 1 | 60 W adjustable soldering iron kit | 1 | 300 *(est)* | 300 | Lazada/Shopee PH kits; premium Hakko 60 W ≈ ₱1,561 ([ToolsPH price list](https://toolsph.com/soldering-iron-price)) |
+| 2 | Digital multimeter (DT830 class) | 1 | 250 *(est)* | 250 | [Lazada PH](https://www.lazada.com.ph/products/dt830-digital-multimeter-multi-tester-holdpeak-manual-ranging-multi-tester-i4454326879.html) |
+| 3 | Wire strippers, cutters, pliers | — | 200 *(est)* | 200 | Lazada/Shopee PH |
+| 4 | Helping-hands / PCB holder | 1 | 150 *(est)* | 150 | Lazada/Shopee PH |
+| 5 | USB cables for flashing (USB-C + Micro-USB) | 2 | 35 | 70 | [Circuitrocks](https://circuit.rocks/products/circuitrocks-usb-cable-type-c-type-b-to-type-a-male-for-arduino-uno-mega) |
+| 6 | Desoldering wick + flux | — | 100 *(est)* | 100 | Lazada/Shopee PH |
+| | **Tools subtotal** | | | **1,070** | |
+
+### 3.5 Evaluation hardware (one-time)
+
+| # | Item | Qty | Unit ₱ | Subtotal ₱ | Source |
+|---|---|---|---|---|---|
+| 1 | Blindfold / sleep mask (for sighted participants) | 2 | 50 *(est)* | 100 | Lazada/Shopee PH |
+| 2 | Floor marking tape + 5 m measuring tape (course layout; ToF ground truth) | — | 200 *(est)* | 200 | Lazada/Shopee PH |
+| 3 | Obstacle props (cardboard boxes, foam blocks) | — | 200 *(est)* | 200 | Often sourced free; budgeted as new |
+| 4 | Timing — phone/smartwatch | — | 0 | 0 | On hand |
+| | **Evaluation subtotal** | | | **500** | |
+
+### 3.6 Totals
 
 | Block | ₱ |
 |---|---|
-| Pointer | 1,625 |
-| Wearable | 1,614 |
-| Shared | 800 |
-| **Build subtotal** | **4,039** |
-| Contingency 20% (spares, shipping, promo drift) | 808 |
-| **Grand total (one full build)** | **≈ 4,850** |
+| Pointer electronics | 1,625 |
+| Wearable electronics | 1,614 |
+| Structural & mechanical (excl. printer) | 1,005 |
+| Assembly & bench tools | 1,070 |
+| Evaluation hardware | 500 |
+| **Subtotal (excl. printer)** | **5,814** |
+| Contingency 20% (spares, shipping, promo drift) | 1,163 |
+| **Total — print-service path** (housings quoted, ~₱1,000 *(est)*) | **≈ 8,200** |
+| + own printer: Creality Ender 3 V3 SE | 11,199 |
+| **Total — own-printer path** | **≈ 20,400** |
 
-### 3.5 Component notes
+The two totals differ only in how the housings are produced: quote the two
+small housings to a print service such as Flarelab (service fee assumed
+₱1,000 *(est)*, pending quote), or buy the printer outright (Makerlab,
+with free-filament promo and 1-yr local warranty). A purchase decision
+gate — see [§9](#9-open-items).
+
+### 3.7 Component notes
 
 - **IMU (both devices)** — GY-9250/MPU-9250 is one part number across both
   devices to simplify fusion. Upgrade path if P2 magnetometer fusion proves
@@ -228,6 +264,10 @@ prices to pin down at purchase time.
 - **Audio** — air-conduction stereo earphones preserve localization
   quality (Ferrand 2019; Planinec et al. 2023, see
   [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md)).
+- **3D printer** — the Ender 3 V3 SE (₱11,199, Makerlab PH) is listed as
+  the reference because the concept requires the wearables to be 3D
+  printed in-house; university/lab printer access would remove this line
+  entirely — confirm before purchase approval.
 
 ## 4. Software
 
@@ -323,10 +363,10 @@ Paradigm justified by the consolidated literature
 
 ## 9. Open items
 
-- **Budget & purchase approval** — component-level cost breakdown with
-  Philippine-market pricing is complete in
-  [§3](#3-hardware-component-level) (researched 2026-09-08); the remaining
-  open item is the purchase-approval sign-off itself.
+- **Budget & purchase approval** — full hardware requirements with
+  Philippine-market pricing are complete in [§3](#3-hardware) (researched
+  2026-09-08); the remaining open items are the own-printer vs.
+  print-service decision and the purchase-approval sign-off itself.
 - **Thesis writing schedule** — section→phase drafting schedule to be
   rebuilt in [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md)
   once P1 is frozen.
