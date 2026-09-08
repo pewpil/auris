@@ -24,7 +24,9 @@ obstacles along the way.
      spatialized sound to the user's ears.
 2. **Handheld pointer** (its own device): shoots an **invisible laser** toward
    obstacles and measures **where the shot lands** (hit distance, via
-   time-of-flight ranging).
+   time-of-flight ranging). A **press-and-hold button** gates the laser:
+   it fires — and ranging runs — only while the button is held, and stops
+   the moment it is released.
 
 ### 1.3 Interaction rule
 
@@ -44,6 +46,12 @@ user's body:
   landing far from the head is faint; the nearer it lands, the louder it is
   projected. (This is why the wearable tracks head position, not just
   orientation.)
+- **Trigger** — the aid sounds only while the pointer's **button is held**.
+  The laser fires — and ranging runs — only then; releasing the button
+  stops the laser and silences the sound. The aid is therefore an
+  **active, on-demand** scanner, in line with the active-sensing rationale
+  of the EyeCane lineage (Maidenbaum et al. 2014,
+  [§2 lit](docs/auris-thesis/literature/02-electronic-travel-aids.md)).
 
 Worked examples (clarified 2026-09-08):
 
@@ -62,12 +70,14 @@ faint, near → loud) in real time.
 
 | Device | Roles | Core parts |
 |---|---|---|
-| **Pointer** (handheld) | ranging + its own orientation | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), battery, 3D-printed shell |
+| **Pointer** (handheld) | ranging + its own orientation; press-and-hold trigger | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), trigger button, battery, 3D-printed shell |
 | **Wearable** (head) | head pose + audio output | ESP32-class MCU, 9-DoF IMU, stereo earphones, battery, 3D-printed shell |
 | **Link** | pointer → wearable data | BLE, payload = hit distance + pointer yaw |
 
 Audio is rendered **on the wearable**; the BLE link carries data, never
 audio, so the motion-to-sound latency stays inside the budget (§4.2).
+The button state gates everything: with the button up the pointer does not
+range and sends nothing, and the renderer is silent.
 
 ### 2.2 Data flow
 
@@ -76,7 +86,8 @@ flowchart LR
     subgraph pointer["Handheld pointer"]
         pimu["Pointer IMU (9-DoF)"] --> pfus["Pointer yaw fusion (Madgwick)"]
         tof["ToF rangefinder<br/>(VL53L1X, 940 nm)"] --> dist["Hit distance d"]
-        pfus --> mcu1["Pointer MCU (ESP32-C3)"]
+        btn["Trigger button<br/>(press-and-hold)"] --> mcu1["Pointer MCU (ESP32-C3)"]
+        pfus --> mcu1
         dist --> mcu1
     end
     subgraph wearable["Head-mounted wearable"]
@@ -121,9 +132,10 @@ Placement rules:
    distance `D`, calibrated on the prototype (perceived loudness is not
    linear in dB, so the curve is tuned in P4). Near hits saturate at
    maximum; far hits floor at a faint but audible minimum.
-3. **No-hit edge case** — `d` beyond the ToF range (or lost return on
-   glass/black surfaces): silence, optionally a low "no contact" tick so
-   "quiet" is never ambiguous with "off".
+3. **No-hit edge case** — while the button is held, a missing return (`d`
+   beyond the ToF range, or lost on glass/black surfaces) renders silence
+   or a low "no contact" tick. With the button up the aid is silent by
+   design — "not scanning" is the default state.
 
 ### 2.4 Positioning: relative pose only
 
@@ -165,7 +177,7 @@ Cost breakdown and purchase approval are deferred (see
 | Module | Device | Responsibility |
 |---|---|---|
 | `fusion` (Madgwick) | both | yaw/pitch from IMU at ~100 Hz |
-| `tof` driver | pointer | ranged readings at 20–50 Hz, no-hit handling |
+| `tof` driver | pointer | ranged readings at 20–50 Hz **while the button is held**, no-hit handling; idle otherwise |
 | `link` (BLE) | both | ship `d`, `yaw_P` → wearable at 10–30 Hz |
 | `geometry` | wearable | `θ` (direction) and `D` (head-to-landing distance), edge-case classification |
 | `renderer` | wearable | generic-HRTF binaural output, `g(D)` gain curve |
