@@ -44,8 +44,8 @@ user's body:
   *and* orientation matter; the user's body position does not.
 - **Loudness** — the distance from the **head** to the landing point. A
   landing far from the head is faint; the nearer it lands, the louder it is
-  projected. (This is why the wearable tracks head position, not just
-  orientation.)
+  projected. (Computed head-relative in real time — mechanism in
+  [§2.3](#23-coordinate-frames-and-sound-placement).)
 - **Trigger** — the aid sounds only while the pointer's **button is held**.
   The laser fires — and ranging runs — only then; releasing the button
   stops the laser and silences the sound. The aid is therefore an
@@ -92,7 +92,7 @@ flowchart LR
     end
     subgraph wearable["Head-mounted wearable"]
         himu["Head IMU (9-DoF)"] --> hfus["Head yaw fusion (Madgwick)"]
-        mcu1 -- "BLE: d, yaw_pointer" --> geo["Relative geometry<br/>theta = yaw_pointer - yaw_head<br/>D = head-to-landing distance"]
+        mcu1 -- "BLE: d, yaw_pointer" --> geo["Relative geometry<br/>(d, yaw_pointer, yaw_head, calibrated offset)<br/>-> theta (direction), D (loudness distance)"]
         hfus --> geo
         geo --> ren["Binaural renderer<br/>(generic HRTF)"]
         ren -- "gain g(D)" --> spk["Stereo earphones"]
@@ -109,19 +109,40 @@ flowchart LR
 - **Pointer frame P**: yaw `yaw_P` from the pointer IMU; ToF reading `d`
   along the aim.
 - **Landing point relative to the head**:
-  `r = (p_P − p_H) + d·û(yaw_P)`, rotated by `−yaw_H` into the head frame,
-  where `p_P − p_H` is the pointer's offset from the head — handled as a
-  **calibrated constant** (nominal handheld position) rather than tracked,
-  since rigid-body hand tracking is out of scope for an IMU-only build
-  ([§2.4](#24-positioning-relative-pose-only)).
+  `r = o + d·û(yaw_P − yaw_H)`, rotated by `−yaw_H` into the head frame,
+  where `o = p_P − p_H` is the pointer's offset from the head — handled as
+  a **calibrated constant** (nominal handheld position) rather than
+  tracked, since rigid-body hand tracking is out of scope for an IMU-only
+  build ([§2.4](#24-positioning-relative-pose-only)). Note that two IMUs
+  alone cannot measure their separation: inertial position is
+  double-integrated acceleration whose bias error grows quadratically, and
+  the *difference* of two drifting estimates drifts faster still (Harle
+  2013; Foxlin 2005,
+  [§5 lit](docs/auris-thesis/literature/05-head-pose-sensing.md)). IMUs
+  give reliable relative **orientation** (`yaw_P − yaw_H`), not distance —
+  so the fixed offset is calibrated once.
 
-The user's body position never enters the placement
-([§1.3](#13-interaction-rule)); the **head's position does** — it sets the
-head-to-landing distance `D = |r|` that drives loudness (and only a
-second-order parallax term in `θ`; to first order `θ = yaw_P − yaw_H`,
-wrapped to [−180°, 180°)). The renderer recomputes `θ` and `g(D)` on every
-update, so the sound moves continuously as the user turns their head,
-walks, or re-aims the pointer.
+The placement quantities follow from three live measurements — the ToF
+range `d` and the two yaws — plus the one calibrated constant `o`:
+
+- **Direction** — the sound is rendered at the **parallax-corrected**
+  bearing of `r` in the head frame (to first order `θ ≈ yaw_P − yaw_H`,
+  wrapped to [−180°, 180°)). Because `o` is known, the correction is exact
+  for the calibrated grip; the residual error is only grip variation
+  ([§7](#7-risks-and-limitations)).
+- **Loudness distance** — `D = |r|`, the head-to-landing distance. This
+  never involves the head's *room* position: as the user walks toward the
+  obstacle with the button held, the ToF range `d` shrinks and `D` follows
+  in real time — proximity is carried by the ranging, not by dead-reckoned
+  position.
+
+The head's position matters only **relative to the pointer** — body
+geometry, captured by the calibrated offset `o`. The user's body position
+never enters the placement ([§1.3](#13-interaction-rule)), and neither
+does the head's dead-reckoned room position, which exists for telemetry
+only ([§2.4](#24-positioning-relative-pose-only)). The renderer recomputes
+`θ` and `g(D)` on every update, so the sound moves continuously as the
+user turns their head, walks, or re-aims the pointer.
 
 Placement rules:
 
@@ -148,10 +169,10 @@ too fast for absolute room-scale tracking (Harle 2013; Foxlin 2005, see
   known start point;
 - the point-to-point room task is judged by **observed behavior** plus an
   external reference, not by the device's own position estimate;
-- the position channel exists for the head-to-landing distance `D` that
-  drives loudness ([§2.3](#23-coordinate-frames-and-sound-placement)) and
-  for telemetry (user went A→B); it is **relative only** and is never
-  treated as an absolute room position.
+- the position channel is for **telemetry only** (user went A→B): sound
+  placement never consumes it — `D` and `θ` come from the ToF range, the
+  two yaws, and the calibrated head-to-pointer offset
+  ([§2.3](#23-coordinate-frames-and-sound-placement)).
 
 This keeps the device self-contained: no beacons, cameras, or room
 instrumentation are required.
@@ -278,7 +299,7 @@ gate — see [§9](#9-open-items).
 | `fusion` (Madgwick) | both | yaw/pitch from IMU at ~100 Hz |
 | `tof` driver | pointer | ranged readings at 20–50 Hz **while the button is held**, no-hit handling; idle otherwise |
 | `link` (BLE) | both | ship `d`, `yaw_P` → wearable at 10–30 Hz |
-| `geometry` | wearable | `θ` (direction) and `D` (head-to-landing distance), edge-case classification |
+| `geometry` | wearable | `θ` (parallax-corrected direction) and `D` (head-to-landing distance) from `d`, both yaws, and the calibrated offset; edge-case classification |
 | `renderer` | wearable | generic-HRTF binaural output, `g(D)` gain curve |
 | `telemetry` | wearable | relative-pose dead reckoning for logging |
 
@@ -319,7 +340,7 @@ Paradigm justified by the consolidated literature
 | **P1 — Architecture freeze** | this document; component selection | parts chosen and ordered; interfaces fixed | §3.1, §3.5, §3.7 (block diagram) |
 | **P2 — Bench tests** | ToF accuracy over distance/surface; IMU yaw accuracy vs. reference; BLE rate/latency; render latency | each §4.2 stage meets budget; drift curves recorded | §3.4 (experiments), §4 (partial results) |
 | **P3 — Prototype build** | 3D print housings; integrate pointer + wearable | both devices run end-to-end in bench mode | §3.6 (details of the components) |
-| **P4 — Integration & calibration** | full pipeline walking; `g(D)` calibration; magnetometer disturbance checks | calibrated sound placement works on the course | §3.5, §3.8 (flowcharts) |
+| **P4 — Integration & calibration** | full pipeline walking; `g(D)` + pointer-offset calibration; magnetometer disturbance checks | calibrated sound placement works on the course | §3.5, §3.8 (flowcharts) |
 | **P5 — Pilot evaluation** | blindfolded-sighted study on the room course | metrics + questionnaires collected | §4 (results and discussions) |
 | **P6 — Thesis drafting** | write-up from literature notes and P2–P5 artifacts | `paper.md` + `ieee.md` in lockstep, per [`manuscript.md`](docs/auris-thesis/manuscript.md) | §2–§5, all sections |
 
@@ -327,8 +348,9 @@ Paradigm justified by the consolidated literature
 
 1. **Position drift (IMU-only)** — unaided inertial position is unusable for
    absolute room-scale tracking over long sessions (Harle 2013;
-   Foxlin 2005). Mitigation: relative pose only, bounded sessions,
-   known start point (§2.4).
+   Foxlin 2005). Mitigation: relative pose only, bounded sessions, known
+   start point; drift degrades telemetry only — sound placement never uses
+   it (§2.3, §2.4).
 2. **Heading error near ferromagnetic material** — tables, appliances, and
    fixtures disturb the magnetometer; Roetenberg et al. 2005 shows heading
    error rotates the perceived sound direction directly. Mitigation:
@@ -346,6 +368,12 @@ Paradigm justified by the consolidated literature
 6. **Loudness ≠ linear distance** — perceived loudness is nonlinear; the
    `g(D)` head-to-landing curve is calibrated empirically in P4 rather
    than assumed.
+7. **Handheld offset is not truly constant** — the calibrated
+   head-to-pointer constant assumes a nominal grip; extending or tucking
+   the arm shifts the offset by roughly ±15 cm, perturbing the loudness
+   distance `D` and the parallax term in `θ` ([§2.3](#23-coordinate-frames-and-sound-placement)).
+   Mitigation: calibrate at a natural grip in P4; keep `g(D)` gradual so
+   ±15 cm is a small loudness change; observe real-grip variation in P5.
 
 ## 8. Where things live
 
