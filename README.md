@@ -47,9 +47,9 @@ In all rows the loudness follows the head-to-landing distance (far → faint, ne
 |---|---|---|
 | **Pointer** (handheld) | ranging + its own orientation; press-and-hold trigger | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), trigger button, battery, 3D-printed shell |
 | **Wearable** (head) | head pose + audio output | ESP32-class MCU, 9-DoF IMU, stereo earphones, battery, 3D-printed shell |
-| **Link** | pointer → wearable data | BLE, payload = hit distance + pointer orientation (quaternion) |
+| **Link** | pointer → wearable data | ESP-NOW (connectionless WiFi peer-to-peer), payload = hit distance + pointer orientation (quaternion) |
 
-Audio is rendered **on the wearable**; the BLE link carries data, never audio, so the motion-to-sound latency stays inside the budget (§4.2). The button state gates everything: with the button up the pointer does not range and sends nothing, and the renderer is silent.
+Audio is rendered **on the wearable**; the ESP-NOW link carries data, never audio (Bluetooth audio would add 150–300 ms by protocol design — wired earphones only), so the motion-to-sound latency stays inside the budget (§4.2). The button state gates everything: with the button up the pointer does not range and sends nothing, and the renderer is silent.
 
 ### 2.2 Data flow
 
@@ -64,7 +64,7 @@ flowchart LR
     end
     subgraph wearable["Head-mounted wearable"]
         himu["Head IMU (9-DoF)"] --> hfus["Head yaw fusion (Madgwick)"]
-        mcu1 -- "BLE: d, pointer quaternion" --> geo["Relative geometry (3-D)<br/>(d, pointer & head orientation,<br/>calibrated offset) -> theta, phi, D"]
+        mcu1 -- "ESP-NOW: d, pointer quaternion" --> geo["Relative geometry (3-D)<br/>(d, pointer & head orientation,<br/>calibrated offset) -> theta, phi, D"]
         hfus --> geo
         geo --> ren["Renderer: HRTF azimuth<br/>+ carrier-pitch elevation cue<br/>+ gain g(D)"]
         ren -- "azimuth, elevation, loudness" --> spk["Stereo earphones"]
@@ -106,7 +106,7 @@ The placement quantities follow from three live measurements — the ToF range $
   D = \lVert r \rVert,
   $$
 
-  the head-to-landing distance. This never involves the head's *room* position: as the user walks toward the obstacle with the button held, the ToF range $d$ shrinks and $D$ follows in real time — proximity is carried by the ranging, not by dead-reckoned position.
+  the head-to-landing distance. Note what each symbol is: $d$ is the ToF reading — *pointer*-to-hit — but the gain keys to $D = \lVert r \rVert$, the *head*-to-hit distance obtained from $d$ through the calibrated offset $o$ and the relative aim direction $R_H^{-1}\hat{u}_P$. Keying the gain to $d$ raw would treat the pointer as the listener and overstate loudness by up to $\lVert o \rVert \approx 0.5\,\mathrm{m}$ — negligible at meters of range but several dB at close range (inverse-square: halving the distance is $+6\,\mathrm{dB}$), exactly the collision-warning regime. The distance still never involves the head's *room* position: as the user walks toward the obstacle with the button held, the ToF range $d$ shrinks and $D$ follows in real time — proximity is carried by the ranging, not by dead-reckoned position.
 
 The head's position matters only **relative to the pointer** — body geometry, captured by the calibrated offset $o$. The user's body position never enters the placement ([§1.3](#13-interaction-rule)), and neither does the head's dead-reckoned room position, which exists for telemetry only ([§2.4](#24-positioning-relative-pose-only)).
 
@@ -139,14 +139,14 @@ Placement is therefore fully self-contained: no beacons, cameras, motion capture
 
 ## 3. Hardware
 
-Everything required to **build and run** Cane — not only the electronics: the two devices' electronics, the 3D-printed structures that house them, one-time assembly/bench tools, and the evaluation hardware. Prices surveyed **2026-09-08** from Philippine retailers, in Philippine pesos (₱). Prices with a store link were verified against the listing this date; items marked *(est)* are typical Philippine-market prices to pin down at purchase time.
+Everything required to **build and run** Cane — not only the electronics: the two devices' electronics, the 3D-printed structures that house them, one-time assembly/bench tools, and the evaluation hardware. Prices surveyed **2026-09-08** from Philippine retailers, in Philippine pesos (₱); revised **2026-09-10** (wearable MCU → ESP32-S3, re-zero button, TF-Luna alternate). Prices with a store link were verified against the listing on their survey date; items marked *(est)* are typical Philippine-market prices to pin down at purchase time.
 
 ### 3.1 Pointer — electronics
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
 | 1 | ESP32-C3 SuperMini (BLE MCU) | 1 | 355 | 355 | [Circuitrocks](https://circuit.rocks/products/esp32-c3-super-mini-development-board); ₱151 on [Lazada PH](https://h5.lazada.com.ph/products/esp32-c3-development-board-esp32-c3-supermini-wifi-bluetooth-for-arduino-i4393598793.html) |
-| 2 | VL53L1X ToF rangefinder (940 nm, ~4 m) | 1 | 525 | 525 | [Shopee PH](https://shopee.ph/COD-VL53L1X-laser-sensor-module-TOF-time-of-flight-4-meter-ranging-i.1804393363.53909554436) |
+| 2 | VL53L1X ToF rangefinder (940 nm, ~4 m; alternate: TF-Luna, §3.7) | 1 | 525 | 525 | [Shopee PH](https://shopee.ph/COD-VL53L1X-laser-sensor-module-TOF-time-of-flight-4-meter-ranging-i.1804393363.53909554436) |
 | 3 | GY-9250 (MPU-9250, 9-DoF IMU) | 1 | 400 | 400 | [Lazada PH](https://www.lazada.com.ph/products/mpu9250-mpu6500-9-9-dof-16-bit-gyroscope-acceleration-magnetic-sensor-accelerator-module-iicspi-i15524063344.html) |
 | 4 | Tactile trigger button (6×6 mm) | 1 | 10 *(est)* | 10 | Lazada/Shopee PH (assortment kits) |
 | 5 | TP4056 USB-C charge board (w/ protection) | 1 | 30 | 30 | [Makerlab PH](https://makerlab.ph/products/type-c-micro-usb-5v-1a-18650-tp4056-lithium-battery-charger-module-charging-board-with-protection) |
@@ -158,14 +158,15 @@ Everything required to **build and run** Cane — not only the electronics: the 
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
-| 1 | ESP32 DevKit 38-pin (WROOM-32, I²S out) | 1 | 187 | 187 | [Lazada PH](https://s.lazada.com.ph/s.N28i1); ₱355 [Circuitrocks 30-pin CH9102](https://circuit.rocks/products/esp32-dev-board-ch9102-30-pin-micro-usb) |
+| 1 | Seeed XIAO ESP32-S3 (S3 MCU: SIMD DSP + per-core FPU, I²S out, BLE 5) | 1 | 499 | 499 | [Makerlab PH](https://makerlab.ph/products/seeed-xiao-esp32-s3-113991114) |
 | 2 | GY-9250 (MPU-9250, 9-DoF IMU) — same part as pointer | 1 | 400 | 400 | [Lazada PH](https://www.lazada.com.ph/products/mpu9250-mpu6500-9-9-dof-16-bit-gyroscope-acceleration-magnetic-sensor-accelerator-module-iicspi-i15524063344.html) |
-| 3 | MAX98357A I²S 3 W Class-D amp | 1 | 499 | 499 | [Circuitrocks (Adafruit breakout)](https://circuit.rocks/products/i2s-3w-class-d-amplifier-breakout-max98357a-adafruit); generic clones cheaper on Lazada/Shopee |
-| 4 | Stereo wired earphones, 3.5 mm (BAVIN HX820) | 1 | 118 | 118 | [Lazada PH](https://www.lazada.com.ph/products/pdp-i3057481002.html) |
+| 3 | MAX98357A I²S 3 W Class-D amp — **qty 2 required** (mono amp; one per ear, SD-pin strapped L/R) | 2 | 499 | 998 | [Circuitrocks (Adafruit breakout)](https://circuit.rocks/products/i2s-3w-class-d-amplifier-breakout-max98357a-adafruit); generic clones cheaper on Lazada/Shopee |
+| 4 | Stereo wired earphones, 3.5 mm (BAVIN HX820) — wired is mandatory (BT audio latency, §2.1) | 1 | 118 | 118 | [Lazada PH](https://www.lazada.com.ph/products/pdp-i3057481002.html) |
 | 5 | TP4056 USB-C charge board (w/ protection) | 1 | 30 | 30 | [Makerlab PH](https://makerlab.ph/products/type-c-micro-usb-5v-1a-18650-tp4056-lithium-battery-charger-module-charging-board-with-protection) |
 | 6 | 18650 Li-ion 2600 mAh cell | 1 | 185 | 185 | [Kaizen PH](https://kaizenphilippines.com/products/kaizen-3-7v-18650-2600mah-15a-rechargeable-battery-2pc-lithium-ion-battery) |
 | 7 | Misc: perfboard, wires, 3.5 mm jack breakout | — | 120 *(est)* | 120 | Lazada/Shopee PH |
-| | **Wearable subtotal** | | | **1,614** | |
+| 8 | Tactile re-zero button (6×6 mm; shares assortment kit) | 1 | 10 *(est)* | 10 | Lazada/Shopee PH |
+| | **Wearable subtotal** | | | **2,360** | |
 
 ### 3.3 Structural & mechanical
 
@@ -206,25 +207,27 @@ Everything required to **build and run** Cane — not only the electronics: the 
 | Block | ₱ |
 |---|---|
 | Pointer electronics | 1,625 |
-| Wearable electronics | 1,614 |
+| Wearable electronics | 2,360 |
 | Structural & mechanical (excl. printer) | 1,005 |
 | Assembly & bench tools | 1,070 |
 | Evaluation hardware | 500 |
-| **Subtotal (excl. printer)** | **5,814** |
-| Contingency 20% (spares, shipping, promo drift) | 1,163 |
-| **Total — print-service path** (housings quoted, ~₱1,000 *(est)*) | **≈ 8,200** |
+| **Subtotal (excl. printer)** | **6,560** |
+| Contingency 20% (spares, shipping, promo drift) | 1,312 |
+| **Total — print-service path** (housings quoted, ~₱1,000 *(est)*) | **≈ 9,100** |
 | + own printer: Creality Ender 3 V3 SE | 11,199 |
-| **Total — own-printer path** | **≈ 20,400** |
+| **Total — own-printer path** | **≈ 21,300** |
 
 The two totals differ only in how the housings are produced: quote the two small housings to a print service such as Flarelab (service fee assumed ₱1,000 *(est)*, pending quote), or buy the printer outright (Makerlab, with free-filament promo and 1-yr local warranty). A purchase decision gate — see [§9](#9-open-items).
 
 ### 3.7 Component notes
 
 - **IMU (both devices)** — GY-9250/MPU-9250 is one part number across both devices to simplify fusion. Upgrade path if P2 magnetometer fusion proves noisy in the actual room: BNO055/BNO085 (factory-fused, ~₱1,200–2,000 each) — a budget-relevant decision gate at P2.
-- **MCU alternates** — the ESP32-C3 SuperMini also lists at ₱151 on Lazada PH; wearable ESP32 DevKits have many equivalent listings in the ₱180–360 range.
-- **Amplifier** — the ₱499 line is the Adafruit breakout; generic MAX98357A modules on Lazada/Shopee are substantially cheaper — buy two, keep a spare.
-- **Ranging** — VL53L0X (2 m) is cheaper but undershoots the ~4 m room-scale task; the VL53L1X (4 m, 940 nm invisible VCSEL) is kept.
-- **Audio** — air-conduction stereo earphones preserve localization quality (Ferrand 2019; Planinec et al. 2023, see [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md)).
+- **MCU alternates** — the ESP32-C3 SuperMini also lists at ₱151 on Lazada PH; the Seeed XIAO ESP32-S3 (₱499, Makerlab PH; SIMD vector DSP + per-core FPU for the renderer, onboard LiPo charging) is the wearable reference, with ESP32-S3 SuperMini/DevKit clones (≈₱300–700 on Lazada/Shopee) as drop-in alternates.
+- **Pre-soldered ordering constraint** — P2 permits no soldering, so order every module (both MCUs, the IMUs, the ToF) with headers **pre-soldered**; verify "pre-soldered / headers attached" on the listing before checkout. Unsoldered arrivals are set aside for the P3 build.
+- **Amplifier** — the MAX98357A is a **mono** amp: binaural placement needs independent left/right channels, so **two units are required** (one per ear; each amp's SD pin is strapped to select its channel per the datasheet — verify strapping on the purchased breakout). The ₱499 line is the Adafruit breakout; generic modules on Lazada/Shopee are substantially cheaper — a third unit as spare is optional.
+- **Ranging** — VL53L0X (2 m) is cheaper but undershoots the ~4 m room-scale task; the VL53L1X (4 m, 940 nm invisible VCSEL) is kept, with the receive ROI narrowed to the central zone in firmware to tighten the hit spot at range. If P2 shows the 4 m ceiling or the default beam width limiting the course, the TF-Luna (0.2–8 m, ±6 cm < 3 m, 100 Hz default, 2° FoV, UART/I²C, 850 nm, ≈₱800–1,000 *(est)*) is the single-part alternate — verify its beam width on the datasheet at purchase.
+- **Re-zero button** — one-press yaw re-anchor at rest (pitch/roll are gravity-anchored and drift-free); turns magnetometer disturbance from a silent heading bias into a bounded user action ([§7](#7-risks-and-limitations) risk 2), and doubles as the P4 offset-calibration trigger.
+- **Audio** — air-conduction stereo earphones preserve localization quality (Ferrand 2019; Planinec et al. 2023, see [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md)); **wired output is mandatory** — Bluetooth audio adds 150–300 ms by protocol design and would break the placement latency budget ([§2.1](#21-devices)); if the faint-far floor turns hissy, a 32 Ω pair is the cheap remedy.
 - **3D printer** — the Ender 3 V3 SE (₱11,199, Makerlab PH) is listed as the reference because the concept requires the wearables to be 3D printed in-house; university/lab printer access would remove this line entirely — confirm before purchase approval.
 
 ## 4. Software
@@ -235,7 +238,7 @@ The two totals differ only in how the housings are produced: quote the two small
 |---|---|---|
 | `fusion` (Madgwick) | both | full quaternion (yaw/pitch/roll) from IMU at ~100 Hz |
 | `tof` driver | pointer | ranged readings at 20–50 Hz **while the button is held**, no-hit handling; idle otherwise |
-| `link` (BLE) | both | ship `d` + pointer quaternion → wearable at 10–30 Hz |
+| `link` (ESP-NOW) | both | connectionless WiFi peer-to-peer; ship `d` + pointer quaternion → wearable at 10–30 Hz |
 | `geometry` | wearable | $\theta$, $\phi$ (3-D direction) and $D$ (head-to-landing distance) from $d$, both orientations, and the calibrated offset; edge-case classification |
 | `renderer` | wearable | generic-HRTF azimuth + carrier-pitch elevation cue, $g(D)$ gain curve |
 | `telemetry` | wearable | relative-pose dead reckoning for logging |
@@ -246,7 +249,7 @@ The two totals differ only in how the housings are produced: quote the two small
 |---|---|
 | IMU fusion update (100 Hz) | ≤ 10 ms |
 | ToF ranging cadence (≥ 20 Hz) | ≤ 50 ms |
-| BLE link hop (≥ 10 Hz) | ≤ 10 ms |
+| ESP-NOW link hop (≥ 10 Hz) | ≤ 10 ms |
 | HRTF render per buffer (48 kHz / 128 samples) | ≤ 5 ms |
 | Total | **≤ 100 ms** |
 
@@ -267,9 +270,9 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 
 | Phase | Focus | Exit criteria | Thesis mapping |
 |---|---|---|---|
-| **P1 — Architecture freeze** | this document; component selection | parts chosen and ordered; interfaces fixed | §3.1, §3.5, §3.7 (block diagram) |
-| **P2 — Bench tests** | ToF accuracy over distance/surface; IMU orientation (yaw/pitch/roll) accuracy vs. reference; BLE rate/latency; render latency | each §4.2 stage meets budget; drift curves recorded | §3.4 (experiments), §4 (partial results) |
-| **P3 — Prototype build** | 3D print housings; integrate pointer + wearable | both devices run end-to-end in bench mode | §3.6 (details of the components) |
+| **P1 — Architecture freeze** *(complete 2026-09-08)* | this document; component selection | parts chosen and ordered; interfaces fixed | §3.1, §3.5, §3.7 (block diagram) |
+| **P2 — Bench tests** | non-permanent breadboard assembly of both devices, **zero soldering** (pre-soldered modules only); module bench tests; full-pipeline functionality on breadboards (protocol + wiring maps: [`docs/bench-tests.md`](docs/bench-tests.md)) | every §4.2 stage meets budget; end-to-end sound placement works on breadboards; drift curves recorded | §3.4 (experiments), §4 (partial results) |
+| **P3 — Prototype build** | 3D-print housings; solder the validated breadboard design into permanent assemblies; battery/switch/jack integration | both devices run end-to-end in the soldered builds with breadboard parity (§4.2) | §3.6 (details of the components) |
 | **P4 — Integration & calibration** | full pipeline walking; $g(D)$ + pointer-offset calibration; elevation-cue tuning; magnetometer disturbance checks | calibrated sound placement works on the course | §3.5, §3.8 (flowcharts) |
 | **P5 — Pilot evaluation** | blindfolded-sighted study on the room course | metrics + questionnaires collected | §4 (results and discussions) |
 | **P6 — Thesis drafting** | write-up from literature notes and P2–P5 artifacts | `paper.md` + `ieee.md` in lockstep, per [`manuscript.md`](docs/auris-thesis/manuscript.md) | §2–§5, all sections |
@@ -286,6 +289,7 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 
 ## 8. Where things live
 
+- **P2 bench protocol** — [`docs/bench-tests.md`](docs/bench-tests.md): wiring maps for both devices, power bring-up rules, and the T0–T6 test matrix with acceptance thresholds; parity re-run at P3.
 - **Literature consolidation** — [`docs/auris-thesis/literature/README.md`](docs/auris-thesis/literature/README.md): 44 verified annotated entries across 7 themes; feeds thesis §2.
 - **Thesis skeleton** — [`docs/auris-thesis/paper.md`](docs/auris-thesis/paper.md) (APA twin) and [`docs/auris-thesis/ieee.md`](docs/auris-thesis/ieee.md) (IEEE twin); conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md).
 - **Session context** — [`.opencode/concept.md`](.opencode/concept.md) and [`.opencode/plan.md`](.opencode/plan.md) point here as the canonical source; raw requirements in [`.opencode/new.md`](.opencode/new.md); standing rules in [`.opencode/instruction.md`](.opencode/instruction.md).
