@@ -270,7 +270,7 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 
 | Phase | Focus | Exit criteria | Thesis mapping |
 |---|---|---|---|
-| **P1 — Architecture freeze** *(complete 2026-09-08)* | this document; component selection | parts chosen and ordered; interfaces fixed | §3.1, §3.5, §3.7 (block diagram) |
+| **P1 — Architecture freeze** *(complete 2026-09-08)* | this document; component selection | parts chosen and ordered; interfaces fixed | §3.2, §3.5, §3.7 (block diagram) |
 | **P2 — Bench tests** | non-permanent breadboard assembly of both devices, **zero soldering** (pre-soldered modules only); module bench tests; full-pipeline functionality on breadboards (protocol + wiring maps: [`docs/bench-tests.md`](docs/bench-tests.md)) | every §4.2 stage meets budget; end-to-end sound placement works on breadboards; drift curves recorded | §3.4 (experiments), §4 (partial results) |
 | **P3 — Prototype build** | 3D-print housings; solder the validated breadboard design into permanent assemblies; battery/switch/jack integration | both devices run end-to-end in the soldered builds with breadboard parity (§4.2) | §3.6 (details of the components) |
 | **P4 — Integration & calibration** | full pipeline walking; $g(D)$ + pointer-offset calibration; elevation-cue tuning; magnetometer disturbance checks | calibrated sound placement works on the course | §3.5, §3.8 (flowcharts) |
@@ -292,10 +292,11 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 - **Achievability statement** — [`docs/achievability.md`](docs/achievability.md): the standing justification that hit-sound placement is exact, head-relative, and fully self-contained; the perceptual-cue evidence base, the error budget, and the C1–C10 caveat ledger with falsifiability gates.
 - **P2 bench protocol** — [`docs/bench-tests.md`](docs/bench-tests.md): wiring maps for both devices, power bring-up rules, and the T0–T6 test matrix with acceptance thresholds; parity re-run at P3.
 - **Literature consolidation** — [`docs/auris-thesis/literature/README.md`](docs/auris-thesis/literature/README.md): 44 verified annotated entries across 7 themes; feeds thesis §2.
+- **Thesis writing plan** — [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md): the section→content→phase drafting plan for the thesis twins, with the measurable-outcomes spine (built 2026-09-11; conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md)).
 - **Thesis skeleton** — [`docs/auris-thesis/paper.md`](docs/auris-thesis/paper.md) (APA twin) and [`docs/auris-thesis/ieee.md`](docs/auris-thesis/ieee.md) (IEEE twin); conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md).
 - **Session context** — [`.opencode/concept.md`](.opencode/concept.md) and [`.opencode/plan.md`](.opencode/plan.md) point here as the canonical source; raw requirements in [`.opencode/new.md`](.opencode/new.md); standing rules in [`.opencode/instruction.md`](.opencode/instruction.md).
 
 ## 9. Open items
 
 - **Budget & purchase approval** — full hardware requirements with Philippine-market pricing are complete in [§3](#3-hardware) (researched 2026-09-08); the remaining open items are the own-printer vs. print-service decision and the purchase-approval sign-off itself.
-- **Thesis writing schedule** — section→phase drafting schedule to be rebuilt in [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md) once P1 is frozen.
+- **Thesis writing schedule** — resolved 2026-09-11: the section→phase drafting plan is in [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md), integrated with the phase exits above.
