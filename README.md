@@ -255,6 +255,15 @@ The two totals differ only in how the housings are produced: quote the two small
 
 Bench tests for each stage are P2 exit criteria (§6).
 
+### 4.3 EDA toolchain (KiCad and MCP)
+
+The electronics of both devices are designed in **KiCad** (`kicad-cli` 10.0.6 on the build machine; toolchain decision 2026-09-15), one project per device under [`electronics/`](electronics/):
+
+- [`electronics/cane-wearable/`](electronics/cane-wearable/) — the cane-concept **head-mounted wearable** board ([§3.2](#32-wearable--electronics): ESP32-S3, 9-DoF IMU, 2× MAX98357A stereo I²S out, power)
+- [`electronics/cane-pointer/`](electronics/cane-pointer/) — the cane-concept **handheld pointer** board ([§3.1](#31-pointer--electronics): ESP32-C3, 9-DoF IMU, VL53L1X ToF, trigger button, power)
+
+AI-assisted design runs through the **[mcp-server-kicad](https://github.com/ProductOfAmerica/mcp-server-kicad)** MCP server (109 tools, MIT; wired into this repo's opencode config as `mcp.kicad`): schematic capture, PCB layout, ERC/DRC via `kicad-cli`, and manufacturing exports. Ground rules: the AI drafts and checks, but every design is **reviewed by a human in the KiCad GUI before anything is fabricated** — ERC/DRC reports are generated artifacts, not review substitutes. Schematic and layout figures for the thesis ([`docs/auris-thesis/README.md` §3](docs/auris-thesis/README.md)) are exported from these projects.
+
 ## 5. Evaluation plan
 
 Paradigm justified by the consolidated literature ([`docs/auris-thesis/literature/07-evaluation-methodology.md`](docs/auris-thesis/literature/07-evaluation-methodology.md)):
@@ -291,6 +300,7 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 
 - **Achievability statement** — [`docs/achievability.md`](docs/achievability.md): the standing justification that hit-sound placement is exact, head-relative, and fully self-contained; the perceptual-cue evidence base, the error budget, and the C1–C10 caveat ledger with falsifiability gates.
 - **P2 bench protocol** — [`docs/bench-tests.md`](docs/bench-tests.md): wiring maps for both devices, power bring-up rules, and the T0–T6 test matrix with acceptance thresholds; parity re-run at P3.
+- **Electronics designs** — [`electronics/`](electronics/): one KiCad project per device ([cane-wearable](electronics/cane-wearable/), [cane-pointer](electronics/cane-pointer/)), AI-assisted through the toolchain in [§4.3](#43-eda-toolchain-kicad-and-mcp).
 - **Literature consolidation** — [`docs/auris-thesis/literature/README.md`](docs/auris-thesis/literature/README.md): 44 verified annotated entries across 7 themes; feeds thesis §2.
 - **Thesis writing plan** — [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md): the section→content→phase drafting plan for the thesis twins, with the measurable-outcomes spine (built 2026-09-11; conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md)).
 - **Thesis skeleton** — [`docs/auris-thesis/paper.md`](docs/auris-thesis/paper.md) (APA twin) and [`docs/auris-thesis/ieee.md`](docs/auris-thesis/ieee.md) (IEEE twin); conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md).

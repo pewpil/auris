@@ -10,6 +10,14 @@
     ".opencode/man.md",
     ".opencode/coding.md",
   ],
+  "mcp": {
+    "kicad": {
+      "type": "local",
+      "command": ["mcp-server-kicad"],
+      "enabled": true,
+      "timeout": 120000,
+    },
+  },
   "provider": {
     "opencode-go": {
       "name": "OpenCode Go",
