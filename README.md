@@ -17,8 +17,9 @@ The user is visually impaired — or a blindfolded sighted person replicating on
 
 1. **Head-mounted wearable** (3D-printed, worn on the user's head):
 - extracts the user's **head position and orientation**;
-- carries the **audio apparatus** (stereo earphones) that broadcasts spatialized sound to the user's ears.
-2. **Handheld pointer** (its own device): shoots an **invisible laser** toward obstacles and measures **where the shot lands** (hit distance, via time-of-flight ranging). A **press-and-hold button** gates the laser: it fires — and ranging runs — only while the button is held, and stops the moment it is released.
+- carries the **audio apparatus** (stereo earphones) that broadcasts spatialized sound to the user's ears;
+- carries the **pointer-tracking stack** (added 2026-09-15): wide-FOV RGB cameras left and right of the head with onboard computer vision, plus an ultra-wideband (UWB) radio — the pointer's pose is measured live and feeds the placement ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)).
+2. **Handheld pointer** (its own device): shoots an **invisible laser** toward obstacles and measures **where the shot lands** (hit distance, via time-of-flight ranging). A **press-and-hold button** gates the laser: it fires — and ranging runs — only while the button is held, and stops the moment it is released. An upgrade-path **UWB tag** on the pointer completes the tracking pair ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)).
 
 ### 1.3 Interaction rule
 
@@ -45,11 +46,11 @@ In all rows the loudness follows the head-to-landing distance (far → faint, ne
 
 | Device | Roles | Core parts |
 |---|---|---|
-| **Pointer** (handheld) | ranging + its own orientation; press-and-hold trigger | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), trigger button, battery, 3D-printed shell |
-| **Wearable** (head) | head pose + audio output | ESP32-class MCU, 9-DoF IMU, stereo earphones, battery, 3D-printed shell |
-| **Link** | pointer → wearable data | ESP-NOW (connectionless WiFi peer-to-peer), payload = hit distance + pointer orientation (quaternion) |
+| **Pointer** (handheld) | ranging + its own orientation; press-and-hold trigger | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), trigger button, battery, 3D-printed shell, UWB tag (upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
+| **Wearable** (head) | head pose + audio output + pointer tracking | ESP32-class MCU, 9-DoF IMU, stereo earphones, battery, 3D-printed shell, wide-FOV RGB cameras ×2 + UWB anchor (pointer-tracking upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
+| **Link** | pointer → wearable data | ESP-NOW (connectionless WiFi peer-to-peer), payload = hit distance + pointer orientation (quaternion); UWB ranging pair (upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
 
-Audio is rendered **on the wearable**; the ESP-NOW link carries data, never audio (Bluetooth audio would add 150–300 ms by protocol design — wired earphones only), so the motion-to-sound latency stays inside the budget (§4.2). The button state gates everything: with the button up the pointer does not range and sends nothing, and the renderer is silent.
+Audio is rendered **on the wearable**; the ESP-NOW link carries data, never audio (Bluetooth audio would add 150–300 ms by protocol design — wired earphones only), so the motion-to-sound latency stays inside the budget (§4.2). The button state gates everything: with the button up the pointer does not range and sends nothing, and the renderer is silent. The pointer-tracking upgrade ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) adds a second, fully on-body sensing path — cameras plus UWB — that refines the pointer's pose; it changes no audio path.
 
 ### 2.2 Data flow
 
@@ -59,15 +60,22 @@ flowchart LR
         pimu["Pointer IMU (9-DoF)"] --> pfus["Pointer yaw fusion (Madgwick)"]
         tof["ToF rangefinder<br/>(VL53L1X, 940 nm)"] --> dist["Hit distance d"]
         btn["Trigger button<br/>(press-and-hold)"] --> mcu1["Pointer MCU (ESP32-C3)"]
+        uwbt["UWB tag (upgrade)"]
         pfus --> mcu1
         dist --> mcu1
     end
     subgraph wearable["Head-mounted wearable"]
         himu["Head IMU (9-DoF)"] --> hfus["Head yaw fusion (Madgwick)"]
-        mcu1 -- "ESP-NOW: d, pointer quaternion" --> geo["Relative geometry (3-D)<br/>(d, pointer & head orientation,<br/>calibrated offset) -> theta, phi, D"]
+        camL["Wide-FOV camera (left)"] --> cv["Pointer CV track<br/>(fiducial, 15-30 Hz)"]
+        camR["Wide-FOV camera (right)"] --> cv
+        uwbw["UWB anchor (wearable)"] --> src["Tracking source select<br/>(vision -> UWB+IMU -> nominal offset)"]
+        cv --> src
+        mcu1 -- "ESP-NOW: d, pointer quaternion" --> geo["Relative geometry (3-D)<br/>(d, pointer & head orientation,<br/>live or nominal pose) -> theta, phi, D"]
+        src -- "pointer pose, measured or nominal" --> geo
         hfus --> geo
         geo --> ren["Renderer: HRTF azimuth<br/>+ carrier-pitch elevation cue<br/>+ gain g(D)"]
         ren -- "azimuth, elevation, loudness" --> spk["Stereo earphones"]
+        uwbt -. "UWB range" .-> uwbw
     end
 ```
 
@@ -82,7 +90,7 @@ flowchart LR
   \;=\; o + d\,R_H^{-1}\,\hat{u}_P
   $$
 
-  where $R_H$ is the head's full rotation and $o = R_H^{-1}(p_P - p_H)$ is the pointer's offset from the head expressed in the head frame — handled as a **calibrated 3-D constant** (nominal handheld position: forward, lateral, and below the head) rather than tracked, since rigid-body hand tracking is out of scope for an IMU-only build ([§2.4](#24-positioning-relative-pose-only)). Note that two IMUs alone cannot measure their separation: inertial position is double-integrated acceleration whose bias error grows quadratically, and the *difference* of two drifting estimates drifts faster still (Harle 2013; Foxlin 2005, [§5 lit](docs/auris-thesis/literature/05-head-pose-sensing.md)). IMUs give reliable relative **orientation** — yaw *and* pitch — not distance; so the fixed offset is calibrated once.
+  where $R_H$ is the head's full rotation and $o = R_H^{-1}(p_P - p_H)$ is the pointer's offset from the head expressed in the head frame — handled as a **calibrated 3-D constant** (nominal handheld position: forward, lateral, and below the head) rather than tracked, since rigid-body hand tracking is out of scope for an IMU-only build ([§2.4](#24-positioning-relative-pose-only)). Note that two IMUs alone cannot measure their separation: inertial position is double-integrated acceleration whose bias error grows quadratically, and the *difference* of two drifting estimates drifts faster still (Harle 2013; Foxlin 2005, [§5 lit](docs/auris-thesis/literature/05-head-pose-sensing.md)). IMUs give reliable relative **orientation** — yaw *and* pitch — not distance; so the fixed offset is calibrated once. The pointer-tracking upgrade ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) lifts exactly this restriction in the extended build: with the pointer in camera view, $p_P$ — and with it the offset — is **measured live**, and the calibrated constant remains the fallback tier.
 
 The placement quantities follow from three live measurements — the ToF range $d$ and both devices' full orientation — plus the one calibrated constant $o$. The exact computation runs on the full rotation matrices ($R_H$ and the pointer's fused orientation); the yaw- and pitch-difference forms quoted below are first-order intuition only. Because $o$ is known, the placement is exact for the calibrated pose; the residual error is only grip/pose variation ([§7](#7-risks-and-limitations)). The renderer recomputes all three on every update, so the sound moves continuously as the user turns, nods, tilts, walks, or re-aims the pointer:
 
@@ -133,9 +141,22 @@ The wearable's head **position** comes from IMU dead reckoning only — no room 
 | Pointer orientation (quaternion) | pointer's own 9-DoF IMU, fused onboard | none |
 | ToF range $d$ | VL53L1X on the pointer | none — active ranging |
 | Head-to-pointer offset $o$ | one-time calibration (body geometry) | none |
+| Pointer pose $p_P$ (upgrade tier, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) | left/right wide-FOV cameras (CV fiducial) + UWB ranging pair | none — on-body sensors |
 | Head room position | head-IMU dead reckoning | none — telemetry only, never used for placement |
 
-Placement is therefore fully self-contained: no beacons, cameras, motion capture, UWB anchors, or room instrumentation participate in it. The remaining accuracy threats (magnetometer disturbance, grip/pose variation) are internal and are mitigated onboard — see [§7](#7-risks-and-limitations); they never motivate external aiding.
+Placement is therefore fully self-contained: no beacons, room cameras, motion capture, UWB anchors, or room instrumentation participate in it — the pointer-tracking upgrade's cameras and UWB pair are carried by the two devices themselves ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)), so nothing external is introduced. The remaining accuracy threats (magnetometer disturbance, grip/pose variation) are internal and are mitigated onboard — see [§7](#7-risks-and-limitations); they never motivate external aiding.
+
+### 2.5 Pointer tracking stack (vision, UWB, IMU)
+
+The frozen placement ([§2.3](#23-coordinate-frames-and-sound-placement)) treats the pointer's position as a calibrated constant — exact at the calibrated grip, perturbed by grip and pose variation (±15 cm horizontal, up to ~±0.3 m vertical; [§7](#7-risks-and-limitations) risk 7). The pointer-tracking upgrade strengthens the **life realism of the sound projection**: when the pointer's pose is measured live, the sound lands exactly where the laser hit, not where the calibration assumed the hand was. Everything stays on the two devices — wide-FOV RGB cameras and a UWB radio on the wearable, a UWB tag on the pointer — so nothing external is introduced and the self-containment audit above still holds. The pointer's **orientation** keeps coming from its own IMU over ESP-NOW; the cameras and UWB refine its **position**, which is precisely the input the constant $o$ stood in for.
+
+Three tiers feed the placement — only the source of $p_P$ (and with it the live offset $o = R_H^{-1}(p_P - p_H)$) changes between them:
+
+1. **Vision (primary)** — two wide-FOV RGB cameras sit left and right of the user's head; onboard computer vision localizes the pointer (a small high-contrast fiducial pattern on the pointer shell) at 15–30 Hz whenever it is inside their field of view. The head-flanking pair covers the forward hemisphere; a pointer behind the user is out of view by construction — which is exactly when the next tier takes over.
+2. **UWB + IMU (fallback)** — when the pointer leaves the cameras' field of view, the wearable–pointer UWB ranging pair supplies the head-to-pointer distance which, combined with the pointer's IMU orientation and the nominal offset direction, re-anchors $p_P$ far better than the constant alone.
+3. **Nominal offset (last resort)** — if UWB is also unavailable (body blockage, NLOS), the frozen scheme runs unchanged: calibrated constant $o$, both IMU orientations, ToF range $d$ ([§2.3](#23-coordinate-frames-and-sound-placement)).
+
+Tier selection is explicit: every sound update's telemetry records which tier produced the pose that drove it, so the study can quantify how often each tier served and how placement error varies per tier — the realism gain is measured, not assumed. Tier switching must be transparent (no perceptible placement jump at a switch — P4/P5 validation, [§7](#7-risks-and-limitations) risk 9). The motion-to-sound budget ([§4.2](#42-latency-budget-motion-to-sound-target--100-ms)) is unchanged: the ToF → ESP-NOW → render path is untouched, and tracking latency degrades placement accuracy, never sound freshness. Integration: the tiers are **validated on the breadboards at P2** (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and **tuned with the placement at P4** — before the soldered build, so a tracking-tier failure forces its design decision cheaply ([§9](#9-open-items)); the upgrade hardware is priced in [§3.8](#38-pointer-tracking-upgrade--extras-bom).
 
 ## 3. Hardware
 
@@ -230,6 +251,18 @@ The two totals differ only in how the housings are produced: quote the two small
 - **Audio** — air-conduction stereo earphones preserve localization quality (Ferrand 2019; Planinec et al. 2023, see [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md)); **wired output is mandatory** — Bluetooth audio adds 150–300 ms by protocol design and would break the placement latency budget ([§2.1](#21-devices)); if the faint-far floor turns hissy, a 32 Ω pair is the cheap remedy.
 - **3D printer** — the Ender 3 V3 SE (₱11,199, Makerlab PH) is listed as the reference because the concept requires the wearables to be 3D printed in-house; university/lab printer access would remove this line entirely — confirm before purchase approval.
 
+### 3.8 Pointer-tracking upgrade — extras BOM
+
+Hardware for the tracking stack in [§2.5](#25-pointer-tracking-stack-vision-uwb-imu) — on-body only, so the self-containment audit ([§2.4](#24-positioning-relative-pose-only)) still holds. Integrated at **P2** (breadboard validation, T7–T8 in [`docs/bench-tests.md`](docs/bench-tests.md)), tuned at P4. These parts are **excluded from the [§3.6](#36-totals) totals** but ride the P2 purchase list — include them in the purchase approval ([§9](#9-open-items)); all prices *(est)* — pin at purchase. Ordering follows the same pre-soldered rule as everything else ([§3.7](#37-component-notes)). Board-level note: the ESP32-S3 exposes a single DVP camera interface — two head cameras need a mux, alternate-frame capture on one port, a DevKit-class board, or a camera co-processor, and UWB needs an SPI bus; the T7/T8 gate settles this (risk 8).
+
+| # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
+|---|---|---|---|---|---|
+| 1 | Wide-FOV RGB camera module (M12 lens, ≥ 150° FoV, e.g., OV5640 class; ESP32-S3 DVP-compatible) | 2 | 300–700 *(est)* | 600–1,400 | Lazada/Shopee PH — verify FoV, low-light behavior, and DVP compatibility on the datasheet |
+| 2 | UWB transceiver module (DW1000 class, e.g., DWM1000; DW3000-class alternate) | 2 | 1,200–2,500 *(est)* | 2,400–5,000 | Lazada/Shopee PH — pin exact module, range, and update rate at purchase |
+| 3 | Pointer fiducial set (printed high-contrast pattern on the shell) | 1 | 50 *(est)* | 50 | in-house print |
+| 4 | Camera mounts, flex/PD cables, wiring | — | 150 *(est)* | 150 | Lazada/Shopee PH |
+| | **Upgrade subtotal (est)** | | | **≈ 3,200–6,600** | |
+
 ## 4. Software
 
 ### 4.1 Firmware modules
@@ -242,6 +275,11 @@ The two totals differ only in how the housings are produced: quote the two small
 | `geometry` | wearable | $\theta$, $\phi$ (3-D direction) and $D$ (head-to-landing distance) from $d$, both orientations, and the calibrated offset; edge-case classification |
 | `renderer` | wearable | generic-HRTF azimuth + carrier-pitch elevation cue, $g(D)$ gain curve |
 | `telemetry` | wearable | relative-pose dead reckoning for logging |
+| `pointer-track` (CV) ✚ | wearable | localizes the pointer from the left/right wide-FOV cameras (fiducial) at 15–30 Hz while in view; yields a measured $p_P$ for [§2.3](#23-coordinate-frames-and-sound-placement) |
+| `uwb-range` ✚ | both | wearable–pointer UWB ranging for the fallback tier |
+| `track-source` ✚ | wearable | tier selection (vision → UWB + IMU → nominal offset, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)); records the active tier in every sound-update telemetry record |
+
+✚ rows belong to the pointer-tracking upgrade; they are validated at P2 (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and tuned at P4 — the frozen core pipeline is unchanged.
 
 ### 4.2 Latency budget (motion-to-sound, target ≤ 100 ms)
 
@@ -280,7 +318,7 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 | Phase | Focus | Exit criteria | Thesis mapping |
 |---|---|---|---|
 | **P1 — Architecture freeze** *(complete 2026-09-08)* | this document; component selection | parts chosen and ordered; interfaces fixed | §3.2, §3.5, §3.7 (block diagram) |
-| **P2 — Bench tests** | non-permanent breadboard assembly of both devices, **zero soldering** (pre-soldered modules only); module bench tests; full-pipeline functionality on breadboards (protocol + wiring maps: [`docs/bench-tests.md`](docs/bench-tests.md)) | every §4.2 stage meets budget; end-to-end sound placement works on breadboards; drift curves recorded | §3.4 (experiments), §4 (partial results) |
+| **P2 — Bench tests** | non-permanent breadboard assembly of both devices, **zero soldering** (pre-soldered modules only); module bench tests; full-pipeline functionality on breadboards (protocol + wiring maps: [`docs/bench-tests.md`](docs/bench-tests.md)); **plus the pointer-tracking tiers ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu))** — camera/CV and UWB modules on the breadboards under the same pre-soldered rule, T7–T8 gates, module and board-level choices pinned at the gate | every §4.2 stage meets budget; end-to-end sound placement works on breadboards; drift curves recorded; **T7–T8 (tracking tiers) pass** | §3.4 (experiments), §4 (partial results) |
 | **P3 — Prototype build** | 3D-print housings; solder the validated breadboard design into permanent assemblies; battery/switch/jack integration | both devices run end-to-end in the soldered builds with breadboard parity (§4.2) | §3.6 (details of the components) |
 | **P4 — Integration & calibration** | full pipeline walking; $g(D)$ + pointer-offset calibration; elevation-cue tuning; magnetometer disturbance checks | calibrated sound placement works on the course | §3.5, §3.8 (flowcharts) |
 | **P5 — Pilot evaluation** | blindfolded-sighted study on the room course | metrics + questionnaires collected | §4 (results and discussions) |
@@ -295,11 +333,13 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 5. **ToF surface behaviors** — glass, dark, or highly reflective targets and strong ambient IR degrade returns (VL53L1X datasheet, vendor footnote). Mitigation: P2 surface matrix before committing to the course props.
 6. **Loudness ≠ linear distance** — perceived loudness is nonlinear; the $g(D)$ head-to-landing curve is calibrated empirically in P4 rather than assumed.
 7. **Handheld offset is not truly constant** — the calibrated head-to-pointer constant assumes a nominal pose; extending or tucking the arm, and raising/lowering it to aim up or down at stairs, shifts the offset (±15 cm horizontal, up to ~±0.3 m vertical), perturbing $D$, $\theta$, and $\phi$ ([§2.3](#23-coordinate-frames-and-sound-placement)). Mitigation: calibrate at a natural grip in P4; keep $g(D)$ and the elevation pitch spread gradual so offset variation is a small perceptual change; observe real-pose variation in P5.
+8. **CV tracking compute on the wearable** — the pointer-tracking upgrade ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) adds two camera streams and fiducial detection to the same ESP32-S3 that renders audio; contention can push render buffers past the ≤ 5 ms/buffer gate into underruns. Mitigation: QVGA mono frames, fiducial (not learned) detection at 15–30 Hz, tracking on a task with priority below the audio path — tracking latency degrades placement accuracy, never sound freshness; the P2 T7 co-residence gate decides the board-level answer (mux / alternate frames / DevKit-class board / camera co-processor) before the soldered build ([§6](#6-development-phases)).
+9. **Tracking tiers must degrade gracefully** — the cameras cover the forward hemisphere only (fast head swings and behind-body aiming are out of view by construction), and UWB ranges degrade when body-blocked (NLOS). Mitigation: the explicit three-tier fallback ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) with the active tier in every sound-update telemetry record; P2 validates the switch logic on the bench (T8), and P4/P5 validate that a switch is never audible as a placement jump.
 
 ## 8. Where things live
 
 - **Achievability statement** — [`docs/achievability.md`](docs/achievability.md): the standing justification that hit-sound placement is exact, head-relative, and fully self-contained; the perceptual-cue evidence base, the error budget, and the C1–C10 caveat ledger with falsifiability gates.
-- **P2 bench protocol** — [`docs/bench-tests.md`](docs/bench-tests.md): wiring maps for both devices, power bring-up rules, and the T0–T6 test matrix with acceptance thresholds; parity re-run at P3.
+- **P2 bench protocol** — [`docs/bench-tests.md`](docs/bench-tests.md): wiring maps for both devices, power bring-up rules, and the T0–T8 test matrix with acceptance thresholds (T7–T8 = the tracking-tier gates); parity re-run at P3.
 - **Electronics designs** — [`electronics/`](electronics/): one KiCad project per device ([cane-wearable](electronics/cane-wearable/), [cane-pointer](electronics/cane-pointer/)), AI-assisted through the toolchain in [§4.3](#43-eda-toolchain-kicad-and-mcp).
 - **Literature consolidation** — [`docs/auris-thesis/literature/README.md`](docs/auris-thesis/literature/README.md): 44 verified annotated entries across 7 themes; feeds thesis §2.
 - **Thesis writing plan** — [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md): the section→content→phase drafting plan for the thesis twins, with the measurable-outcomes spine (built 2026-09-11; conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md)).
@@ -308,5 +348,6 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 
 ## 9. Open items
 
-- **Budget & purchase approval** — full hardware requirements with Philippine-market pricing are complete in [§3](#3-hardware) (researched 2026-09-08); the remaining open items are the own-printer vs. print-service decision and the purchase-approval sign-off itself.
+- **Budget & purchase approval** — full hardware requirements with Philippine-market pricing are complete in [§3](#3-hardware) (researched 2026-09-08); the remaining open items are the own-printer vs. print-service decision and the purchase-approval sign-off itself; the pointer-tracking extras ([§3.8](#38-pointer-tracking-upgrade--extras-bom), ≈ ₱3,200–6,600 *(est)*) now ride the P2 purchase list.
 - **Thesis writing schedule** — resolved 2026-09-11: the section→phase drafting plan is in [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md), integrated with the phase exits above.
+- **Pointer-tracking upgrade** — integration point decided: the tiers validate on the breadboards at **P2** (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and are tuned at P4 with the placement. Remaining pins before the P2 purchase approval: the ESP32-S3 DVP strategy (mux / alternate-frame capture / DevKit-class board / camera co-processor — risk 8), the fiducial scheme, and the UWB module (DW1000/DW3000 class); extras ≈ ₱3,200–6,600 *(est)* ride the P2 list, outside the [§3.6](#36-totals) totals.

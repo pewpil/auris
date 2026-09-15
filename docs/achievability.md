@@ -49,7 +49,7 @@ The deeper point is that **external aiding could not improve the placement even 
 
 ## 5. Latency and compute achievability
 
-- The motion-to-sound budget is ≤100 ms across five stages ([§4.2](../README.md#42-latency-budget-motion-to-sound-target--100-ms)): fusion ≤10 ms, ToF cadence ≤50 ms, ESP-NOW hop ≤10 ms, render ≤5 ms per 48 kHz/128-sample buffer. Each stage's bench gate is a P2 exit criterion with concrete thresholds ([`bench-tests.md`](bench-tests.md) T0–T6).
+- The motion-to-sound budget is ≤100 ms across five stages ([§4.2](../README.md#42-latency-budget-motion-to-sound-target--100-ms)): fusion ≤10 ms, ToF cadence ≤50 ms, ESP-NOW hop ≤10 ms, render ≤5 ms per 48 kHz/128-sample buffer. Each stage's bench gate is a P2 exit criterion with concrete thresholds ([`bench-tests.md`](bench-tests.md) T0–T8).
 - The link choice is latency-motivated: BLE connection intervals and their jitter threaten the budget audibly (placement *wobble* reads as unreality), while connectionless ESP-NOW at ~2–8 ms one-way keeps the ≤10 ms stage with margin; Bluetooth *audio* is categorically excluded (150–300 ms by protocol) and the design mandates wired earphones ([§2.1](../README.md#21-devices)).
 - The wearable MCU is sized for the renderer: the ESP32-S3's SIMD vector DSP and per-core FPU run stereo HRTF filtering + the carrier-pitch cue + gain inside the per-buffer budget with headroom for later realism additions (e.g., a distance low-pass); render CPU load is gated at P2 (T4: ≤5 ms p99, zero underruns over 10 min).
 - Residual latency is *perceivable but honest*: ~100 ms reads as a responsive reflector, not as a broken causal link; the sweep test (T5) verifies placement tracks a moving aim without jumps.
