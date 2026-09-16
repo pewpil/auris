@@ -28,12 +28,12 @@ Each stage lands in **both twins** in the same pass (drafting order and stage nu
 |---|---|---|
 | Stage W1 — Review of Related Literature | §2 (2.1–2.8) | Sep 17 – Oct 10, 2026 |
 | Stage W2 — The Problem and Its Setting | §1 (1.1–1.6) | Oct 5 – 24, 2026 |
-| Stage W3 — Methodology design text | §3.1–§3.4 | Oct 19 – Nov 14, 2026 |
-| Stage W4 — system-design sections | §3.2, §3.5, §3.7, §3.8 (§3.6 opened) | Oct 26 – Nov 14, 2026 |
-| Stage W5 — bench-validation results | §4.1 + §3.4 E1 confirmation | Oct 26 – Nov 7, 2026 |
-| Stage W6 — build details | §3.6 | Nov 9 – 21, 2026 |
+| Stage W3 — Methodology design text | §3.1–§3.1.3 | Oct 19 – Nov 14, 2026 |
+| Stage W4 — system-design sections | §3.1.1, §3.1.4, §3.1.6, §3.1.7 (§3.1.5 opened) | Oct 26 – Nov 14, 2026 |
+| Stage W5 — bench-validation results | §4.1 + §3.1.3 E1 confirmation | Oct 26 – Nov 7, 2026 |
+| Stage W6 — build details | §3.1.5 | Nov 9 – 21, 2026 |
 | Stage W7 — calibration results | §4.2 + threshold revisit + comparison-arm gate decision | Nov 30 – Dec 11, 2026 |
-| Stage W8a — assemble the full pre-oral draft | §3.3 finalize; §4.3–§4.5 in-progress; §5 provisional; front matter, `Refrences`, `Appendices` drafts | Nov 30 – Dec 10, 2026 |
+| Stage W8a — assemble the full pre-oral draft | §3.1.2 finalize; §4.3–§4.5 in-progress; §5 provisional; front matter, `Refrences`, `Appendices` drafts | Nov 30 – Dec 10, 2026 |
 | **Pre-oral defense** | the full paper | **Fri Dec 11, 2026** |
 | Panel-revision window | pre-oral feedback folded into §1–§3 | Dec 14, 2026 – Jan 15, 2027 |
 | Stage W8b — human-study results and conclusions | §4.3–§4.5 + §5 final | Feb 15 – Mar 5, 2027 |
@@ -68,10 +68,10 @@ gantt
     section Thesis writing
     Write §2 Review of Related Literature (both twins) :t1, 2026-09-17, 2026-10-10
     Write §1 The Problem and Its Setting       :t2, 2026-10-05, 2026-10-24
-    Write §3.1–§3.4 Methodology design text    :t3, 2026-10-19, 2026-11-14
-    Write §3.2 §3.5 §3.7 §3.8 system-design sections :t4, 2026-10-26, 2026-11-14
+    Write §3.1–§3.1.3 Methodology design text  :t3, 2026-10-19, 2026-11-14
+    Write §3.1.1 §3.1.4 §3.1.6 §3.1.7 system-design sections :t4, 2026-10-26, 2026-11-14
     Write §4.1 bench-validation results        :t5, 2026-10-26, 2026-11-07
-    Write §3.6 build details                   :t6, 2026-11-09, 2026-11-21
+    Write §3.1.5 build details                 :t6, 2026-11-09, 2026-11-21
     Write §4.2 calibration results + threshold revisit :t7, 2026-11-30, 2026-12-11
     Assemble the full pre-oral draft           :t8, 2026-11-30, 2026-12-10
     Pre-oral defense                           :milestone, m1, 2026-12-11, 0d
