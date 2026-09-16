@@ -1,9 +1,0 @@
-# KiCad working artifacts (regenerable; the design files themselves are tracked)
-*_autosave-*
-*-bak
-*.bak
-*-backups/
-fp-info-cache
-~*.lck
-*-erc.json
-*.kicad_prl
