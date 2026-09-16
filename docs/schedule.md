@@ -45,7 +45,7 @@ Track coupling: the bench-validation write-up consumes the breadboard phase; the
 ## 4. Gantt
 
 ```mermaid
-%%{init: {"gantt": {"topAxis": true}} }%%
+%%{init: {"gantt": {"topAxis": true, "useWidth": 2400, "useMaxWidth": false}} }%%
 gantt
     title Cane — system development and thesis writing (pre-oral Dec 11 2026, final Apr 20 2027)
     dateFormat YYYY-MM-DD
