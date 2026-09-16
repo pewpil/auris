@@ -46,7 +46,7 @@ In all rows the loudness follows the head-to-landing distance (far → faint, ne
 
 | Device | Roles | Core parts |
 |---|---|---|
-| **Pointer** (handheld) | ranging + its own orientation; press-and-hold trigger | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), trigger button, battery, 3D-printed shell, UWB tag (upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
+| **Pointer** (handheld) | ranging + its own orientation; press-and-hold trigger | ESP32-C3-class MCU, 9-DoF IMU, VL53L1X ToF (invisible 940 nm, up to ~4 m), trigger button, battery, 3D-printed shell, UWB tag + tracking beacon (2× LED) (upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
 | **Wearable** (head) | head pose + audio output + pointer tracking | ESP32-class MCU, 9-DoF IMU, stereo earphones, battery, 3D-printed shell, wide-FOV RGB cameras ×2 + UWB anchor (pointer-tracking upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
 | **Link** | pointer → wearable data | ESP-NOW (connectionless WiFi peer-to-peer), payload = hit distance + pointer orientation (quaternion); UWB ranging pair (upgrade, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) |
 
@@ -61,12 +61,13 @@ flowchart LR
         tof["ToF rangefinder<br/>(VL53L1X, 940 nm)"] --> dist["Hit distance d"]
         btn["Trigger button<br/>(press-and-hold)"] --> mcu1["Pointer MCU (ESP32-C3)"]
         uwbt["UWB tag (upgrade)"]
+        beacon["Tracking beacon (2× LED, upgrade)"]
         pfus --> mcu1
         dist --> mcu1
     end
     subgraph wearable["Head-mounted wearable"]
         himu["Head IMU (9-DoF)"] --> hfus["Head yaw fusion (Madgwick)"]
-        camL["Wide-FOV camera (left)"] --> cv["Pointer CV track<br/>(fiducial, 15-30 Hz)"]
+        camL["Wide-FOV camera (left)"] -->         cv["Pointer CV track<br/>(beacon, 15-30 Hz)"]
         camR["Wide-FOV camera (right)"] --> cv
         uwbw["UWB anchor (wearable)"] --> src["Tracking source select<br/>(vision -> UWB+IMU -> nominal offset)"]
         cv --> src
@@ -76,6 +77,7 @@ flowchart LR
         geo --> ren["Renderer: HRTF azimuth<br/>+ carrier-pitch elevation cue<br/>+ gain g(D)"]
         ren -- "azimuth, elevation, loudness" --> spk["Stereo earphones"]
         uwbt -. "UWB range" .-> uwbw
+        beacon -. "beacon light" .-> cv
     end
 ```
 
@@ -141,7 +143,7 @@ The wearable's head **position** comes from IMU dead reckoning only — no room 
 | Pointer orientation (quaternion) | pointer's own 9-DoF IMU, fused onboard | none |
 | ToF range $d$ | VL53L1X on the pointer | none — active ranging |
 | Head-to-pointer offset $o$ | one-time calibration (body geometry) | none |
-| Pointer pose $p_P$ (upgrade tier, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) | left/right wide-FOV cameras (CV fiducial) + UWB ranging pair | none — on-body sensors |
+| Pointer pose $p_P$ (upgrade tier, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) | left/right wide-FOV cameras (CV beacon) + UWB ranging pair | none — on-body sensors |
 | Head room position | head-IMU dead reckoning | none — telemetry only, never used for placement |
 
 Placement is therefore fully self-contained: no beacons, room cameras, motion capture, UWB anchors, or room instrumentation participate in it — the pointer-tracking upgrade's cameras and UWB pair are carried by the two devices themselves ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)), so nothing external is introduced. The remaining accuracy threats (magnetometer disturbance, grip/pose variation) are internal and are mitigated onboard — see [§7](#7-risks-and-limitations); they never motivate external aiding.
@@ -152,34 +154,37 @@ The frozen placement ([§2.3](#23-coordinate-frames-and-sound-placement)) treats
 
 Three tiers feed the placement — only the source of $p_P$ (and with it the live offset $o = R_H^{-1}(p_P - p_H)$) changes between them:
 
-1. **Vision (primary)** — two wide-FOV RGB cameras sit left and right of the user's head; onboard computer vision localizes the pointer (a small high-contrast fiducial pattern on the pointer shell) at 15–30 Hz whenever it is inside their field of view. The head-flanking pair covers the forward hemisphere; a pointer behind the user is out of view by construction — which is exactly when the next tier takes over.
+1. **Vision (primary)** — two wide-FOV RGB cameras sit left and right of the user's head; onboard computer vision localizes the pointer at 15–30 Hz whenever it is inside their field of view, and **only while the button is held** — the cameras follow the aid's trigger gating ([§1.3](#13-interaction-rule)), so the added power draw is duty-cycled like everything else. The marker is a **two-LED tracking beacon** on the pointer shell (decision 2026-09-15): two bright visible-red LEDs at a fixed, calibrated ~8–10 cm separation — thresholding finds the two centroids, the mid-point gives bearing, and the **angular subtense of the known baseline gives range**, so one camera solves the position on its own every frame at ~1–3 ms per QVGA frame (the second camera is redundancy and occlusion coverage; the pointer's orientation keeps coming from its own IMU over ESP-NOW). A passive printed dot constellation is the no-power alternate ([§3.8](#38-pointer-tracking-hardware--notes--contingencies)). The head-flanking pair covers the forward hemisphere; a pointer behind the user is out of view by construction — which is exactly when the next tier takes over.
 2. **UWB + IMU (fallback)** — when the pointer leaves the cameras' field of view, the wearable–pointer UWB ranging pair supplies the head-to-pointer distance which, combined with the pointer's IMU orientation and the nominal offset direction, re-anchors $p_P$ far better than the constant alone.
 3. **Nominal offset (last resort)** — if UWB is also unavailable (body blockage, NLOS), the frozen scheme runs unchanged: calibrated constant $o$, both IMU orientations, ToF range $d$ ([§2.3](#23-coordinate-frames-and-sound-placement)).
 
-Tier selection is explicit: every sound update's telemetry records which tier produced the pose that drove it, so the study can quantify how often each tier served and how placement error varies per tier — the realism gain is measured, not assumed. Tier switching must be transparent (no perceptible placement jump at a switch — P4/P5 validation, [§7](#7-risks-and-limitations) risk 9). The motion-to-sound budget ([§4.2](#42-latency-budget-motion-to-sound-target--100-ms)) is unchanged: the ToF → ESP-NOW → render path is untouched, and tracking latency degrades placement accuracy, never sound freshness. Integration: the tiers are **validated on the breadboards at P2** (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and **tuned with the placement at P4** — before the soldered build, so a tracking-tier failure forces its design decision cheaply ([§9](#9-open-items)); the upgrade hardware is priced in [§3.8](#38-pointer-tracking-upgrade--extras-bom).
+Tier selection is explicit: every sound update's telemetry records which tier produced the pose that drove it, so the study can quantify how often each tier served and how placement error varies per tier — the realism gain is measured, not assumed. Tier switching must be transparent (no perceptible placement jump at a switch — P4/P5 validation, [§7](#7-risks-and-limitations) risk 9). The motion-to-sound budget ([§4.2](#42-latency-budget-motion-to-sound-target--100-ms)) is unchanged: the ToF → ESP-NOW → render path is untouched, and tracking latency degrades placement accuracy, never sound freshness. Integration: the tiers are **validated on the breadboards at P2** (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and **tuned with the placement at P4** — before the soldered build, so a tracking-tier failure forces its design decision cheaply ([§9](#9-open-items)); the upgrade hardware is priced as ✚ rows in the device BOMs ([§3.1](#31-pointer--electronics), [§3.2](#32-wearable--electronics)), with contingencies in [§3.8](#38-pointer-tracking-hardware--notes--contingencies).
 
 ## 3. Hardware
 
-Everything required to **build and run** Cane — not only the electronics: the two devices' electronics, the 3D-printed structures that house them, one-time assembly/bench tools, and the evaluation hardware. Prices surveyed **2026-09-08** from Philippine retailers, in Philippine pesos (₱); revised **2026-09-10** (wearable MCU → ESP32-S3, re-zero button, TF-Luna alternate). Prices with a store link were verified against the listing on their survey date; items marked *(est)* are typical Philippine-market prices to pin down at purchase time.
+Everything required to **build and run** Cane — not only the electronics: the two devices' electronics, the 3D-printed structures that house them, one-time assembly/bench tools, and the evaluation hardware. Prices surveyed **2026-09-08** from Philippine retailers, in Philippine pesos (₱); revised **2026-09-10** (wearable MCU → ESP32-S3, re-zero button, TF-Luna alternate); **2026-09-15**: pointer-tracking hardware integrated into the device BOMs as ✚ rows ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)). Prices with a store link were verified against the listing on their survey date; items marked *(est)* are typical Philippine-market prices to pin down at purchase time.
 
 ### 3.1 Pointer — electronics
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
-| 1 | ESP32-C3 SuperMini (BLE MCU) | 1 | 355 | 355 | [Circuitrocks](https://circuit.rocks/products/esp32-c3-super-mini-development-board); ₱151 on [Lazada PH](https://h5.lazada.com.ph/products/esp32-c3-development-board-esp32-c3-supermini-wifi-bluetooth-for-arduino-i4393598793.html) |
+| 1 | ESP32-C3 SuperMini (BLE MCU) — the P2 tracking gate may swap this row to a DevKit-class C3 board to free pins for the UWB SPI bus ([§3.7](#37-component-notes), [§3.8](#38-pointer-tracking-hardware--notes--contingencies)) | 1 | 355 | 355 | [Circuitrocks](https://circuit.rocks/products/esp32-c3-super-mini-development-board); ₱151 on [Lazada PH](https://h5.lazada.com.ph/products/esp32-c3-development-board-esp32-c3-supermini-wifi-bluetooth-for-arduino-i4393598793.html) |
 | 2 | VL53L1X ToF rangefinder (940 nm, ~4 m; alternate: TF-Luna, §3.7) | 1 | 525 | 525 | [Shopee PH](https://shopee.ph/COD-VL53L1X-laser-sensor-module-TOF-time-of-flight-4-meter-ranging-i.1804393363.53909554436) |
 | 3 | GY-9250 (MPU-9250, 9-DoF IMU) | 1 | 400 | 400 | [Lazada PH](https://www.lazada.com.ph/products/mpu9250-mpu6500-9-9-dof-16-bit-gyroscope-acceleration-magnetic-sensor-accelerator-module-iicspi-i15524063344.html) |
 | 4 | Tactile trigger button (6×6 mm) | 1 | 10 *(est)* | 10 | Lazada/Shopee PH (assortment kits) |
 | 5 | TP4056 USB-C charge board (w/ protection) | 1 | 30 | 30 | [Makerlab PH](https://makerlab.ph/products/type-c-micro-usb-5v-1a-18650-tp4056-lithium-battery-charger-module-charging-board-with-protection) |
 | 6 | 18650 Li-ion 2600 mAh cell (Kaizen 2-pc pack ₱369) | 1 | 185 | 185 | [Kaizen PH](https://kaizenphilippines.com/products/kaizen-3-7v-18650-2600mah-15a-rechargeable-battery-2pc-lithium-ion-battery) |
 | 7 | Misc: perfboard, dupont/hookup wire, slide switch | — | 120 *(est)* | 120 | Lazada/Shopee PH |
-| | **Pointer subtotal** | | | **1,625** | |
+| 8 | UWB tag module (DW1000 class, e.g., DWM1000; DW3000-class alternate) — the pointer half of the wearable–pointer ranging pair ✚ | 1 | 1,200–2,500 *(est)* | 1,200–2,500 | Lazada/Shopee PH — pin exact module, range, and update rate at purchase ([§3.8](#38-pointer-tracking-hardware--notes--contingencies)) |
+| 9 | Tracking beacon: 2× bright visible-red LEDs + dropper resistor on the shell (fixed, calibrated ~8–10 cm separation; lit **only while the button is held** — [§1.3](#13-interaction-rule)) ✚ | 1 | 30–80 *(est)* | 30–80 | Lazada/Shopee PH — pin exact LED + driver at purchase; IR variant possible with the OV5640's IR-cut filter removed ([§3.8](#38-pointer-tracking-hardware--notes--contingencies)); passive printed dot constellation is the no-power alternate |
+| | **Pointer subtotal — frozen core** | | | **1,625** | |
+| | **Pointer subtotal — with tracking ✚** | | | **2,855–4,155** | |
 
 ### 3.2 Wearable — electronics
 
 | # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
 |---|---|---|---|---|---|
-| 1 | Seeed XIAO ESP32-S3 (S3 MCU: SIMD DSP + per-core FPU, I²S out, BLE 5) | 1 | 499 | 499 | [Makerlab PH](https://makerlab.ph/products/seeed-xiao-esp32-s3-113991114) |
+| 1 | Seeed XIAO ESP32-S3 (S3 MCU: SIMD DSP + per-core FPU, I²S out, BLE 5) — the P2 tracking gate may swap this row to a DevKit-class ESP32-S3 board to free pins for the two head cameras + UWB ([§3.7](#37-component-notes), [§3.8](#38-pointer-tracking-hardware--notes--contingencies)) | 1 | 499 | 499 | [Makerlab PH](https://makerlab.ph/products/seeed-xiao-esp32-s3-113991114) |
 | 2 | GY-9250 (MPU-9250, 9-DoF IMU) — same part as pointer | 1 | 400 | 400 | [Lazada PH](https://www.lazada.com.ph/products/mpu9250-mpu6500-9-9-dof-16-bit-gyroscope-acceleration-magnetic-sensor-accelerator-module-iicspi-i15524063344.html) |
 | 3 | MAX98357A I²S 3 W Class-D amp — **qty 2 required** (mono amp; one per ear, SD-pin strapped L/R) | 2 | 499 | 998 | [Circuitrocks (Adafruit breakout)](https://circuit.rocks/products/i2s-3w-class-d-amplifier-breakout-max98357a-adafruit); generic clones cheaper on Lazada/Shopee |
 | 4 | Stereo wired earphones, 3.5 mm (BAVIN HX820) — wired is mandatory (BT audio latency, §2.1) | 1 | 118 | 118 | [Lazada PH](https://www.lazada.com.ph/products/pdp-i3057481002.html) |
@@ -187,7 +192,13 @@ Everything required to **build and run** Cane — not only the electronics: the 
 | 6 | 18650 Li-ion 2600 mAh cell | 1 | 185 | 185 | [Kaizen PH](https://kaizenphilippines.com/products/kaizen-3-7v-18650-2600mah-15a-rechargeable-battery-2pc-lithium-ion-battery) |
 | 7 | Misc: perfboard, wires, 3.5 mm jack breakout | — | 120 *(est)* | 120 | Lazada/Shopee PH |
 | 8 | Tactile re-zero button (6×6 mm; shares assortment kit) | 1 | 10 *(est)* | 10 | Lazada/Shopee PH |
-| | **Wearable subtotal** | | | **2,360** | |
+| 9 | **OV5640 camera module, 24-pin DVP, wide-FOV lens ≥ 160° diagonal** (RGB565/YUV, fixed focus; QVGA @ 120 fps capability — ~US$6.30–8.90/unit; 68°-lens dev-board bundles do **not** qualify — order the wide-lens variant) ✚ | 2 | 400–700 *(est)* | 800–1,400 | Lazada/Shopee PH / AliExpress — verify on arrival: real FOV, low-light behavior, 24-pin DVP pinout vs the chosen board ([§3.7](#37-component-notes)); streams **only while the button is held** ([§1.3](#13-interaction-rule)), so the draw is trigger-gated. Budget alternate: OV2640 wide-lens (cheaper, ~120–140°, 2 MP). Motion alternate if T7 shows rolling-shutter smearing: OV9281 global shutter (mono — deviates from the RGB spec, fallback only) |
+| 10 | UWB anchor module (DW1000 class, e.g., DWM1000; DW3000-class alternate) — the wearable half of the ranging pair ✚ | 1 | 1,200–2,500 *(est)* | 1,200–2,500 | Lazada/Shopee PH — pin exact module, range, and update rate at purchase ([§3.8](#38-pointer-tracking-hardware--notes--contingencies)) |
+| 11 | Camera mounts, flex/PD cables, wiring ✚ | — | 150 *(est)* | 150 | Lazada/Shopee PH |
+| | **Wearable subtotal — frozen core** | | | **2,360** | |
+| | **Wearable subtotal — with tracking ✚** | | | **4,510–6,410** | |
+
+**✚ = pointer-tracking hardware** ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) — validated on the breadboards at P2 (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and removable at that gate; the frozen-core subtotals show the aid without it.
 
 ### 3.3 Structural & mechanical
 
@@ -227,41 +238,39 @@ Everything required to **build and run** Cane — not only the electronics: the 
 
 | Block | ₱ |
 |---|---|
-| Pointer electronics | 1,625 |
-| Wearable electronics | 2,360 |
+| Pointer electronics — frozen core | 1,625 |
+| Wearable electronics — frozen core | 2,360 |
 | Structural & mechanical (excl. printer) | 1,005 |
 | Assembly & bench tools | 1,070 |
 | Evaluation hardware | 500 |
-| **Subtotal (excl. printer)** | **6,560** |
-| Contingency 20% (spares, shipping, promo drift) | 1,312 |
-| **Total — print-service path** (housings quoted, ~₱1,000 *(est)*) | **≈ 9,100** |
-| + own printer: Creality Ender 3 V3 SE | 11,199 |
-| **Total — own-printer path** | **≈ 21,300** |
+| **Subtotal — frozen core (excl. printer)** | **6,560** |
+| Pointer-tracking hardware ✚ ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) | 3,380–6,630 *(est)* |
+| **Subtotal — with tracking (excl. printer)** | **9,940–13,190** |
+| Contingency 20% (spares, shipping, promo drift) | 1,988–2,638 |
+| **Total — print-service path** (housings quoted, ~₱1,000 *(est)*) | **≈ 12,900–16,800** |
+| + own printer: Creality Ender 3 V3 SE (replaces the housings quote) | 11,199 |
+| **Total — own-printer path** | **≈ 23,100–27,000** |
 
-The two totals differ only in how the housings are produced: quote the two small housings to a print service such as Flarelab (service fee assumed ₱1,000 *(est)*, pending quote), or buy the printer outright (Makerlab, with free-filament promo and 1-yr local warranty). A purchase decision gate — see [§9](#9-open-items).
+The two totals differ only in how the housings are produced: quote the two small housings to a print service such as Flarelab (service fee assumed ₱1,000 *(est)*, pending quote), or buy the printer outright (Makerlab, with free-filament promo and 1-yr local warranty). The ✚ tracking block is **inside both totals**; if the P2 gate rejects the tracking tier, subtract its ₱3,380–6,630 block — the frozen-core rows are that budget (recomputed 2026-09-15: tracking hardware integrated into the device BOMs, marker = two-LED tracking beacon). A purchase decision gate — see [§9](#9-open-items).
 
 ### 3.7 Component notes
 
 - **IMU (both devices)** — GY-9250/MPU-9250 is one part number across both devices to simplify fusion. Upgrade path if P2 magnetometer fusion proves noisy in the actual room: BNO055/BNO085 (factory-fused, ~₱1,200–2,000 each) — a budget-relevant decision gate at P2.
-- **MCU alternates** — the ESP32-C3 SuperMini also lists at ₱151 on Lazada PH; the Seeed XIAO ESP32-S3 (₱499, Makerlab PH; SIMD vector DSP + per-core FPU for the renderer, onboard LiPo charging) is the wearable reference, with ESP32-S3 SuperMini/DevKit clones (≈₱300–700 on Lazada/Shopee) as drop-in alternates.
-- **Pre-soldered ordering constraint** — P2 permits no soldering, so order every module (both MCUs, the IMUs, the ToF) with headers **pre-soldered**; verify "pre-soldered / headers attached" on the listing before checkout. Unsoldered arrivals are set aside for the P3 build.
+- **MCU alternates** — the ESP32-C3 SuperMini also lists at ₱151 on Lazada PH; the Seeed XIAO ESP32-S3 (₱499, Makerlab PH; SIMD vector DSP + per-core FPU for the renderer, onboard LiPo charging) is the wearable reference, with ESP32-S3 SuperMini/DevKit clones (≈₱300–700 on Lazada/Shopee) as drop-in alternates. With the pointer-tracking upgrade validated at P2, the **board class becomes a real decision on both devices**: the XIAO cannot host two DVP cameras + UWB (SPI) alongside the frozen core, and the C3 SuperMini is pin-tight for the UWB module — the T7/T8 gates pick between staying on the reference boards (with a camera co-processor or single-port alternate-frame capture) and moving to DevKit-class boards with pins to spare ([§3.8](#38-pointer-tracking-hardware--notes--contingencies), [`docs/bench-tests.md`](docs/bench-tests.md)). The MCU **family** stays ESP32 either way: ESP-NOW and the frozen latency architecture depend on it, and every escape hatch (co-processor, DevKit-class boards) is an ESP32-family part — an off-ESP32 redesign is not on the table, so T7 decides only the worst-case shape of the ESP32 answer.
+- **Pre-soldered ordering constraint** — P2 permits no soldering, so order every module (both MCUs, the IMUs, the ToF, and the tracking modules — the two cameras and the UWB pair) with headers **pre-soldered**; verify "pre-soldered / headers attached" on the listing before checkout. Unsoldered arrivals are set aside for the P3 build.
 - **Amplifier** — the MAX98357A is a **mono** amp: binaural placement needs independent left/right channels, so **two units are required** (one per ear; each amp's SD pin is strapped to select its channel per the datasheet — verify strapping on the purchased breakout). The ₱499 line is the Adafruit breakout; generic modules on Lazada/Shopee are substantially cheaper — a third unit as spare is optional.
 - **Ranging** — VL53L0X (2 m) is cheaper but undershoots the ~4 m room-scale task; the VL53L1X (4 m, 940 nm invisible VCSEL) is kept, with the receive ROI narrowed to the central zone in firmware to tighten the hit spot at range. If P2 shows the 4 m ceiling or the default beam width limiting the course, the TF-Luna (0.2–8 m, ±6 cm < 3 m, 100 Hz default, 2° FoV, UART/I²C, 850 nm, ≈₱800–1,000 *(est)*) is the single-part alternate — verify its beam width on the datasheet at purchase.
 - **Re-zero button** — one-press yaw re-anchor at rest (pitch/roll are gravity-anchored and drift-free); turns magnetometer disturbance from a silent heading bias into a bounded user action ([§7](#7-risks-and-limitations) risk 2), and doubles as the P4 offset-calibration trigger.
 - **Audio** — air-conduction stereo earphones preserve localization quality (Ferrand 2019; Planinec et al. 2023, see [§4 lit](docs/auris-thesis/literature/04-spatial-audio-hrtf.md)); **wired output is mandatory** — Bluetooth audio adds 150–300 ms by protocol design and would break the placement latency budget ([§2.1](#21-devices)); if the faint-far floor turns hissy, a 32 Ω pair is the cheap remedy.
 - **3D printer** — the Ender 3 V3 SE (₱11,199, Makerlab PH) is listed as the reference because the concept requires the wearables to be 3D printed in-house; university/lab printer access would remove this line entirely — confirm before purchase approval.
 
-### 3.8 Pointer-tracking upgrade — extras BOM
+### 3.8 Pointer-tracking hardware — notes & contingencies
 
-Hardware for the tracking stack in [§2.5](#25-pointer-tracking-stack-vision-uwb-imu) — on-body only, so the self-containment audit ([§2.4](#24-positioning-relative-pose-only)) still holds. Integrated at **P2** (breadboard validation, T7–T8 in [`docs/bench-tests.md`](docs/bench-tests.md)), tuned at P4. These parts are **excluded from the [§3.6](#36-totals) totals** but ride the P2 purchase list — include them in the purchase approval ([§9](#9-open-items)); all prices *(est)* — pin at purchase. Ordering follows the same pre-soldered rule as everything else ([§3.7](#37-component-notes)). Board-level note: the ESP32-S3 exposes a single DVP camera interface — two head cameras need a mux, alternate-frame capture on one port, a DevKit-class board, or a camera co-processor, and UWB needs an SPI bus; the T7/T8 gate settles this (risk 8).
+The ✚ rows live **in the device BOMs** — [§3.1](#31-pointer--electronics) (UWB tag, tracking beacon) and [§3.2](#32-wearable--electronics) (2× OV5640 cameras, UWB anchor, mounts) — not in a side list. Recap of the placement rule: on-body only, so the self-containment audit ([§2.4](#24-positioning-relative-pose-only)) still holds; validated at P2 (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)), tuned at P4; removable at that gate (the frozen-core subtotals and the ₱3,380–6,630 ✚ block in [§3.6](#36-totals) bracket the decision). Ordering follows the same pre-soldered rule as everything else ([§3.7](#37-component-notes)).
 
-| # | Component | Qty | Unit ₱ | Subtotal ₱ | Source |
-|---|---|---|---|---|---|
-| 1 | Wide-FOV RGB camera module (M12 lens, ≥ 150° FoV, e.g., OV5640 class; ESP32-S3 DVP-compatible) | 2 | 300–700 *(est)* | 600–1,400 | Lazada/Shopee PH — verify FoV, low-light behavior, and DVP compatibility on the datasheet |
-| 2 | UWB transceiver module (DW1000 class, e.g., DWM1000; DW3000-class alternate) | 2 | 1,200–2,500 *(est)* | 2,400–5,000 | Lazada/Shopee PH — pin exact module, range, and update rate at purchase |
-| 3 | Pointer fiducial set (printed high-contrast pattern on the shell) | 1 | 50 *(est)* | 50 | in-house print |
-| 4 | Camera mounts, flex/PD cables, wiring | — | 150 *(est)* | 150 | Lazada/Shopee PH |
-| | **Upgrade subtotal (est)** | | | **≈ 3,200–6,600** | |
+**Marker scheme (decided 2026-09-15): the vision tier's marker is a two-LED tracking beacon** ([§3.1](#31-pointer--electronics) row 9) — two bright visible-red LEDs at a fixed, calibrated ~8–10 cm separation, lit only while the button is held. Detection is threshold → two centroids → bearing (mid-point) + range (baseline angular subtense) at ~1–3 ms per QVGA frame — full detection every frame, no detect-then-track juggling; the pointer's orientation still rides ESP-NOW from its IMU, so the beacon carries only position. Default color visible red (works with any OV5640 variant, no filter changes); IR variant possible with the OV5640's IR-cut filter removed (lowest visual disturbance); the passive printed dot constellation is the no-power alternate (~3–10 ms detection). Ambient-light strategy: LEDs steady while the button is held + shape gating (two spots at the expected separation); flash-sync rejection only if T7's bright-light check shows interference. Square library tags (ArUco/AprilTag) are deliberately not used — their quad-detection cost is what made the vision tier look heavy, and the architecture needs only position.
+
+Board-level: the ESP32-S3 exposes a single DVP camera interface — two head cameras need a mux, alternate-frame capture on one port, a DevKit-class board, or a camera co-processor, and UWB needs an SPI bus — with pressure on **both** devices, since the C3 SuperMini is also pin-tight for the UWB tag; the T7/T8 gates settle the board classes ([§3.7](#37-component-notes), risk 8). Contingency: if the reference boards cannot carry the extras, two DevKit-class ESP32 boards or one camera co-processor (**₱300–1,500 *(est)***, within the [§3.7](#37-component-notes) alternates' range) substitute into the [§3.1](#31-pointer--electronics)/[§3.2](#32-wearable--electronics) MCU rows — a swap inside the totals' spread, not a new budget line. Power: camera streaming is the largest new draw — trigger-gated to button-hold ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)), and T0 re-checks the 18650 budget with tracking active.
 
 ## 4. Software
 
@@ -275,7 +284,7 @@ Hardware for the tracking stack in [§2.5](#25-pointer-tracking-stack-vision-uwb
 | `geometry` | wearable | $\theta$, $\phi$ (3-D direction) and $D$ (head-to-landing distance) from $d$, both orientations, and the calibrated offset; edge-case classification |
 | `renderer` | wearable | generic-HRTF azimuth + carrier-pitch elevation cue, $g(D)$ gain curve |
 | `telemetry` | wearable | relative-pose dead reckoning for logging |
-| `pointer-track` (CV) ✚ | wearable | localizes the pointer from the left/right wide-FOV cameras (fiducial) at 15–30 Hz while in view; yields a measured $p_P$ for [§2.3](#23-coordinate-frames-and-sound-placement) |
+| `pointer-track` (CV) ✚ | wearable | localizes the pointer from the left/right wide-FOV cameras at 15–30 Hz while in view: threshold → **two beacon centroids** → bearing (mid-point) + range (known-baseline angular subtense), ~1–3 ms at QVGA — **full detection every frame** (the two-LED beacon, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu), is what makes single-level detection cheap; a printed-pattern or learned detector would need the two-level detect-then-track scheme instead — for scale, ESP-WHO-class CNN detection runs only ~10 fps at QVGA on the S3); yields a measured $p_P$ for [§2.3](#23-coordinate-frames-and-sound-placement) |
 | `uwb-range` ✚ | both | wearable–pointer UWB ranging for the fallback tier |
 | `track-source` ✚ | wearable | tier selection (vision → UWB + IMU → nominal offset, [§2.5](#25-pointer-tracking-stack-vision-uwb-imu)); records the active tier in every sound-update telemetry record |
 
@@ -298,7 +307,7 @@ Bench tests for each stage are P2 exit criteria (§6).
 The electronics of both devices are designed in **KiCad** (`kicad-cli` 10.0.6 on the build machine; toolchain decision 2026-09-15), one project per device under [`electronics/`](electronics/):
 
 - [`electronics/cane-wearable/`](electronics/cane-wearable/) — the cane-concept **head-mounted wearable** board ([§3.2](#32-wearable--electronics): ESP32-S3, 9-DoF IMU, 2× MAX98357A stereo I²S out, power)
-- [`electronics/cane-pointer/`](electronics/cane-pointer/) — the cane-concept **handheld pointer** board ([§3.1](#31-pointer--electronics): ESP32-C3, 9-DoF IMU, VL53L1X ToF, trigger button, power)
+- [`electronics/cane-pointer/`](electronics/cane-pointer/) — the cane-concept **handheld pointer** board ([§3.1](#31-pointer--electronics): ESP32-C3, 9-DoF IMU, VL53L1X ToF, trigger button, power); the tracking beacon (2× LED) and UWB tag circuits join this schematic once the P2 gate pins them ([§3.8](#38-pointer-tracking-hardware--notes--contingencies))
 
 AI-assisted design runs through the **[mcp-server-kicad](https://github.com/ProductOfAmerica/mcp-server-kicad)** MCP server (109 tools, MIT; wired into this repo's opencode config as `mcp.kicad`): schematic capture, PCB layout, ERC/DRC via `kicad-cli`, and manufacturing exports. Ground rules: the AI drafts and checks, but every design is **reviewed by a human in the KiCad GUI before anything is fabricated** — ERC/DRC reports are generated artifacts, not review substitutes. Schematic and layout figures for the thesis ([`docs/auris-thesis/README.md` §3](docs/auris-thesis/README.md)) are exported from these projects.
 
@@ -333,21 +342,21 @@ Paradigm justified by the consolidated literature ([`docs/auris-thesis/literatur
 5. **ToF surface behaviors** — glass, dark, or highly reflective targets and strong ambient IR degrade returns (VL53L1X datasheet, vendor footnote). Mitigation: P2 surface matrix before committing to the course props.
 6. **Loudness ≠ linear distance** — perceived loudness is nonlinear; the $g(D)$ head-to-landing curve is calibrated empirically in P4 rather than assumed.
 7. **Handheld offset is not truly constant** — the calibrated head-to-pointer constant assumes a nominal pose; extending or tucking the arm, and raising/lowering it to aim up or down at stairs, shifts the offset (±15 cm horizontal, up to ~±0.3 m vertical), perturbing $D$, $\theta$, and $\phi$ ([§2.3](#23-coordinate-frames-and-sound-placement)). Mitigation: calibrate at a natural grip in P4; keep $g(D)$ and the elevation pitch spread gradual so offset variation is a small perceptual change; observe real-pose variation in P5.
-8. **CV tracking compute on the wearable** — the pointer-tracking upgrade ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) adds two camera streams and fiducial detection to the same ESP32-S3 that renders audio; contention can push render buffers past the ≤ 5 ms/buffer gate into underruns. Mitigation: QVGA mono frames, fiducial (not learned) detection at 15–30 Hz, tracking on a task with priority below the audio path — tracking latency degrades placement accuracy, never sound freshness; the P2 T7 co-residence gate decides the board-level answer (mux / alternate frames / DevKit-class board / camera co-processor) before the soldered build ([§6](#6-development-phases)).
+8. **CV tracking compute on the wearable** — the pointer-tracking upgrade ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) adds two camera streams and beacon detection to the same ESP32-S3 that renders audio; contention could push render buffers past the ≤ 5 ms/buffer gate into underruns. Mitigation: the tracking beacon reduces detection to threshold → two centroids (~1–3 ms at QVGA, full detection every frame; for scale, ESP-WHO-class CNN detection runs ~10 fps at QVGA on the S3 — a printed-pattern or learned detector would need the two-level detect-then-track scheme instead), QVGA mono frames, tracking on a task with priority below the audio path, rendering on one core and vision on the other; tracking latency degrades placement accuracy, never sound freshness; the P2 T7 co-residence gate decides the board-level answer (mux / alternate frames / DevKit-class board / camera co-processor) before the soldered build ([§6](#6-development-phases)).
 9. **Tracking tiers must degrade gracefully** — the cameras cover the forward hemisphere only (fast head swings and behind-body aiming are out of view by construction), and UWB ranges degrade when body-blocked (NLOS). Mitigation: the explicit three-tier fallback ([§2.5](#25-pointer-tracking-stack-vision-uwb-imu)) with the active tier in every sound-update telemetry record; P2 validates the switch logic on the bench (T8), and P4/P5 validate that a switch is never audible as a placement jump.
 
 ## 8. Where things live
 
-- **Achievability statement** — [`docs/achievability.md`](docs/achievability.md): the standing justification that hit-sound placement is exact, head-relative, and fully self-contained; the perceptual-cue evidence base, the error budget, and the C1–C10 caveat ledger with falsifiability gates.
+- **Achievability statement** — [`docs/achievability.md`](docs/achievability.md): the standing justification that hit-sound placement is exact, head-relative, and fully self-contained; the perceptual-cue evidence base, the error budget, and the C1–C11 caveat ledger with falsifiability gates.
 - **P2 bench protocol** — [`docs/bench-tests.md`](docs/bench-tests.md): wiring maps for both devices, power bring-up rules, and the T0–T8 test matrix with acceptance thresholds (T7–T8 = the tracking-tier gates); parity re-run at P3.
 - **Electronics designs** — [`electronics/`](electronics/): one KiCad project per device ([cane-wearable](electronics/cane-wearable/), [cane-pointer](electronics/cane-pointer/)), AI-assisted through the toolchain in [§4.3](#43-eda-toolchain-kicad-and-mcp).
-- **Literature consolidation** — [`docs/auris-thesis/literature/README.md`](docs/auris-thesis/literature/README.md): 44 verified annotated entries across 7 themes; feeds thesis §2.
+- **Literature consolidation** — [`docs/auris-thesis/literature/README.md`](docs/auris-thesis/literature/README.md): 46 verified annotated entries across 7 themes; feeds thesis §2.
 - **Thesis writing plan** — [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md): the section→content→phase drafting plan for the thesis twins, with the measurable-outcomes spine (built 2026-09-11; conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md)).
 - **Thesis skeleton** — [`docs/auris-thesis/paper.md`](docs/auris-thesis/paper.md) (APA twin) and [`docs/auris-thesis/ieee.md`](docs/auris-thesis/ieee.md) (IEEE twin); conventions in [`docs/auris-thesis/manuscript.md`](docs/auris-thesis/manuscript.md).
 - **Session context** — [`.opencode/concept.md`](.opencode/concept.md) and [`.opencode/plan.md`](.opencode/plan.md) point here as the canonical source; raw requirements in [`.opencode/new.md`](.opencode/new.md); standing rules in [`.opencode/instruction.md`](.opencode/instruction.md).
 
 ## 9. Open items
 
-- **Budget & purchase approval** — full hardware requirements with Philippine-market pricing are complete in [§3](#3-hardware) (researched 2026-09-08); the remaining open items are the own-printer vs. print-service decision and the purchase-approval sign-off itself; the pointer-tracking extras ([§3.8](#38-pointer-tracking-upgrade--extras-bom), ≈ ₱3,200–6,600 *(est)*) now ride the P2 purchase list.
+- **Budget & purchase approval** — full hardware requirements with Philippine-market pricing are complete in [§3](#3-hardware) (researched 2026-09-08); the remaining open items are the own-printer vs. print-service decision and the purchase-approval sign-off itself; the pointer-tracking hardware (✚ rows in [§3.1](#31-pointer--electronics)/[§3.2](#32-wearable--electronics), ≈ ₱3,400–6,600 *(est)*, contingencies in [§3.8](#38-pointer-tracking-hardware--notes--contingencies)) is inside the [§3.6](#36-totals) totals.
 - **Thesis writing schedule** — resolved 2026-09-11: the section→phase drafting plan is in [`docs/auris-thesis/README.md`](docs/auris-thesis/README.md), integrated with the phase exits above.
-- **Pointer-tracking upgrade** — integration point decided: the tiers validate on the breadboards at **P2** (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and are tuned at P4 with the placement. Remaining pins before the P2 purchase approval: the ESP32-S3 DVP strategy (mux / alternate-frame capture / DevKit-class board / camera co-processor — risk 8), the fiducial scheme, and the UWB module (DW1000/DW3000 class); extras ≈ ₱3,200–6,600 *(est)* ride the P2 list, outside the [§3.6](#36-totals) totals.
+- **Pointer-tracking upgrade** — integration point decided: the tiers validate on the breadboards at **P2** (T7–T8, [`docs/bench-tests.md`](docs/bench-tests.md)) and are tuned at P4 with the placement. Remaining pins before the P2 purchase approval: the ESP32-S3 DVP strategy (mux / alternate-frame capture / DevKit-class board / camera co-processor — risk 8), the pointer-side board class for the UWB SPI bus (SuperMini pin-tight — T8), and the UWB module (DW1000/DW3000 class). **Decided**: the camera — **OV5640-class, 24-pin DVP, ≥ 160° wide lens** ([§3.8](#38-pointer-tracking-hardware--notes--contingencies)) — and the marker scheme — **two-LED tracking beacon** (visible red; passive dot constellation = no-power alternate), with the exact LED/driver part and a bright-light rejection check remaining at T7; the ✚ tracking block (₱3,380–6,630 *(est)*) is inside the [§3.6](#36-totals) totals and a board-class swap changes the [§3.1](#31-pointer--electronics)/[§3.2](#32-wearable--electronics) MCU rows within the alternates' range ([§3.7](#37-component-notes)).
