@@ -4,11 +4,11 @@
 
 ## 1. Scope and the no-soldering rule
 
-- The list buys every component, fixture, and tool the test matrix and wiring maps of [`bench-tests.md`](bench-tests.md) consume — frozen-core electronics for both devices, the pointer-tracking ✚ hardware (T7–T8 validate on the breadboards), battery-path hardware (T0), and the no-solder bench infrastructure.
+- The list buys every component, fixture, and tool the test matrix and wiring maps of [`bench-tests.md`](bench-tests.md) consume — the device electronics for both devices (tracking hardware included — it is part of the final design), battery-path hardware (T0), and the no-solder bench infrastructure.
 - **Pre-soldered rule (purchasing constraint).** P2 attaches every component non-permanently and involves no soldering of any kind, so every module — both MCUs, the IMUs, the ToF, the two cameras, the UWB pair — must be ordered with **headers pre-soldered**; verify "pre-soldered / headers attached" on the listing before checkout. Unsoldered arrivals are set aside for the P3 build, never soldered during P2.
 - Every row carries the bench tests that consume it, so any cut can be checked against the test matrix before it is made.
 
-## 2. Section A — Pointer electronics (frozen core)
+## 2. Section A — Pointer electronics
 
 | # | Item | Qty | Unit ₱ | Subtotal ₱ | Consumed by | Source |
 |---|---|---|---|---|---|---|
@@ -19,7 +19,7 @@
 | A5 | Tactile button assortment (6×6 mm, breadboard-friendly) | 1 kit | 60 *(est)* | 60 | pointer trigger (T2–T5) + wearable re-zero (T1) + spares | Lazada/Shopee PH |
 | | **Subtotal A** | | | **1,370** | | |
 
-## 3. Section B — Wearable electronics (frozen core)
+## 3. Section B — Wearable electronics
 
 | # | Item | Qty | Unit ₱ | Subtotal ₱ | Consumed by | Source |
 |---|---|---|---|---|---|---|
@@ -40,7 +40,7 @@
 | C3 | Slide switch assortment (SS12D10-class) | 1 kit | 20 *(est)* | 20 | T0 battery-path on/off, both devices | Lazada/Shopee PH |
 | | **Subtotal C** | | | **419** | | |
 
-## 5. Section D — Pointer-tracking hardware ✚ (T7–T8)
+## 5. Section D — Pointer-tracking hardware (T7–T8)
 
 | # | Item | Qty | Unit ₱ | Subtotal ₱ | Consumed by | Source |
 |---|---|---|---|---|---|---|
@@ -48,7 +48,7 @@
 | D2 | UWB module, DW1000 class (e.g., DWM1000; DW3000-class alternate) — tag + anchor pair, **pre-soldered** | 2 | 1,200–2,500 *(est)* | 2,400–5,000 | T8 | Lazada/Shopee PH — pin exact module, range, and update rate at checkout |
 | D3 | Tracking beacon: 2× bright visible-red 5 mm LEDs + dropper resistors (lit only while the button is held) | 1 set | 30–80 *(est)* | 30–80 | T7 | Lazada/Shopee PH |
 | D4 | Camera mounts, flex/PD cables, wiring | — | 150 *(est)* | 150 | T7 fixture | Lazada/Shopee PH |
-| | **Subtotal D** | | | **3,380–6,630** | | matches the ✚ block in [README §3.6](../README.md#36-totals) |
+| | **Subtotal D** | | | **3,380–6,630** | | matches the tracking block inside the [README §3.6](../README.md#36-totals) device subtotals |
 
 ## 6. Section E — Board-class hedge boards (T7/T8 gates)
 
@@ -58,7 +58,7 @@
 | E2 | ESP32-C3 DevKit-class dev board (free SPI + IRQ pins) | 1 | 200–400 *(est)* | 200–400 | T8 — UWB SPI bus on the pointer side while the SuperMini stays pin-tight | Lazada/Shopee PH |
 | | **Subtotal E** | | | **500–1,100** | | |
 
-Both hedge boards run the same firmware as the reference boards and both stay inside the board-class swap range of [README §3.7](../README.md#37-component-notes); the reference boards (A1, B1) remain primary for the frozen-core bring-up and T1–T6. The hedges exist so the gate decisions — camera mux / alternate-frame capture / DevKit-class board / co-processor, and SPI remap vs. DevKit — can be tested immediately, without a second shipping cycle eating the Oct 5–24 bench window.
+Both hedge boards run the same firmware as the reference boards and both stay inside the board-class swap range of [README §3.7](../README.md#37-component-notes); the reference boards (A1, B1) remain primary for bring-up and T1–T6. The hedges exist so the gate decisions — camera mux / alternate-frame capture / DevKit-class board / co-processor, and SPI remap vs. DevKit — can be tested immediately, without a second shipping cycle eating the Oct 5–24 bench window. They are the mechanism that keeps the buy-once rule ([README §3](../README.md#3-hardware)): the board-class decision is made on the breadboard, so the purchased categories never need re-buying.
 
 ## 7. Section F — Bench infrastructure & consumables (no-solder bench, not in the BOM)
 
@@ -107,10 +107,10 @@ Both hedge boards run the same firmware as the reference boards and both stay in
 
 | Block | ₱ |
 |---|---|
-| A — Pointer electronics (frozen core) | 1,370 |
-| B — Wearable electronics (frozen core, Adafruit amps) | 2,095 |
+| A — Pointer electronics | 1,370 |
+| B — Wearable electronics (Adafruit amps) | 2,095 |
 | C — Battery & power path | 419 |
-| D — Pointer-tracking hardware ✚ | 3,380–6,630 |
+| D — Pointer-tracking hardware | 3,380–6,630 |
 | E — Board-class hedge boards | 500–1,100 |
 | F — Bench infrastructure & consumables | 1,050–1,850 |
 | G — One-time bench tools | 320 |
@@ -145,4 +145,4 @@ Choosing generic MAX98357A clones instead of the Adafruit breakouts (B3) lowers 
 
 - **BOM-derived rows** — [README §3.1](../README.md#31-pointer--electronics) / [§3.2](../README.md#32-wearable--electronics) device electronics (A, B, D); [§3.3](../README.md#33-structural--mechanical) rows 4–6 pulled forward where the bench needs them (battery holders, zip ties/velcro/tape); [§3.4](../README.md#34-assembly--bench-tools-one-time) rows 2 and 5 (multimeter, USB cables); [§3.5](../README.md#35-evaluation-hardware-one-time) row 2's tape measure.
 - **Bench-only additions (not in the BOM)** — solderless breadboards, dupont jumpers, DVP FPC-to-DIP breakouts, resistor/capacitor assortments, USB power banks, spare amp: required by the no-soldering rule and the T0–T8 fixtures.
-- **Reconciling with [README §3.6](../README.md#36-totals)** — the frozen-core + ✚ electronics here match the README subtotals; the README total additionally contains the P3-deferred blocks (printer/housings/filament, soldering tools, strap), so the two totals bracket each other rather than add.
+- **Reconciling with [README §3.6](../README.md#36-totals)** — the device electronics here (A, B, D) match the README subtotals; the README total additionally contains the P3-deferred blocks (printer/housings/filament, soldering tools, strap), so the two totals bracket each other rather than add.

@@ -2,7 +2,7 @@
 
 **No-soldering rule.** P2 attaches every component **non-permanently** — breadboards, dupont jumpers, zip ties, velcro, tape, friction mounts — and involves **no soldering of any kind**. This is as much a purchasing constraint as a build rule: the XIAO ESP32-S3 and most GY/ToF modules ship with headers unsoldered, so order everything with **headers pre-soldered** (or substitute a pre-soldered board); anything that arrives unsoldered is set aside for the P3 build, never soldered during P2. Full functionality of the whole system must be proven here before P3 solders anything. P3 then builds the aid itself — the evaluated device is soldered once and housed; it is not a disposable prototype, and rework there is limited to fixes, not redesign.
 
-The pointer-tracking hardware ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu) — two wide-FOV camera modules, the UWB module pair, the pointer tracking beacon (2× LED + dropper); ✚ BOM rows in [§3.1](../README.md#31-pointer--electronics)/[§3.2](../README.md#32-wearable--electronics)) joins the P2 purchase list under the same pre-soldered rule; T7–T8 below validate the tracking tiers on the breadboards, and the module choices are pinned at this gate ([README §9](../README.md#9-open-items)).
+The pointer-tracking hardware ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu) — two wide-FOV camera modules, the UWB module pair, the pointer tracking beacon (2× LED + dropper); BOM rows in [§3.1](../README.md#31-pointer--electronics)/[§3.2](../README.md#32-wearable--electronics)) joins the P2 purchase list under the same pre-soldered rule; T7–T8 below validate the tracking tiers on the breadboards, and the module and board-level implementation choices are pinned at this gate ([README §9](../README.md#9-open-items)). The tracking hardware is part of the final design — the gates decide *how* it is built, never *whether*.
 
 ## Bring-up safety
 
@@ -27,7 +27,7 @@ ESP32-C3 I²C is remappable; the pairs below avoid strapping pins (GPIO2/8/9) an
 | UART debug | GPIO20 (RX) / GPIO21 (TX) | flashing logs; leave unshared |
 | Power | TP4056 OUT → 5 V pin, GND common | bench-verify the onboard regulator across the 3.7–4.2 V Li-ion range; fall back to USB power bank if it misbehaves |
 
-**UWB GPIO pressure (pointer, P2 decision).** The tracking-extras UWB module needs an SPI bus plus IRQ/reset on top of the frozen wiring — the C3 SuperMini's exposed pins are tight (VL53L1X + IMU share I²C on GPIO4/5, button GPIO3, debug UART GPIO20/21, only GPIO0/1 reserved). The T8 gate picks between a DevKit-class C3 board, an SPI pin remap, or a co-processor — the pointer-side twin of the wearable's T7 decision ([README §3.7](../README.md#37-component-notes)).
+**UWB GPIO pressure (pointer, P2 decision).** The tracking-extras UWB module needs an SPI bus plus IRQ/reset on top of the wiring above — the C3 SuperMini's exposed pins are tight (VL53L1X + IMU share I²C on GPIO4/5, button GPIO3, debug UART GPIO20/21, only GPIO0/1 reserved). The T8 gate picks between a DevKit-class C3 board, an SPI pin remap, or a co-processor — the pointer-side twin of the wearable's T7 decision ([README §3.7](../README.md#37-component-notes)).
 
 ## Wiring map — wearable (Seeed XIAO ESP32-S3)
 
@@ -50,7 +50,7 @@ XIAO pin map per the Seeed wiki: D4 = GPIO5 (SDA), D5 = GPIO6 (SCL), D6 = GPIO43
 
 **GPIO budget check.** Used: I²C 2 + I²S 3 + button 1 + LED 1 = 7 of 11 exposed GPIOs; D0–D3 (GPIO1–4) remain free.
 
-**Tracking-extras GPIO pressure (P2 decision).** The frozen core leaves no room for two DVP cameras plus a UWB module (SPI + IRQ) on the XIAO's exposed pins: the ESP32-S3 has one DVP interface, so two head cameras need a mux, alternate-frame capture on one port, a DevKit-class ESP32-S3 board (more GPIOs — the [§3.7](../README.md#37-component-notes) drop-in alternates), or a camera co-processor. UWB needs an SPI bus plus IRQ/reset pins. This board-level choice is exactly the risk-8 gate ([README §7](../README.md#7-risks-and-limitations)) and is settled by T7 before the P3 build.
+**Tracking-extras GPIO pressure (P2 decision).** The reference board leaves no room for two DVP cameras plus a UWB module (SPI + IRQ) on the XIAO's exposed pins: the ESP32-S3 has one DVP interface, so two head cameras need a mux, alternate-frame capture on one port, a DevKit-class ESP32-S3 board (more GPIOs — the [§3.7](../README.md#37-component-notes) drop-in alternates), or a camera co-processor. UWB needs an SPI bus plus IRQ/reset pins. This board-level choice is exactly the risk-8 gate ([README §7](../README.md#7-risks-and-limitations)) and is settled by T7 before the P3 build.
 
 ## Test matrix
 
@@ -105,14 +105,14 @@ Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order
 - Acceptance: repeatability ± 2 cm per component; `D` error ≤ ± 6 cm at 1–3 m with nominal grip.
 - Metric logged: `o_component`, `D_err_cm`.
 
-### T7 — Vision pointer tracking (upgrade tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
+### T7 — Vision pointer tracking (tracking tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
 
 - Setup: two wide-FOV camera modules on a head-form fixture (one each side, spaced like the wearable's strap stations); **two-LED tracking beacon** (calibrated ~8–10 cm separation) on the pointer shell, lit while the button is held ([README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)); tracking firmware **co-resident with the full renderer** (the T4 configuration plus tracking).
 - Procedure: (a) place the pointer at tape-measured known poses across the forward hemisphere (0.5–3 m; azimuth sweep; aimed above/below head level) — log position error and tracking rate per pose; (b) record where the beacon leaves each camera's FOV envelope — the tier-switch boundary; (c) 10 min co-residence run at trigger-gated duty (button held throughout, [README §1.3](../README.md#13-interaction-rule)): `esp_timer` per render buffer and I²S underrun count, as in T4, with tracking running; (d) **bright-light rejection check**: with tracking running, move a desk lamp / phone flash through the view — only the beacon pair may be reported (ambient interference would force the flash-sync rejection variant, [README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)).
 - Acceptance: position error ≤ ±5 cm at 0.5–2 m and ≤ ±10% beyond (provisional — finalize at the P2 gate); cadence ≥ 15 Hz; FOV envelope documented per camera; **the renderer is unharmed by co-residence** — ≤ 5 ms/buffer p99 and 0 underruns over the 10 min run (the risk-8 gate: if it fails, the co-processor or alternate-DVP decision is forced here, before P3).
 - Metric logged: `p_err_cm`, `track_rate_hz`, `fov_envelope_deg`, `render_ms`, `underruns`.
 
-### T8 — UWB ranging & tier fallback (upgrade tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
+### T8 — UWB ranging & tier fallback (tracking tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
 
 - Setup: DW1000-class pair on both breadboards; tape-measured baselines; logging captures the active tier for every sound update.
 - Procedure: (a) range error vs tape at 0.5–4 m line-of-sight; (b) body-blocked/NLOS profile (person between devices; pointer held behind the body) — characterization, the fallback tier absorbs degradation; (c) tier-switch run: sweep the pointer out of camera view into UWB-only and back, repeatedly, including behind-body holds; log the active tier per update and the placement continuity across switches.
