@@ -1,6 +1,6 @@
 # Cane — Purchase list (P2 bench order)
 
-> The approved-now purchase subset for the purchase-approval sign-off: everything needed to perform the bench tests T0–T8 of [`docs/bench-tests.md`](bench-tests.md), built 2026-09-17 from the surveyed BOM of [README §3](../README.md#3-hardware) (Philippine-market prices, ₱, surveyed 2026-09-08 with the 2026-09-10/09-15 revisions; *(est)* items are pinned at checkout). Ordering window Sep 17–20, 2026; parts arrive ~Oct 1–5; the breadboard bench exits Oct 24 ([`docs/schedule.md`](schedule.md) §2). This order is **not** the full [README §3.6](../README.md#36-totals) total — P3-only and study-only blocks are explicitly deferred (§13).
+> The approved-now purchase subset for the purchase-approval sign-off: everything needed to perform the bench tests T0–T8 of [`docs/bench-tests.md`](bench-tests.md), built 2026-09-17 from the surveyed BOM of [README §3](../README.md#3-hardware) (Philippine-market prices, ₱, surveyed 2026-09-08 with the 2026-09-10/09-15/09-21 revisions; *(est)* items are pinned at checkout). Ordering window Sep 17–20, 2026; parts arrive ~Oct 1–5; the breadboard bench exits Oct 24 ([`docs/schedule.md`](schedule.md) §2). This order is **not** the full [README §3.6](../README.md#36-totals) total — P3-only and study-only blocks are explicitly deferred (§13).
 
 ## 1. Scope and the no-soldering rule
 
@@ -46,9 +46,9 @@
 |---|---|---|---|---|---|---|
 | D1 | OV5640 camera module, **24-pin DVP, wide-FOV lens ≥ 160° diagonal**, fixed focus, QVGA @ 120 fps capability — **pre-soldered** | 2 | 400–700 *(est)* | 800–1,400 | T7 | Lazada/Shopee PH / AliExpress — **wide-lens variant only**; the 68°-lens dev-board bundles do NOT qualify |
 | D2 | UWB module, DW1000 class (e.g., DWM1000; DW3000-class alternate) — tag + anchor pair, **pre-soldered** | 2 | 1,200–2,500 *(est)* | 2,400–5,000 | T8 | Lazada/Shopee PH — pin exact module, range, and update rate at checkout |
-| D3 | Tracking beacon: 2× bright visible-red 5 mm LEDs + dropper resistors (lit only while the button is held) | 1 set | 30–80 *(est)* | 30–80 | T7 | Lazada/Shopee PH |
+| D3 | Tracking marker: printed ArUco/AprilTag on the pointer shell (high-contrast, known physical size; dictionary + tag size pinned at T7) | 1 | 50 *(est)* | 50 | T7 | Printed in-house — shell-integrated or paper + rigid mount; nothing to ship |
 | D4 | Camera mounts, flex/PD cables, wiring | — | 150 *(est)* | 150 | T7 fixture | Lazada/Shopee PH |
-| | **Subtotal D** | | | **3,380–6,630** | | matches the tracking block inside the [README §3.6](../README.md#36-totals) device subtotals |
+| | **Subtotal D** | | | **3,400–6,600** | | matches the tracking block inside the [README §3.6](../README.md#36-totals) device subtotals |
 
 ## 6. Section E — Board-class hedge boards (T7/T8 gates)
 
@@ -66,13 +66,13 @@ Both hedge boards run the same firmware as the reference boards and both stay in
 |---|---|---|---|---|---|---|
 | F1 | Solderless breadboard, full-size 830-point | 2 | 100–150 *(est)* | 200–300 | one per device + overflow | Lazada/Shopee PH |
 | F2 | Dupont jumper bundles (M-M + M-F) | 2 | 75–125 *(est)* | 150–250 | all wiring maps | Lazada/Shopee PH |
-| F3 | Resistor assortment kit | 1 kit | 100–150 *(est)* | 100–150 | beacon droppers, MAX98357A SD-pin channel-select dividers, I²C pull-ups | Lazada/Shopee PH |
+| F3 | Resistor assortment kit | 1 kit | 100–150 *(est)* | 100–150 | MAX98357A SD-pin channel-select dividers, I²C pull-ups | Lazada/Shopee PH |
 | F4 | Capacitor assortment kit (100 nF / 10 µF) | 1 kit | 100–150 *(est)* | 100–150 | rail decoupling for the T0 ±3 % stability check | Lazada/Shopee PH |
 | F5 | 24-pin DVP FPC-to-DIP breakout adapter | 2 | 50–100 *(est)* | 100–200 | breadboarding the OV5640s — the no-solder path for the camera connector | Lazada/Shopee PH / AliExpress |
 | F6 | T2 test surfaces: white foam board, dark fabric, cardboard box | — | 100–200 *(est)* | 100–200 | three reflectances for the ToF surface matrix | Lazada/Shopee PH / on-hand scraps |
 | F7 | 5 m measuring tape + floor marking tape | — | 200–300 *(est)* | 200–300 | ground truth T2/T6/T7/T8; per-pose marking | Lazada/Shopee PH |
 | F8 | Flat grip fixture + clamps (board + spring clamps, or phone tripod with clamp) | 1 | 0–200 *(est)* | 0–200 | T2 pointer stand, T6 grip fixture | on-hand tripod preferred; buy only if missing |
-| F9 | Zip ties, velcro, double-sided tape (head-form fixture build) | — | 100 *(est)* | 100 | T7 camera + beacon mounting on the fixture | Lazada/Shopee PH |
+| F9 | Zip ties, velcro, double-sided tape (head-form fixture build) | — | 100 *(est)* | 100 | T7 camera + marker mounting on the fixture | Lazada/Shopee PH |
 | | **Subtotal F** | | | **1,050–1,850** | | (min assumes an on-hand tripod/clamps) |
 
 ## 8. Section G — One-time bench tools
@@ -110,15 +110,15 @@ Both hedge boards run the same firmware as the reference boards and both stay in
 | A — Pointer electronics | 1,370 |
 | B — Wearable electronics (Adafruit amps) | 2,095 |
 | C — Battery & power path | 419 |
-| D — Pointer-tracking hardware | 3,380–6,630 |
+| D — Pointer-tracking hardware | 3,400–6,600 |
 | E — Board-class hedge boards | 500–1,100 |
 | F — Bench infrastructure & consumables | 1,050–1,850 |
 | G — One-time bench tools | 320 |
 | H — Bench USB power banks | 600–1,000 |
 | S — Spares | 150–250 |
-| **Subtotal — P2 bench order** | **9,884–15,034** |
-| Contingency 20 % (shipping, promo drift, re-orders) | 1,980–3,010 |
-| **Total — P2 bench order** | **≈ 11,900–18,100** |
+| **Subtotal — P2 bench order** | **9,904–15,004** |
+| Contingency 20 % (shipping, promo drift, re-orders) | 1,981–3,001 |
+| **Total — P2 bench order** | **≈ 11,900–18,000** |
 
 Choosing generic MAX98357A clones instead of the Adafruit breakouts (B3) lowers the subtotal by ~₱500–800 before contingency. The [README §3.6](../README.md#36-totals) project total remains the sign-off context; this order is its bench-scoped subset (§13).
 
@@ -135,11 +135,12 @@ Choosing generic MAX98357A clones instead of the Adafruit breakouts (B3) lowers 
 1. **Pre-soldered verification** — every module listing (A1–A3, B1, B2, D1, D2, S1) must state "pre-soldered / headers attached" before checkout; unsoldered arrivals go to the P3 tray.
 2. **OV5640 (D1)** — 24-pin DVP, wide-FOV ≥ 160° diagonal, fixed focus, RGB565/YUV output; reject 68°-lens dev-board bundles; verify real FOV, low-light behavior, and DVP pinout on arrival.
 3. **UWB (D2)** — pin the exact module at checkout: DWM1000-class preferred for library maturity (ESP-IDF / arduino-DW1000 support), DW3000-class alternate; record the listing's range and update rate in this file's notes for T8.
-4. **MAX98357A breakout (B3, S1)** — verify the SD-pin channel-select strapping scheme (resistor levels for L/R/(L+R)/2/shutdown) against the purchased breakout's documentation before the T4 wiring.
-5. **TP4056 (A4, B5)** — USB-C version **with** protection IC (over-discharge protection is required for 18650 use); Makerlab listing pinned.
-6. **18650 (C1)** — Kaizen 2-pc pack; check the listing's terminal type (flat-top/button-top) against the C2 holders.
-7. **Bring-up discipline on arrival** — first power-up of each device through the multimeter inline (mA range) or a current-limited USB source, per the [`bench-tests.md`](bench-tests.md) bring-up safety rules.
-8. **Order window** — sign-off lands Sep 17–20, 2026; parts arrive ~Oct 1–5; the breadboard bench runs Oct 5–24 ([`docs/schedule.md`](schedule.md) §2).
+4. **Tracking marker (D3)** — print spec pinned at T7: dictionary (ArUco 4×4/5×5 or AprilTag 36h11 alternate), physical tag size, contrast/low-light behavior on the actual shell; printed in-house — nothing to ship.
+5. **MAX98357A breakout (B3, S1)** — verify the SD-pin channel-select strapping scheme (resistor levels for L/R/(L+R)/2/shutdown) against the purchased breakout's documentation before the T4 wiring.
+6. **TP4056 (A4, B5)** — USB-C version **with** protection IC (over-discharge protection is required for 18650 use); Makerlab listing pinned.
+7. **18650 (C1)** — Kaizen 2-pc pack; check the listing's terminal type (flat-top/button-top) against the C2 holders.
+8. **Bring-up discipline on arrival** — first power-up of each device through the multimeter inline (mA range) or a current-limited USB source, per the [`bench-tests.md`](bench-tests.md) bring-up safety rules.
+9. **Order window** — sign-off lands Sep 17–20, 2026; parts arrive ~Oct 1–5; the breadboard bench runs Oct 5–24 ([`docs/schedule.md`](schedule.md) §2).
 
 ## 15. Provenance
 
