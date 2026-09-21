@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "collapsed": false,
+      "id": "docs",
+      "path": "docs",
+      "sort": "alpha"
+    },
+    {
+      "collapsed": false,
+      "id": "thesis",
+      "path": "thesis",
+      "sort": "alpha"
+    }
+  ],
+  "files": {}
+}
