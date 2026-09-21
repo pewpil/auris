@@ -43,11 +43,11 @@ Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order
 - Acceptance: error ≤ ±3 cm ≤ 2 m and ≤ ±5% beyond, on ≥ 2 of 3 surfaces; sustained cadence ≥ 20 Hz; invalid-read rate < 5%; behavior on no-target (drop to range-max or invalid flag) documented.
 - Metric logged: `d_true`, `d_meas`, `rate_hz`, `miss_rate`.
 
-### T3 — ESP-NOW link
+### T3 — Device-to-device link
 
 - Setup: pointer ↔ wearable firmware ping-pong, 12–28 B payload (d + quaternion + seq), 10–30 Hz.
-- Procedure: 10 min indoor run at 2, 5, 10 m including body-blocked (person between devices); log one-way latency (seq timestamp at receiver) and loss.
-- Acceptance: one-way ≤ 10 ms at p99; loss < 1% at ≤ 10 m indoor with body between devices.
+- Procedure: (a) 10 min run logging one-way latency (seq timestamp at receiver) and loss; (b) **wireless medium**: repeat at 2, 5, 10 m including body-blocked (person between devices); **wired medium**: cable flex/bend cycling and connector retention throughout the run — range is fixed by the cable.
+- Acceptance: one-way ≤ 10 ms at p99; loss < 1% at ≤ 10 m indoor with body between devices (wireless medium) / no lost packets over the session (wired medium).
 - Metric logged: `lat_ms`, `loss_pct`, `range_m`.
 
 ### T4 — Renderer load
