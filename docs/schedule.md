@@ -1,6 +1,6 @@
 # Cane — Project Schedule (Development + Thesis)
 
-> The canonical calendar for the whole project, on one Gantt: the system-development phases (defined in the project [README §6](../README.md#6-development-phases)) and the thesis-writing stages (defined in the thesis writing plan, [§4 Drafting schedule](auris-thesis/README.md#4-drafting-schedule)), dated against the two defense milestones. Built 2026-09-16. Section lists and exit criteria stay owned by the two READMEs; this file fixes their dates. Labels are always written out — the phase and stage codes (P, W) appear only in parentheses next to their names, and bench-test numbers (T0–T8) are the numbered tests of [`bench-tests.md`](bench-tests.md). Decisions locked 2026-09-16: the human mobility study runs **after** the pre-oral defense; the pre-oral defends the full paper drafted per what is complete on the date; purchase sign-off lands within days (ordering by Sep 20); the human study's primary design is a **longitudinal single-case study with VI participant(s)** (participant count under discussion — thesis plan decision 2), gated on adviser approval and a confirmed participant by Dec 15, 2026, with the blindfolded-sighted fallback unchanged.
+> The canonical calendar for the whole project, on one Gantt: the system-development phases (defined in the project [README §6](../README.md#6-development-phases)) and the thesis-writing stages (defined in the thesis writing plan, [§4 Drafting schedule](../thesis/README.md#4-drafting-schedule)), dated against the two defense milestones. Built 2026-09-16. Section lists and exit criteria stay owned by the two READMEs; this file fixes their dates. Labels are always written out — the phase and stage codes (P, W) appear only in parentheses next to their names, and bench-test numbers (T0–T8) are the numbered tests of [`bench-tests.md`](bench-tests.md). Decisions locked 2026-09-16: the human mobility study runs **after** the pre-oral defense; the pre-oral defends the full paper drafted per what is complete on the date; purchase sign-off lands within days (ordering by Sep 20); the human study's primary design is a **longitudinal single-case study with VI participant(s)** (participant count under discussion — thesis plan decision 2), gated on adviser approval and a confirmed participant by Dec 15, 2026, with the blindfolded-sighted fallback unchanged.
 
 ## 1. Defense milestones (fixed)
 
@@ -17,13 +17,13 @@
 | Phase P2 — breadboard bench: wiring, power bring-up, all bench tests, drift curves, tracking tiers | Oct 1 – Oct 24, 2026 | every bench test (T0–T8) meets its acceptance row in [`bench-tests.md`](bench-tests.md); phase exits **Oct 24** |
 | Phase P3 — soldered build, 3D prints (pointer shell, wearable strap mounts), parity re-run | Nov 2 – Nov 21, 2026 | breadboard parity; phase exits **Nov 21** |
 | Phase P4 — integration and calibration: gain curve, head-to-pointer offset, elevation tuning, magnetometer checks; course room pinned | Nov 23 – Dec 8, 2026 | calibrated placement on the course; phase exits **Dec 8** |
-| Participant-model gates — adviser/panel approval of the single-participant design; VI-participant outreach (VI organizations/schools: Resources for the Blind Inc., ATRIEV, NCDA network) and ethics/accessible-consent prep | Nov 2 – Dec 15, 2026 | the primary design runs only if both gates pass — a confirmed eligible participant by **Dec 15**; either gate failing by early Jan executes the blindfolded-sighted fallback on its original calendar (thesis plan [§5 items 7–11](auris-thesis/README.md#5-thesis-specific-open-items)) |
-| Phase P5 — human study (primary design): aid-off baseline (~4 sessions, Jan 4–15) then 4–6 weeks aided (~8–12 sessions, ~2/week, Jan 18 – Feb 26) | Jan 4 – Feb 26, 2027 | study complete **Feb 26**; its acceptance targets (the M7–M9 spine rows of the thesis plan) signed off ([thesis plan §5](auris-thesis/README.md#5-thesis-specific-open-items)) |
+| Participant-model gates — adviser/panel approval of the single-participant design; VI-participant outreach (VI organizations/schools: Resources for the Blind Inc., ATRIEV, NCDA network) and ethics/accessible-consent prep | Nov 2 – Dec 15, 2026 | the primary design runs only if both gates pass — a confirmed eligible participant by **Dec 15**; either gate failing by early Jan executes the blindfolded-sighted fallback on its original calendar (thesis plan [§5 items 7–11](../thesis/README.md#5-thesis-specific-open-items)) |
+| Phase P5 — human study (primary design): aid-off baseline (~4 sessions, Jan 4–15) then 4–6 weeks aided (~8–12 sessions, ~2/week, Jan 18 – Feb 26) | Jan 4 – Feb 26, 2027 | study complete **Feb 26**; its acceptance targets (the M7–M9 spine rows of the thesis plan) signed off ([thesis plan §5](../thesis/README.md#5-thesis-specific-open-items)) |
 | System complete — every latency-budget stage and engineering accuracy target met; tracking-tier keep/drop decisions executed | by **Mar 31, 2027** | project [README §4.2](../README.md#42-latency-budget-motion-to-sound-target--100-ms), §6 |
 
 ## 3. Thesis writing track
 
-Each stage lands in **both twins** in the same pass (drafting order and stage numbers per thesis [README §4](auris-thesis/README.md#4-drafting-schedule)):
+Each stage lands in **both twins** in the same pass (drafting order and stage numbers per thesis [README §4](../thesis/README.md#4-drafting-schedule)):
 
 | Writing stage | Sections | Window |
 |---|---|---|
@@ -34,11 +34,11 @@ Each stage lands in **both twins** in the same pass (drafting order and stage nu
 | Stage W5 — bench-validation results | §4.1 + §3.1.3 E1 confirmation | Oct 26 – Nov 7, 2026 |
 | Stage W6 — build details | §3.1.5 | Nov 9 – 21, 2026 |
 | Stage W7 — calibration results | §4.2 + threshold revisit + comparison-arm gate decision | Nov 30 – Dec 11, 2026 |
-| Stage W8a — assemble the full pre-oral draft | §3.1.2 finalize; §4.3–§4.5 in-progress; §5 provisional; front matter, `Refrences`, `Appendices` drafts | Nov 30 – Dec 10, 2026 |
+| Stage W8a — assemble the full pre-oral draft | §3.1.2 finalize; §4.3–§4.5 in-progress; §5 provisional; front matter, `References`, `Appendices` drafts | Nov 30 – Dec 10, 2026 |
 | **Pre-oral defense** | the full paper | **Fri Dec 11, 2026** |
 | Panel-revision window | pre-oral feedback folded into §1–§3 | Dec 14, 2026 – Jan 15, 2027 |
 | Stage W8b — human-study results and conclusions | §4.3–§4.5 + §5 final | Mar 1 – 19, 2027 |
-| Stage W9 — front matter and final packaging | Absctract, ToC, lists, final `Refrences`, Appendices, hyperlink strip | Mar 22 – Apr 9, 2027 |
+| Stage W9 — front matter and final packaging | Abstract, ToC, lists, final `References`, Appendices, hyperlink strip | Mar 22 – Apr 9, 2027 |
 | **Final defense** | the paper and the system, 100% | **Tue Apr 20, 2027** |
 
 Track coupling: the bench-validation write-up consumes the breadboard phase; the build-details write-up consumes the soldered-build phase; the calibration-results write-up consumes the calibration phase; the human-study write-up consumes the study; the pre-oral draft waits for calibration but **not** for the human study; the final defense waits for everything (front-matter packaging + system completion).
@@ -79,7 +79,7 @@ gantt
     Pre-oral defense                           :milestone, m1, 2026-12-11, 0d
     Fold in pre-oral panel revisions           :t9, 2026-12-14, 2027-01-15
     Write §4.3–§4.5 and §5 final results       :t10, 2027-03-01, 2027-03-19
-    Write front matter, final Refrences, Appendices :t12, 2027-03-22, 2027-04-09
+    Write front matter, final References, Appendices :t12, 2027-03-22, 2027-04-09
     Defense-prep buffer                        :t13, 2027-04-12, 2027-04-17
     Final defense                              :milestone, m2, 2027-04-20, 0d
 ```
