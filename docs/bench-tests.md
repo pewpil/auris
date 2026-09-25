@@ -9,14 +9,14 @@ The pointer-tracking hardware ([README §2.5](../README.md#25-pointer-tracking-s
 - Check battery-cell polarity twice before each insertion; never park a bare cell on metal.
 - First power-up of each device through a multimeter inline (mA range) or a current-limited USB source.
 - Grounds common per device: MCU GND, sensor GND, amp GND, battery negative all on one rail.
-- P2 bench sessions run from **USB power banks or bench USB**, not the battery rail, until the power test T0 passes; battery wiring is validated on the bench (T0) before any untethered use.
-- Power off before any wiring change; hot-plugging I²C/I²S is how modules die.
+- P2 bench sessions run from **bench USB** (a 5 V / 5 A-class USB-PD adapter for the Raspberry Pi 5 side), not the battery rail, until the power test T0 passes; battery wiring is validated on the bench (T0) before any untethered use. Watch the Pi's undervoltage/throttle flags on current-limited sources — that is bench-source behavior, not a device failure.
+- Power off before any wiring change; hot-plugging I²C/I²S is how modules die. On the Raspberry Pi 5, **safe shutdown before power-off always** — a pulled plug on a live SD image risks corruption. The SD card + OS image (direct-ALSA audio config, SCHED_FIFO render thread, cpufreq governor pinned) is bench infrastructure alongside the wiring ([README §3.2](../README.md#32-wearable--electronics)).
 
 ## Wiring maps
 
-> **To be drawn up once components are selected.** The per-device pin assignments below the selected MCU boards, sensors, amplifiers, and power path — including the UWB SPI bus and the camera interface strategy — are recorded here before the bench phase starts. The constraints they must satisfy: avoid strapping pins, keep the debug UART unshared, share one I²C bus between the IMU and the ToF sensor (distinct addresses), give each amplifier its own channel-select strapping, and leave the battery path (charge board → protection → cell) common-grounded with the rest of the device.
+> **Maps drawn against the selected boards (2026-09-25: Raspberry Pi 5 wearable, ESP32-S3 pointer — [README §3](../README.md#3-hardware)).** The per-device pin assignments — the Pi 5's 40-pin header (I²C for the IMU, SPI + IRQ/reset for the DW3000 anchor, PCM pins to the amplifier pair), the ESP32-S3 GPIO map, and the per-device power paths — are recorded here before the bench phase starts. The constraints they must satisfy: on the ESP32-S3, avoid strapping pins and keep the debug UART unshared; on the Pi 5, avoid boot-time-function GPIOs and keep the debug UART (the Linux console) off the header; distinct I²C addresses for the IMU and the ToF sensor on the shared bus (0x4A / 0x29); each MAX98357A amplifier with its own L/R channel-select strapping; note the Pi 5's current-limited 3.3 V header rail — the sensors take their rail per the map; and leave the battery paths (charge/protection → cells → 1S on the pointer, 2S + balance/protection + 5 V/5 A buck on the wearable) common-grounded with the rest of each device.
 
-**Interface pressures the selection must resolve (P2 decisions, risk 8).** The UWB module needs an SPI bus plus IRQ/reset on the pointer, and the two head cameras need a capture strategy on the wearable (camera mux / alternate-frame capture on one interface / a board with more pins / a camera co-processor); the T7/T8 gates settle both against the selected boards.
+**Interface pressures — resolved and remaining (P2 decisions, risk 8).** The camera capture strategy is **consumed by selection**: the Raspberry Pi 5's two native CSI connectors take the Camera Module 3 Wide pair directly (no mux, no alternate-frame capture, no camera co-processor). Remaining at the gates: the UWB modules' SPI + IRQ/reset wiring per the map (T8), the **DW3000 driver bring-up on the Pi** (an added T8 sub-test before any ranging run), and the detection-rate/co-residence confirmation at T7 — on the A76 the expectation is full-rate detection, with detect-then-track as the compute-side fallback.
 
 ## Test matrix
 
@@ -24,10 +24,10 @@ Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order
 
 ### T0 — Power rails
 
-- Setup: charge board + battery cell per device, multimeter inline.
+- Setup: charge/protection path + battery cells per device (1S on the pointer, 2S + balance/protection + 5 V/5 A buck on the wearable), multimeter inline.
 - Procedure: measure rail voltage under idle and full-load (radio TX + amp playing, and — once the tracking extras are fitted — the tracking tier at full duty: both cameras streaming + UWB ranging); 30 min soak. Camera streaming is the largest new draw: the battery budget is re-checked here with tracking active.
-- Acceptance: 3.3 V rail stable within ±3% under load; charge-board protection trips on short test; no thermal runaway (housing-temp check by touch after soak).
-- Metric logged: `v_rail`, `i_load`, `t_soak`.
+- Acceptance: the sensor rail stable within ±3% under load — the Pi 5 side additionally at its 5 V rail with **no undervoltage/throttle flags** read from the PMIC after the soak; charge-board protection trips on short test; no thermal runaway — the housing-temp check by touch after soak is a **logged metric** (`temp_c`), first-class on the wearable under the tracking-duty soak.
+- Metric logged: `v_rail`, `i_load`, `t_soak`, `temp_c`.
 
 ### T1 — IMU orientation & drift (both devices)
 
@@ -52,15 +52,15 @@ Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order
 
 ### T4 — Renderer load
 
-- Setup: wearable breadboard with both amplifiers; full renderer (generic-HRTF azimuth, carrier-pitch elevation cue, `g(D)` gain) at 48 kHz / 128-sample buffers.
-- Procedure: 10 min run; `esp_timer` around the render callback per buffer; count I²S underruns; sweep azimuth sectors + distance classes to cover the table.
+- Setup: wearable breadboard (Raspberry Pi 5) with both amplifiers fed by the 40-pin header's PCM pins; full renderer (generic-HRTF azimuth, carrier-pitch elevation cue, `g(D)` gain) at 48 kHz / 128-sample buffers through the hand-configured ALSA path (SCHED_FIFO render thread, governor pinned).
+- Procedure: 10 min run; `clock_gettime` around the render callback per buffer; count ALSA XRUNs; sweep azimuth sectors + distance classes to cover the table.
 - Acceptance: render ≤ 5 ms per buffer at p99; underrun count = 0 over 10 min.
 - Metric logged: `render_ms`, `underruns`.
 
 ### T5 — End-to-end latency & placement sanity
 
 - Setup: both devices running the full pipeline; obstacle at known pose.
-- Procedure: (a) firmware timestamps from ToF sample to I²S buffer queue, 10 min of button sweeps; (b) sweep the pointer across a wide obstacle and verify the sound's azimuth tracks the hit; aim above/below head level and verify the elevation cue flips at head height; walk toward the obstacle with the button held and verify loudness grows monotonically.
+- Procedure: (a) software timestamps from ToF sample to rendered buffer queue, 10 min of button sweeps; (b) sweep the pointer across a wide obstacle and verify the sound's azimuth tracks the hit; aim above/below head level and verify the elevation cue flips at head height; walk toward the obstacle with the button held and verify loudness grows monotonically.
 - Acceptance: motion-to-sound ≤ 100 ms p99; placement tracks azimuth sweep without jumps; elevation cue flips at head height; loudness monotonic in `D`.
 - Metric logged: `e2e_ms`, `placement_ok`, `notes`.
 
@@ -73,14 +73,14 @@ Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order
 
 ### T7 — Vision pointer tracking (tracking tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
 
-- Setup: two wide-FOV camera modules on a head-form fixture (one each side, spaced like the wearable's strap stations); **printed ArUco/AprilTag marker** (high-contrast; dictionary and physical size pinned at this gate) on the pointer shell ([README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)); tracking firmware **co-resident with the full renderer** (the T4 configuration plus tracking).
-- Procedure: (a) place the pointer at tape-measured known poses across the forward hemisphere (0.5–3 m; azimuth sweep; aimed above/below head level) — log position error and tracking rate per pose; (b) record where the tag leaves each camera's FOV envelope — the tier-switch boundary; (c) 10 min co-residence run at trigger-gated duty (button held throughout, [README §1.3](../README.md#13-interaction-rule)): `esp_timer` per render buffer and I²S underrun count, as in T4, with tracking running; (d) **low-light/contrast check**: with tracking running, dim the room stepwise toward evening-lighting levels — record the minimum illumination at which the tag still detects reliably (the tag is passive and needs scene light; watch exposure and motion blur at 15–30 Hz; a printed tag emits nothing, so there is no flash-sync interference to reject).
-- Acceptance: position error ≤ ±5 cm at 0.5–2 m and ≤ ±10% beyond (provisional — finalize at the P2 gate); cadence ≥ 15 Hz; FOV envelope documented per camera; **the renderer is unharmed by co-residence** — ≤ 5 ms/buffer p99 and 0 underruns over the 10 min run (the risk-8 gate: if full-rate detection fails it, the detect-then-track scheme (detect every Nth frame) or the co-processor / alternate-capture decision is forced here, before P3).
+- Setup: two wide-FOV camera modules on a head-form fixture (one each side, spaced like the wearable's strap stations); **printed ArUco/AprilTag marker** (high-contrast; dictionary and physical size pinned at this gate) on the pointer shell ([README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)); tracking processes **co-resident with the full renderer** (the T4 configuration plus tracking — vision on separate cores at priority below the audio path).
+- Procedure: (a) place the pointer at tape-measured known poses across the forward hemisphere (0.5–3 m; azimuth sweep; aimed above/below head level) — log position error and tracking rate per pose; (b) record where the tag leaves each camera's FOV envelope — the tier-switch boundary; (c) 10 min co-residence run at trigger-gated duty (button held throughout, [README §1.3](../README.md#13-interaction-rule)): `:clock_gettime` per render buffer and ALSA XRUN count, as in T4, with tracking running; (d) **low-light/contrast check**: with tracking running, dim the room stepwise toward evening-lighting levels — record the minimum illumination at which the tag still detects reliably (the tag is passive and needs scene light; watch exposure and motion blur at 15–30 Hz; a printed tag emits nothing, so there is no flash-sync interference to reject).
+- Acceptance: position error ≤ ±5 cm at 0.5–2 m and ≤ ±10% beyond (provisional — finalize at the P2 gate); cadence ≥ 15 Hz; FOV envelope documented per camera; **the renderer is unharmed by co-residence** — ≤ 5 ms/buffer p99 and 0 underruns over the 10 min run (the risk-8 gate: if full-rate detection fails it, the detect-then-track scheme (detect every Nth frame) is forced here, before P3 — the capture-side branches (co-processor / alternate capture) are consumed by the Pi 5's dual-CSI selection, [README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)).
 - Metric logged: `p_err_cm`, `track_rate_hz`, `fov_envelope_deg`, `render_ms`, `underruns`. The marker's PnP orientation is **not consumed and not gated** — the tracking tier is position-only ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu)); pointer orientation always comes from its IMU.
 
 ### T8 — UWB ranging & tier fallback (tracking tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
 
-- Setup: UWB module pair on both breadboards; tape-measured baselines; logging captures the active tier for every sound update.
+- Setup: UWB module pair on both breadboards; **driver bring-up first on the Pi side** — the DW3000 SPI driver/stack is validated on the Raspberry Pi 5 (kernel or userspace) before any ranging run; tape-measured baselines; logging captures the active tier for every sound update.
 - Procedure: (a) range error vs tape at 0.5–4 m line-of-sight; (b) body-blocked/NLOS profile (person between devices; pointer held behind the body) — characterization, the fallback tier absorbs degradation; (c) tier-switch run: sweep the pointer out of camera view into UWB-only and back, repeatedly, including behind-body holds; log the active tier per update and the placement continuity across switches.
 - Acceptance: range error ≤ ±10 cm at ≤ 3 m LOS, update rate ≥ 10 Hz; NLOS profile documented (characterization, not a gate); **no placement jump beyond the T6 `D`-error envelope at any tier switch** — tier changes must be inaudible.
 - Metric logged: `r_err_cm`, `uwb_rate_hz`, `tier`, `placement_jump_cm`.
