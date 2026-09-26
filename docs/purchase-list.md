@@ -1,6 +1,6 @@
 # Cane — Purchase list (P2 bench order)
 
-> **To be finalized by the co-researcher** — the selection of every component and material is pending, for financial reasons ([README §3](../README.md#3-hardware)). The itemized bench order — the two devices' electronics (tracking hardware included, it is part of the final design), the battery/power path, the pointer-tracking hardware, bench infrastructure, and one-time bench tools — is built from that selection, everything the T0–T8 tests of [`docs/bench-tests.md`](bench-tests.md) consume. P3-only and study-only blocks (printer/housings/filament, soldering tools, strap, evaluation hardware) are deferred to their phases.
+> **To be finalized by the co-researcher** — the selection of every component and material is pending, for financial reasons ([README §3](../README.md#3-hardware)). The itemized bench order — the two devices' electronics (tracking hardware included, it is part of the final design), the battery/power path, the pointer-tracking hardware, bench infrastructure, and one-time bench tools — is built from that selection, everything the T0–T8 tests of [`docs/bench-tests.md`](bench-tests.md) consume. P3-only and study-only blocks (printer/housings/filament, the **minimal rework & inspection set** — the full soldering kit is dropped since the P3 build is outsourced — bare-PCB fab order **with spares**, the **local hand-solder service fee** ([`assembly.md`](assembly.md)), strap, evaluation hardware) are deferred to their phases.
 
 ## 1. Scope and the no-soldering rule
 
