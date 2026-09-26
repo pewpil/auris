@@ -1,128 +1,89 @@
-# Cane — Purchase list (full-project order)
+# Cane — Purchase list (branch esp32-s3, entire project)
 
-> **Selected 2026-09-25 by the co-researcher** — the itemized order below covers the **entire thesis project** (instructed 2026-09-25): the two devices' electronics, the pointer-tracking hardware, the battery/power path, the bench infrastructure, the one-time tools, the P3 build materials, and the P5 evaluation hardware, priced in **Philippine peso**. Prices are local-retail estimates (Lazada/Shopee/OL-class listings, Sept 2026, ₱57 ≈ USD 1, ±20% typical spread); checkout-verified figures supersede them ([README §3.6](../README.md#36-totals)). Every row carries the bench tests that consume it ([`bench-tests.md`](bench-tests.md)); P3-only and study-only rows are flagged by phase.
+> **The components and materials for the entire project — P2 bench, P3 build kit, P4/P5 phases — itemized for the esp32-s3 selections (research pass 2026-09-26; selection in [README §3.1–3.2](../README.md#31-pointer--electronics)).** Verify prices and stock at checkout; totals serve the co-researcher's purchase-approval sign-off (financial reasons, [README §9](../README.md#9-open-items)). Sourcing scope per decision 2026-09-26: **Philippine-local lanes only** — Shopee PH, Lazada PH, e-Gizmo (Mechatronix Central, Manila), Circuitrocks, Makerlab/Maker Selections-type local shops; no global parts houses. Quantities cover **both devices fully** (pointer + wearable share one parts pool). Tracking hardware included — it is part of the final design ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu)).
 
-## 1. Scope and the no-soldering rule
+## 1. Scope rules
 
-- **No-soldering rule (purchasing constraint).** P2 attaches every component non-permanently and involves no soldering of any kind, so every module must be ordered with **headers pre-soldered** — including the Raspberry Pi 5 (official SKU with pre-soldered 40-pin header); verify the listing before checkout. Unsoldered arrivals are set aside for the P3 build, never soldered during P2.
-- **Buy-once rule (purchasing constraint).** Each component category is purchased once — the selection is made *before* the purchase, never corrected by a re-buy afterwards ([README §3](../README.md#3-hardware)).
-- The Raspberry Pi 5's compute selection consumes the capture-strategy question (dual native CSI — no camera mux is purchased) and resolves the link medium to Wi-Fi UDP (no link hardware is purchased) ([README §3.7](../README.md#37-component-notes)).
+- **This list is the whole project's purchase list, not a bench order.** It itemizes every component, material, fixture, tool, and service the project consumes from P2 through P5 — nothing more, nothing missing: §2–§4 are the items bought at/before the bench phase that keep serving the final builds and study; §5 holds the phase-deferred one-time blocks (P3 build/service lanes, P5 hardware), labeled with their consuming phase.
+- **No-soldering rule (purchasing constraint).** P2 attaches every component non-permanently and involves no soldering of any kind, so every module is ordered with **headers pre-soldered**; verify the listing before checkout. Unsoldered arrivals wait, unsoldered, for the P3 build.
+- **Buy-once rule (purchasing constraint).** Each component category is purchased once — the selection is made *before* the purchase, never corrected by a re-buy afterwards ([README §3](../README.md#3-hardware)). Non-consumable categories (§5 tools) are also bought once; consumables are sized per phase.
+- **Local-lane rule (decision 2026-09-26).** All rows are priced against Philippine-local shops and marketplaces; no offshore distributor accounts are opened for this build.
+- Every row carries its consuming bench tests or phase, so any cut can be checked against the T0–T8 matrix and the phase structure before it is made.
 
-## 2. A — Device electronics: pointer (P2)
+## 2. Device electronics (ordered for the bench — headers pre-soldered, verify listing; serve P2 → P5)
 
-| Item | Spec | Qty | Unit ₱ | Subtotal ₱ | Consumed by |
-|---|---|---|---|---|---|
-| ESP32-S3 dev board | DevKitC-1-class, 8 MB flash, pre-soldered headers | 1 | 650 | 650 | T1, T2, T3, T5, T6, T8 |
-| BNO085 IMU module | 9-DoF, I²C 0x4A, pre-soldered (same part as wearable's) | 1 | 1,100 | 1,100 | T1 |
-| VL53L1X ToF module | room-scale ~4 m class, I²C 0x29, pre-soldered | 1 | 550 | 550 | T2 |
-| Trigger button | panel tactile + cap | 1 | 25 | 25 | T2, T5 |
-| TP4056-C module | USB-C charge + DW01/FS8205-class protection | 1 | 40 | 40 | T0 |
-| 18650 Li-ion cell | 3.4 Ah protected-class | 1 | 300 | 300 | T0 |
-| 18650 holder | 1-cell, terminal type | 1 | 35 | 35 | T0 |
-| DW3000 UWB module | SPI + IRQ/reset, pre-soldered (tag side) | 1 | 1,000 | 1,000 | T8 |
+| #   | Item                                                     | Listing keywords                           | Qty                              | Lane                                                                                     | Price point (₱) | Pre-soldered                                                                                                                    | Consumed by                                           | Notes                                                                                                                                                    |
+| --- | -------------------------------------------------------- | ------------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ESP32-S3-DevKitC-1 **N16R8** (16 MB flash, 8 MB PSRAM)   | "ESP32-S3-DevKitC-1 N16R8"                 | 2 (1 per device)                 | e-Gizmo (in stock, ₱499 ea. as of 2026-09-26); Shopee/Lazada alternates                  | 1,000 total     | yes — pre-headered devkit                                                                                                       | T0–T8 all; final builds                               | dual USB (native USB = debug/JTAG; no separate programmer); 240 MHz dual core + vector ext. wears the renderer + CV budget (risk-8/T7)                   |
+| 2   | BNO085 breakout (GY-BNO085 class, I²C)                   | "GY-BNO085 BNO085 IMU"                     | 2 (1 per device)                 | Shopee/Lazada; e-Gizmo/Circuitrocks if stocked                                           | 700–1,100 ea.   | varies — prefer listing photos showing pre-soldered headers                                                                     | T1, T5, T6                                            | same part both devices ([README §3.7](../README.md#37-component-notes)); distinct fixed address from the ToF                                             |
+| 3   | VL53L1X ToF with optical cover                           | "VL53L1X TOF 4m"                           | 1                                | Shopee/Lazada; Makerlab PH (TOF400C-class alternates carry the ≤ 4 m spec — check cover) | 150–350         | yes — XSHUT/INT headered                                                                                                        | T2, T5                                                | cover-glass version; 940 nm Class-1 beam = the "invisible laser" ([README §3.1](../README.md#31-pointer--electronics))                                   |
+| 4   | MAX98357A I²S Class-D mono amp                           | "MAX98357A I2S amplifier"                  | 2 (1 per ear)                    | Shopee/Lazada                                                                            | 60–120 ea.      | yes — standard module                                                                                                           | T4, T5                                                | one per ear; L/R via the L/R-select pin ([README §3.2](../README.md#32-wearable--electronics))                                                           |
+| 5   | OV2640 DVP camera **160° wide-FOV**, 24-pin              | "OV2640 160 degree wide angle 24pin ESP32" | 2 + 1 spare                      | Shopee; Maker Selections-type local stock                                                | 100–200 ea.     | FPC ribbon — plus breakout-to-header adapters so P2 stays solder-free                                                           | T7                                                    | I²C-addr strappable, verify before checkout; two cameras share the S3's single DVP port (alternation default; mux/co-processor still T7's call — risk 8) |
+| 6   | DWM3000 UWB module (DW3110-based, ceramic antenna)       | "DWM3000 module DW3110"                    | 2 (tag + anchor)                 | Shopee/Lazada (Qorvo Decawave listings); Circuitrocks if stocked                         | 700–1,500 ea.   | module, castellated — solders onto the carrier header (never bare QFN, [README §3.9](../README.md#39-assembly--outsourcing-p3)) | T8                                                    | SPI + IRQ/reset, the interface the wiring maps resolve ([README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies))                  |
+| 7   | Momentary push buttons (through-hole, panel-mount class) | "push button momentary 12mm"               | 4 (trigger + re-zero + 2 spares) | Shopee/e-Gizmo                                                                           | 5–15 ea.        | leads for breadboard; P3 panel-caps                                                                                             | trigger (T5 onward), re-zero (T5), fit-check fixtures | one button per device in the design: pointer trigger, wearable re-zero ([README §3.1](../README.md#31-pointer--electronics), §3.2)                       |
+| 8   | Wired stereo earphones, 3.5 mm (baseline pair)           | "wired earphones 3.5mm"                    | 2                                | local consumer lanes                                                                     | 100–250 ea.     | n/a                                                                                                                             | T4, T5; P4–P5 standardized pair                       | wired mandatory ([README §2.1](../README.md#21-devices)); one bench pair, one study pair kept identical                                                  |
 
-**A subtotal = ₱3,700**
+## 3. Battery, power & charge path (per device; serves P2 → P5)
 
-## 3. B — Device electronics: wearable (P2)
+| # | Item | Listing keywords | Qty | Lane | Price point (₱) | Consumed by | Notes |
+|---|---|---|---|---|---|---|---|
+| 1 | USB-C charge/protect board (TP4056-C + protection class) | "TP4056 USB-C charge protect" | 2 | Shopee/Lazada | 25–60 ea. | T0 | one per device |
+| 2 | 18650 Li-ion cell, protected | "18650 3.7V protected" | 2 | Shopee/Lazada | 120–180 ea. | T0 | wearable rear-station cell — doubles as counterweight ([README §3.3](../README.md#33-structural--mechanical)); the second keeps bench sessions rolling while one charges |
+| 3 | 18650 holder (tabbed or spring) | "18650 holder" | 1 | Shopee | 20–40 | T0, P3 | rear-station mount; P2 uses holder + jumpers (solder-free) |
+| 4 | Slim Li-ion pouch | "Li-ion 3.7V pouch 1000-2000mAh" | 1 | Shopee/Lazada | 150–250 | T0 | pointer cell (slim, for the shell); capacity class pinned by the T0 current measurement |
+| 5 | Slide/toggle switch | "slide switch SPDT panel" | 2 | Shopee | 15–30 ea. | T0 | per-device power switch |
+| 6 | 3.5 mm stereo jack (panel or breakout) | "3.5mm stereo jack breakout" | 1 | Shopee | 20–50 | T4, T5 | wired-earphones path ([README §2.1](../README.md#21-devices)) |
+| 7 | USB-C wall charger, ≥ 2 A | "USB-C charger 2A" | 1 | local consumer lanes | 150–300 | T0 | charges both devices; power banks cover untethered tests |
 
-| Item | Spec | Qty | Unit ₱ | Subtotal ₱ | Consumed by |
-|---|---|---|---|---|---|
-| Raspberry Pi 5 (4 GB) | official SKU, **pre-soldered 40-pin header** | 1 | 4,100 | 4,100 | T0, T1, T4, T5, T7, T8 |
-| BNO085 IMU module | 9-DoF, I²C (same part as pointer's) | 1 | 1,100 | 1,100 | T1 |
-| MAX98357A amp module | I²S Class-D mono, L/R channel strap | 2 | 200 | 400 | T4, T5 |
-| 3.5 mm TRS jack | panel/PCB, stereo | 1 | 30 | 30 | T4, T5 |
-| TP4056-C module | charge + protection (bench front-end) | 1 | 40 | 40 | T0 |
-| 18650 Li-ion cells | 3.4 Ah ×2 (2S pack) | 2 | 300 | 600 | T0 |
-| 18650 holders | 1-cell ×2 (2S assembly) | 2 | 35 | 70 | T0 |
-| 5 V/5 A buck module | 7.4 V → 5 V, 5 A-class | 1 | 250 | 250 | T0 |
-| 2S balance/protection board | 2S charge + protection | 1 | 180 | 180 | T0 |
-| Re-zero button | panel tactile + cap | 1 | 25 | 25 | T5 |
+## 4. Bench infrastructure (one-time; serves T0–T8 and the P3/P4 sessions)
 
-**B subtotal = ₱6,795**
+| # | Item | Listing keywords | Qty | Lane | Price point (₱) | Consumed by | Notes |
+|---|---|---|---|---|---|---|---|
+| 1 | Solderless breadboard, 830 pt | "breadboard 830" | 2 | Shopee/e-Gizmo | 60–130 ea. | T0–T8 | one per device |
+| 2 | Dupont jumper packs (M-M + M-F) | "dupont jumper wire pack" | 2 | Shopee | 80–150 ea. | T0–T8 | |
+| 3 | USB power bank | "power bank 10000mAh" | 2 | local consumer lanes | 350–700 ea. | T0 onwards | untethered bench sessions ([bench-tests.md](bench-tests.md) §Bring-up safety) |
+| 4 | USB-C data cable | "USB-C data cable" | 2 | Shopee | 60–120 ea. | bring-up, flashing | one per devkit |
+| 5 | Hookup wire set (22–26 AWG) | "hookup wire kit" | 1 | Shopee/e-Gizmo | 100–200 | T0–T8 | harness prototypes |
+| 6 | Spare header packs (2.54 mm) | "2.54 header pin pack" | 1–2 | Shopee | 30–80 ea. | wiring maps | module remounts / spare rows |
+| 7 | Bench attachment kit: zip ties, velcro straps, double-sided foam tape | "zip ties velcro foam tape" | 1 | Shopee/hardware | 60–150 | T0–T8 | the no-solder fasteners of the P2 rule ([bench-tests.md](bench-tests.md) header) |
 
-## 4. C — Pointer-tracking hardware (P2)
+## 5. One-time blocks — P3 build kit, service lanes, P5 study hardware (phase labels in-row)
 
-| Item | Spec | Qty | Unit ₱ | Subtotal ₱ | Consumed by |
-|---|---|---|---|---|---|
-| Camera Module 3 Wide | 12 MP, ~120° DFOV, native CSI (Pi 5 CAM + CAM0) | 2 | 1,850 | 3,700 | T7 |
-| DW3000 UWB module | SPI + IRQ/reset, pre-soldered (anchor side) | 1 | 1,000 | 1,000 | T8 |
-| Head-form fixture materials | foam head/stand + friction mounts (velcro, tape, zip ties) | 1 | 150 | 150 | T7 |
+| # | Item | Qty | Lane | Price point (₱) | Consuming phase | Notes |
+|---|---|---|---|---|---|---|
+| 1 | Digital multimeter | 1 | local tool shops/Shopee | 350–700 | P2–P5 | T0 current measurements + incoming inspection ([README §3.4](../README.md#34-assembly--bench-tools-one-time)) |
+| 2 | Minimal rework & inspection set — strippers/cutters/pliers, tweezers, adjustable iron + solder + flux + desoldering wick | 1 | e-Gizmo/Shopee | 700–1,200 | P3 rework only | full soldering kit dropped (outsourced build — [README §3.9](../README.md#39-assembly--outsourcing-p3)); helping-hands optional |
+| 3 | Printed marker stock — matte high-contrast sticker/print sheets | 1 pack | Shopee/print shops | 50–150 | T7 (test tags) + P3 (the shell-mounted marker) | printed ArUco/AprilTag ([README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)); dictionary/size pinned at T7 |
+| 4 | Harness materials kit — JST-XH/PH connectors + crimps, heat-shrink assortment, colored silicone wire (22/26 AWG) | 1 kit | Shopee/Makerlab PH | 400–800 | P3 (the service's handoff kit, [`assembly.md`](assembly.md) §3) | also spares any P4-phase harness repair; keying/colors per our wire schedule |
+| 5 | Head-form fixture (T7 setup) | 1 | printed (own filament) or foam head | 0–150 | T7 | camera stations spaced like the strap stations ([bench-tests.md](bench-tests.md) T7) |
+| 6 | Bare carrier PCBs, **with ≥ 2 spares/device** | ≥ 2/device (+2 spares) | PCB fab house | per quote | P3 ([README §3.9](../README.md#39-assembly--outsourcing-p3) lane 1) | order at the breadboard exit (~Oct 27) |
+| 7 | Local hand-solder service fee | 2 builds | local service | per quote | P3 ([`assembly.md`](assembly.md) §4) | per-build quote, turnaround inside the P3 window |
+| 8 | Filament (PLA/HTPLA) or print-service voucher | 1–2 kg / voucher | Shopee/local print service | 700–1,400 | P3 | pointer shell + wearable strap mounts ([README §3.3](../README.md#33-structural--mechanical)); own-printer vs service is the co-researcher's call |
+| 9 | Elastic head strap + fasteners/adhesive + heat-set inserts | 1 set | Shopee/local sewing/hardware | 100–250 | P3 | goggle-style band + mount fastening |
+| 10 | Evaluation hardware — blindfolds, floor marking tape, measuring tape, obstacle props | 1 set | Shopee/local hardware | 300–600 | P5 ([README §3.5](../README.md#35-evaluation-hardware-one-time)) | timing on the on-hand phone; props partly scavenged (course furniture) |
 
-**C subtotal = ₱4,850**
+## 6. Checkout checklist
 
-## 5. D — Bench infrastructure (P2)
+- [ ] Pre-soldered headers verified on every §2 module row from listing photos **before checkout** (rule §1; unsoldered arrivals wait unsoldered for P3).
+- [ ] I²C addresses distinct: BNO085 (0x4a) vs VL53L1X (0x29) — they share the pointer's bus; addr straps left at defaults unless the wiring maps say otherwise.
+- [ ] Both OV2640 modules: I²C address strap confirmed and *different* (the two cameras share the wearable's bus in alternation mode) — no-collision check before checkout.
+- [ ] DWM3000 row = **module with integrated antenna** (DW3110-based), not a bare QFN chip.
+- [ ] DevKitC-1 variant = **N16R8** (16 MB flash / 8 MB PSRAM) — the cheaper N8R2/N4-class clones miss the PSRAM budget.
+- [ ] MAX98357A listings: L/R-select pin broken out (per-ear channel strapping needs it).
+- [ ] 18650 cell = protected, name-brand; pouch cell = with PCM protection leads (charge board + cell both protected — T0's trip test).
+- [ ] Per-quote rows (§5 rows 6–7) quoted **before** the purchase-approval sign-off.
+- [ ] Sum the rows into the §7 envelope; record committed totals at [README §3.6](../README.md#36-totals) after sign-off.
 
-| Item | Spec | Qty | Unit ₱ | Subtotal ₱ | Consumed by |
-|---|---|---|---|---|---|
-| Breadboards | full-size | 3 | 110 | 330 | T0–T8 |
-| Dupont jumper sets | M-M, M-F, F-F | 3 | 120 | 360 | T0–T8 |
-| MicroSD card | 32 GB, A1-class (Pi OS image) | 1 | 450 | 450 | all Pi sessions |
-| MicroSD reader | USB | 1 | 150 | 150 | image provisioning |
-| USB data cables | USB-C + micro-USB, data-capable | 3 | 85 | 255 | flash/debug |
-| 65 W USB-PD adapter | bench USB for the Pi side | 1 | 1,500 | 1,500 | T0 soak |
-| USB V/I tester | inline (T0 logging support) | 1 | 400 | 400 | T0 |
-| Velcro / zip ties / foam tape | friction-mount kit | 1 | 350 | 350 | T0–T8 |
-| FFC cables (spare) | 22-pin, 200 mm + 300 mm | 2 | 100 | 200 | T7 (spares) |
-| Lux meter | budget digital | 1 | 650 | 650 | T7(d) low-light check |
+## 7. Price envelope (point-in-time, branch esp32-s3, 2026-09-26)
 
-**D subtotal = ₱4,645**
+| Block | Low (₱) | High (₱) |
+|---|---|---|
+| Device electronics (§2, incl. buttons + earphones) | ~4,500 | ~8,000 |
+| Battery, power & audio path (§3) | ~650 | ~1,200 |
+| Bench infrastructure (§4) | ~1,300 | ~2,800 |
+| One-time blocks (§5, rows 1–5, 8–10: tools/kit/prints/P5 — **excluding the two per-quote rows**) | ~2,600 | ~5,350 |
+| — bare carrier PCBs + spares (§5 row 6) | per quote | per quote |
+| — local hand-solder service, 2 builds (§5 row 7) | per quote | per quote |
+| **Total, entire project — fixed-price rows** | **~₱9,100** | **~₱17,350** |
 
-## 6. E — One-time tools (P2 bench + P3 build)
-
-| Item                             | Spec                        | Qty | Unit ₱ | Subtotal ₱ | Phase |
-| -------------------------------- | --------------------------- | --- | ------ | ---------- | ----- |
-| Digital multimeter               | inline current/voltage (T0) | 1   | 850    | 850        | P2    |
-| Pliers / strippers / cutters set | basic 3-piece               | 1   | 450    | 450        | P2    |
-| Soldering iron kit               | adjustable temp + tips      | 1   | 1,400  | 1,400      | P3    |
-| Helping-hands / PCB holder       | —                           | 1   | 350    | 350        | P3    |
-| Desoldering wick + flux          | —                           | 1   | 220    | 220        | P3    |
-| Solder spool                     | 60/40, 0.6 mm               | 1   | 180    | 180        | P3    |
-
-**E subtotal = ₱3,450**
-
-## 7. F — Build materials (P3)
-
-| Item | Spec | Qty | Unit ₱ | Subtotal ₱ | Consumed by |
-|---|---|---|---|---|---|
-| Print service | pointer shell + wearable camera brackets, IMU mount, battery cradle, printed ArUco/AprilTag markers, spares | 1 | 1,200 | 1,200 | P3 housing |
-| Elastic head strap | goggle-style band | 1 | 250 | 250 | P3 strap |
-| Fasteners | M2/M3 screws + nyloc + washers | 1 | 250 | 250 | P3 mounts |
-| Adhesive | double-sided foam tape + epoxy putty | 1 | 180 | 180 | P3 mounting |
-
-**F subtotal = ₱1,880**
-
-## 8. G — Evaluation hardware (P5)
-
-| Item | Spec | Qty | Unit ₱ | Subtotal ₱ | Consumed by |
-|---|---|---|---|---|---|
-| Blindfolds | — | 2 | 100 | 200 | P5 study |
-| Floor marking tape + measuring tape | course layout + ranging ground truth | 1 | 350 | 350 | P5 study |
-| Obstacle props | tables/chairs on hand + misc furnishing | 1 | 800 | 800 | P5 course |
-| Timing | on-hand phone/smartwatch | — | 0 | 0 | P5 study |
-
-**G subtotal = ₱1,350**
-
-## 9. Totals
-
-| Block | Subtotal ₱ |
-|---|---|
-| A — Pointer electronics (P2) | 3,700 |
-| B — Wearable electronics (P2) | 6,795 |
-| C — Tracking hardware (P2) | 4,850 |
-| D — Bench infrastructure (P2) | 4,645 |
-| **P2 bench order** | **19,990** |
-| E — One-time tools (P2/P3) | 3,450 |
-| F — Build materials (P3) | 1,880 |
-| G — Evaluation hardware (P5) | 1,350 |
-| **Grand total** | **26,670** |
-| **+15% contingency** | **≈ 30,670** |
-
-The contingency prices the buy-once rule (a board-class miss at T7/T8 is absorbed by design, not re-buy) and the ±20% local spread.
-
-## 10. Checkout checklist
-
-1. Every module listing verified **headers pre-soldered** — including the Pi 5's 40-pin header SKU.
-2. Buy-once check: each category ordered once; no duplicate categories.
-3. Camera pair confirmed **Camera Module 3 Wide** with FFC cables (spares in D).
-4. 2S power path confirmed (2 cells + balance/protection + 5 V/5 A buck) before the T0 battery test is scheduled.
-5. Verified local prices supersede the estimates above; totals re-recorded in [`README §3.6`](../README.md#36-totals) at checkout.
+Totals are a researched point-in-time envelope, not committed costs: Shopee prices fluctuate by seller/voucher; specialty-stock rows (DWM3000 especially) carry single-shop risk — verify stock before sign-off. The envelope covers the entire project: the bench order (P2), the P3 build kit and service lanes, and the P5 evaluation hardware. Final committed totals are computed from the co-researcher's approved order and recorded in [README §3.6](../README.md#36-totals).
