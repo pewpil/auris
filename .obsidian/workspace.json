@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/hw-comparison.md",
+                "file": "docs/purchase-list.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "hw-comparison"
+              "title": "purchase-list"
             }
           }
         ]
@@ -189,11 +189,5 @@
     }
   },
   "active": "c1a9e0f2b3d4a5f600000003",
-  "lastOpenFiles": [
-    "docs/purchase-list.md",
-    "docs/hw-comparison.md",
-    "README.md",
-    "docs/assembly.md",
-    "docs/bench-tests.md"
-  ]
+  "lastOpenFiles": ["README.md", "docs/purchase-list.md", "docs/bench-tests.md"]
 }
