@@ -1,3 +1,8 @@
+---
+id: hw-comparison
+aliases: []
+tags: []
+---
 # Cane — Hardware branch comparison (esp32-s3 / esp32-p4 / raspi-5)
 
 > **Derived from the three branch tips (2026-09-26)** — `esp32-s3` (`b853b5b`), `raspi-5` (`adade7f`), `esp32-p4` (`490a7fc`) — each carrying its own itemized components-and-pricing exercise over the `agnostic` hardware-open baseline (`5b40cb2`). Purpose: give the co-researcher's purchase-approval sign-off ([README §9](../README.md#9-open-items)) a single comparison artifact across **all** decision variables (cost, heat, power, compute, cameras, link, form — the full set of 26 below), with a 1/0/−1 score matrix: **1 = the branch's wearable board performs well on the variable, 0 = neither good nor poor, −1 = performs poorly** — absolute scores, so several boards can earn 1s together on a row. The branch choice itself is part of the sign-off; this matrix is a decision aid, not the decision.

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "docs/hw-comparison.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "hw-comparison"
             }
           }
         ]
@@ -83,7 +83,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 280
+    "width": 280,
+    "collapsed": true
   },
   "right": {
     "id": "c1a9e0f2b3d4a5f600000007",
@@ -188,5 +189,11 @@
     }
   },
   "active": "c1a9e0f2b3d4a5f600000003",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "docs/purchase-list.md",
+    "docs/hw-comparison.md",
+    "README.md",
+    "docs/assembly.md",
+    "docs/bench-tests.md"
+  ]
 }
