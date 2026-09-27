@@ -58,9 +58,9 @@
 | 5 | Head-form fixture (T7 setup) | 1 | printed (own filament) or foam head | 0–150 | T7 | camera stations spaced like the strap stations ([bench-tests.md](bench-tests.md) T7) |
 | 6 | Bare carrier PCBs, **with ≥ 2 spares/device** | ≥ 2/device (+2 spares) | PCB fab house | per quote | P3 ([README §3.9](../README.md#39-assembly--outsourcing-p3) lane 1) | order at the breadboard exit (~Oct 27) |
 | 7 | Local hand-solder service fee | 2 builds | local service | per quote | P3 ([`assembly.md`](assembly.md) §4) | per-build quote, turnaround inside the P3 window |
-| 8 | Filament (PLA/HTPLA) or print-service voucher | 1–2 kg / voucher | Shopee/local print service | 700–1,400 | P3 | pointer shell + wearable strap mounts ([README §3.3](../README.md#33-structural--mechanical)); own-printer vs service is the co-researcher's call |
+| 8 | Print-service voucher — pointer shell + wearable strap mounts (+ spares) | 1 voucher | local print service | 700–1,400 | P3 | prints per [README §3.3](../README.md#33-structural--mechanical) (~₱1,200); **print decision settled 2026-09-25: print service, no own printer** |
 | 9 | Elastic head strap + fasteners/adhesive + heat-set inserts | 1 set | Shopee/local sewing/hardware | 100–250 | P3 | goggle-style band + mount fastening |
-| 10 | Evaluation hardware — blindfolds, floor marking tape, measuring tape, obstacle props | 1 set | Shopee/local hardware | 300–600 | P5 ([README §3.5](../README.md#35-evaluation-hardware-one-time)) | timing on the on-hand phone; props partly scavenged (course furniture) |
+| 10 | Evaluation hardware — blindfolds ×2, floor marking tape, measuring tape, obstacle props | 1 set | Shopee/local hardware | 1,000–1,500 | P5 ([README §3.5](../README.md#35-evaluation-hardware-one-time)) | timing on the on-hand phone; itemization per [README §3.5](../README.md#35-evaluation-hardware-one-time) — blindfolds ~₱200, tapes ~₱350, obstacle props ~₱800 |
 
 ## 6. Checkout checklist
 
@@ -74,16 +74,16 @@
 - [ ] Per-quote rows (§5 rows 6–7) quoted **before** the purchase-approval sign-off.
 - [ ] Sum the rows into the §7 envelope; record committed totals at [README §3.6](../README.md#36-totals) after sign-off.
 
-## 7. Price envelope (point-in-time, branch esp32-s3, 2026-09-26)
+## 7. Price envelope (point-in-time, branch esp32-s3, 2026-09-26; the P5-hardware and print rows re-aligned to [README §3.5](../README.md#35-evaluation-hardware-one-time)/[§3.3](../README.md#33-structural--mechanical) on 2026-09-27)
 
 | Block | Low (₱) | High (₱) |
 |---|---|---|
 | Device electronics (§2, incl. buttons + earphones) | ~4,500 | ~8,000 |
 | Battery, power & audio path (§3) | ~650 | ~1,200 |
 | Bench infrastructure (§4) | ~1,300 | ~2,800 |
-| One-time blocks (§5, rows 1–5, 8–10: tools/kit/prints/P5 — **excluding the two per-quote rows**) | ~2,600 | ~5,350 |
+| One-time blocks (§5, rows 1–5, 8–10: tools/kit/prints/P5 — **excluding the two per-quote rows**) | ~3,300 | ~6,150 |
 | — bare carrier PCBs + spares (§5 row 6) | per quote | per quote |
 | — local hand-solder service, 2 builds (§5 row 7) | per quote | per quote |
-| **Total, entire project — fixed-price rows** | **~₱9,100** | **~₱17,350** |
+| **Total, entire project — fixed-price rows** | **~₱9,750** | **~₱18,150** |
 
 Totals are a researched point-in-time envelope, not committed costs: Shopee prices fluctuate by seller/voucher; specialty-stock rows (DWM3000 especially) carry single-shop risk — verify stock before sign-off. The envelope covers the entire project: the bench order (P2), the P3 build kit and service lanes, and the P5 evaluation hardware. Final committed totals are computed from the co-researcher's approved order and recorded in [README §3.6](../README.md#36-totals).

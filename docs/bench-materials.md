@@ -95,4 +95,4 @@
 | Test fixtures & consumables (§4, incl. the ◆ rows) | ~600 | ~2,000 |
 | **Bench slice total** | **~₱5,700** | **~₱12,850** |
 
-This slice is the Phase 2 order portion of the entire-project envelope (the full-project fixed-price envelope, ₱9,100–17,350, additionally carries the pointer-kit items counted here plus the Phase 3/Phase 5 blocks in [`purchase-list.md`](purchase-list.md) §5 — the overlap is intentional; this file is the test-keyed view, that file remains the purchasing record). Fold the ◆ rows into the checkout cart when the order goes out, and log the verified prices back into [`purchase-list.md`](purchase-list.md) §7 at sign-off.
+This slice is the Phase 2 order portion of the entire-project envelope (the full-project fixed-price envelope, ₱9,750–18,150, additionally carries the pointer-kit items counted here plus the Phase 3/Phase 5 blocks in [`purchase-list.md`](purchase-list.md) §5 — the overlap is intentional; this file is the test-keyed view, that file remains the purchasing record). Fold the ◆ rows into the checkout cart when the order goes out, and log the verified prices back into [`purchase-list.md`](purchase-list.md) §7 at sign-off.
