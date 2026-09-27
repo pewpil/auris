@@ -2,6 +2,13 @@
   "$schema": "https://opencode.ai/config.json",
   "model": "opencode/deepseek-v4-flash",
   "default_agent": "build",
+  "mcp": {
+    "kicad": {
+      "type": "local",
+      "command": ["bash", "-c", "exec \"$HOME/.local/bin/uvx\" --from mcp-server-kicad mcp-server-kicad"],
+      "enabled": true,
+    },
+  },
   "instructions": [
     ".opencode/concept.md",
     ".opencode/new.md",
@@ -10,12 +17,4 @@
     ".opencode/man.md",
     ".opencode/coding.md",
   ],
-  "mcp": {
-    "kicad": {
-      "type": "local",
-      "command": ["mcp-server-kicad"],
-      "enabled": true,
-      "timeout": 120000,
-    },
-  },
 }
