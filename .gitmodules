@@ -1,3 +1,6 @@
 [submodule "thesis"]
 	path = thesis
 	url = ssh://git@github.com/pewpil/auris-thesis.git
+[submodule ".opencode/skills/kicad-happy"]
+	path = .opencode/skills/kicad-happy
+	url = https://github.com/aklofas/kicad-happy.git
