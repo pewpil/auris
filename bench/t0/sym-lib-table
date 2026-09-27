@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "t0-modules")(type "KiCad")(uri "${KIPRJMOD}/t0-modules.kicad_sym")(options "")(descr ""))
+  (lib (name "power")(type "KiCad")(uri "${KICAD10_SYMBOL_DIR}/power.kicad_sym")(options "")(descr "Stock KiCad power symbols"))
+)
