@@ -40,3 +40,20 @@ purposeful.
 **When editing existing code:** newly written or substantially rewritten
 functions/classes follow the same rule. Do not expand the diff by
 retro-documenting unrelated untouched code unless the researcher asks.
+
+## 2. Git — the AI never commits by itself
+
+The AI does **not** run `git commit`, `git merge`, `git rebase`, `git tag`,
+or any other history-writing command in this repository — in the main repo
+or in the `thesis/` submodule. Commits are made by the researcher; the AI's
+job stops at producing a clean working tree.
+
+- **Allowed:** `git status`, `git diff`, `git log`, `git show`, `git stash
+  list` — inspection only. Temporary, message- or checkout-only rewrites are
+  permitted **only when the researcher explicitly orders them in the current
+  session** (e.g. "remove that commit body"), and only on unpushed history.
+- **After finishing work:** leave edits staged or unstaged as they are,
+  summarize what changed, and let the researcher commit. Never volunteer a
+  commit, never end a task with "shall I commit this?" — just stop.
+- **No unrequested pushes, force-flags, branch deletions, or reflog
+  surgery** — and rebase/reword requests must be verified unpushed first.

@@ -1,7 +1,6 @@
 {
- "meta": {
-  "filename": "t0-power-rails.kicad_pro",
-  "version": 1
- },
- "schematic": {}
+  "meta": {
+    "filename": "t0-power-rails.kicad_pro",
+    "version": 1
+  }
 }
