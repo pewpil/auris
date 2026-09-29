@@ -1,17 +1,134 @@
-# Cane — Purchase list (P2 bench order)
+# Cane — Purchase list (the complete cart: every component and material)
 
-> **To be finalized by the co-researcher** — the selection of every component and material is pending, for financial reasons ([README §3](../README.md#3-hardware)). The itemized bench order — the two devices' electronics (tracking hardware included, it is part of the final design), the battery/power path, bench infrastructure, and one-time bench tools — is built from that selection, everything the T0–T8 tests of [`docs/bench-tests.md`](bench-tests.md) consume. P3-only and study-only blocks (print-service lane/housings, soldering tools, strap, evaluation hardware) are deferred to their phases. Re-opened 2026-09-29 (second clearing — the researched esp32-s3 itemization of 2026-09-26 lives in master's history): the re-selection criterion has changed — the components and materials are to be **compatible with both esp32-s3 and raspi-5** ([README §3](../README.md#3-hardware) constraint 4).
->
-> The prior itemization (branch esp32-s3, 2026-09-26, ₱9,750–18,150 fixed-price envelope) remains in git history as research input for the compatible-list exercise: most rows were already board-class-agnostic (the 9-DoF IMU breakout, the ToF module on shared I²C, the SPI + IRQ/reset UWB module pair, buttons, earphones, battery path, bench infrastructure); the expected re-sourcing rows are the DVP-connection cameras, the audio path, and the link medium (each board class carries its own radio set). The four board-class branches (esp32-s3, esp32-p4, raspi-5, raspi-4) and the comparison matrix in [`docs/hw-comparison.md`](hw-comparison.md) give the compatibility screen.
+> This is the **complete itemized order** — every component, material, tool, and fixture the project buys, device electronics through study hardware. The selections and per-row rationale live in [`hardware.md`](hardware.md); the cart follows it row for row and shares its totals. The order is built on the 2026-09-29 selection: **wearable = Raspberry Pi 5, 8 GB**; the earlier dual-compatible deferral and two-tranche structure are settled — this is a **single cart**, with the screened esp32-s3-class wearable kept in [`hardware.md`](hardware.md) §4 as the recorded alternative (₱0 until the class decision is revisited). Prices are Philippine-local ballparks, **verified at checkout**; the co-researcher's **purchase-approval sign-off** ([README §9](../README.md#9-open-items)) precedes any checkout.
 
-## 1. Scope and the no-soldering rule
+## 1. Rules the cart binds itself to
 
-- The order buys every component, fixture, and tool the test matrix and wiring maps of [`bench-tests.md`](bench-tests.md) consume — nothing more.
-- **No-soldering rule (purchasing constraint).** P2 attaches every component non-permanently and involves no soldering of any kind, so every module must be ordered with **headers pre-soldered**; verify the listing before checkout. Unsoldered arrivals are set aside for the P3 build, never soldered during P2.
-- **Buy-once rule (purchasing constraint).** Each component category is purchased once — the selection is made *before* the purchase, never corrected by a re-buy afterwards ([README §3](../README.md#3-hardware)).
-- **Dual-compatible criterion (added 2026-09-29).** Components and materials are selected to work with **both** the esp32-s3 and raspi-5 board classes; rows that cannot serve both are re-sourced per [`hw-comparison.md`](hw-comparison.md).
-- Every row carries its consuming bench tests or phase, so any cut can be checked against the T0–T8 matrix and the phase structure before it is made.
+- **Buy-once rule** — each component category is purchased once; the selection is fixed before purchase, never corrected by a re-buy. Substitute-flagged rows (e.g. the UWB module) are replacements chosen *at checkout time when a row is unstocked*, not re-buy decisions.
+- **Connector-ready rule (pre-soldered, adapted)** — P2/P3 attach everything non-permanently or through keyed connectors; every module is ordered with headers/connectors **pre-fitted** (or consumer-ready where no header applies, e.g. the Pi kit, the power bank, earphones). Anything arriving as a fine-pitch bare IC or an unsoldered header board is returned or set aside — never made bench-solderable out of necessity.
+- **Everything consumed by a test carries its test's name** — the *Consumed by* column below maps each row to the bench path or phase that uses it (`P2-path-A` = the hardware bench tests — `bench-tests.md` §1 — **bought now, may sit idle if the thesis runs the software/datasheet bench path**; `P2/P3/P4/P5` = phases per [README §6](../README.md#6-development-phases)).
+- **Same-part rule** — the two 9-DoF IMUs and the two UWB modules come from one listing each (matching revisions).
+- **P3-folded lanes** (carrier PCBs with ≥ 2 spares per device; local hand-solder service) are **quoted at P3 entry** and not itemized here — they join this sign-off lane when quoted ([hardware.md §9](hardware.md#9-p3-folded-lanes-quoted-at-p3-entry-folded-into-the-same-sign-off--not-cart-rows-here)).
 
-## 2. Status
+## 2. Pointer electronics (`P2/P3/P4/P5`)
 
-The itemized sections (device electronics, battery/power path, bench infrastructure, one-time tools), the totals, and the checkout checklist are recorded here once the co-researcher's component selection and the purchase-approval sign-off are made.
+| # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
+|---|---|---|---|---|---|
+| 1 | ESP32-S3-class devkit (16 MB flash / 8 MB PSRAM class) | all phases | 1 | 500–700 | 500–700 |
+| 2 | BNO085 9-DoF IMU breakout (I²C) | all phases | 1 | 600–1,100 | 600–1,100 |
+| 3 | VL53L1X-class ToF module (optical cover) | all phases | 1 | 300–600 | 300–600 |
+| 4 | DWM3000-class UWB tag module | tracking tiers | 1 | 900–1,800 | 900–1,800 |
+| 5 | Momentary push button | trigger | 1 | 15–50 | 15–50 |
+| 6 | Slim Li-ion pouch 1S (1,500–2,000 mAh, protection leads) | battery | 1 | 180–350 | 180–350 |
+| 7 | USB-C charge/protect board (TP4056-C class) | power | 1 | 40–100 | 40–100 |
+| 8 | Slide/toggle switch | power | 1 | 30–80 | 30–80 |
+| 9 | Printed ArUco/AprilTag marker (print-shop) | vision tier | 1 | 50–150 | 50–150 |
+| | | | | **Subtotal** | **2,615–5,430** |
+
+## 3. Wearable — board-agnostic rows (`P2/P3/P4/P5`)
+
+| # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
+|---|---|---|---|---|---|
+| 1 | BNO085 9-DoF IMU breakout (same listing as the pointer's) | all phases | 1 | 600–1,100 | 600–1,100 |
+| 2 | UWB anchor module (pair with the tag) | tracking tiers | 1 | 900–1,800 | 900–1,800 |
+| 3 | Momentary push button | re-zero | 1 | 15–50 | 15–50 |
+| 4 | 3.5 mm stereo jack breakout, female | audio terminus | 2 | 30–80 | 60–160 |
+| 5 | PCM5102A stereo I²S DAC module (1 + 1 spare) | audio path | 2 | 120–250 | 240–500 |
+| 6 | Wired stereo earphones, 3.5 mm (wired-mandatory) | audio | 1 | 150–400 | 150–400 |
+| | | | | **Subtotal** | **1,965–4,010** |
+| *(opt.)* | Headphone amp mini-board — add only if line-out drive proves weak | audio headroom | 0–1 | 80–200 | *(excluded)* |
+
+## 4. Wearable — raspi-5, 8 GB class rows (`P2/P3/P4/P5`)
+
+| # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
+|---|---|---|---|---|---|
+| 1 | **Raspberry Pi 5, 8 GB RAM** | all phases | 1 | 10,000–12,500 | 10,000–12,500 |
+| 2 | Active cooler (official class) or heatsink | thermal | 1 | 500–900 | 500–900 |
+| 3 | microSD A2-class, 64–128 GB | OS + logs | 1 | 600–1,000 | 600–1,000 |
+| 4 | CSI camera, wide-angle 120°, RGB (IMX708 class) | vision tier | 2 | 1,700–2,400 | 3,400–4,800 |
+| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/3 A out** | worn power rail + bench source | 1 | 1,800–3,200 | 1,800–3,200 |
+| | | | | **Subtotal** | **16,300–22,400** |
+| *(opt.)* | Raspberry Pi 27 W USB-C PSU (bench supply if the bank is otherwise engaged) | bench | 0–1 | 1,000–1,500 | *(excluded)* |
+| *(opt.)* | USB-UART dongle (CP2102-class) | Pi serial console | 0–1 | 150–300 | *(excluded)* |
+
+## 5. Wearable — recorded alternative, esp32-s3-class flavor (`₱0 in this cart`)
+
+| Item | When bought | Indicative price if ever re-activated |
+|---|---|---|
+| esp32-s3-class devkit (wearable) + 2× OV2640-class DVP 160° cameras + FPC adapters + 18650-cell rail | only if the class decision is revisited after a bring-up tripwire | ≈ 1,000–2,300 (devkit + cameras + adapters) + rail 300–600 |
+| *Nothing from this section is purchased under the current decision.* | — | — |
+
+## 6. Bench-conditional infrastructure (`P2-path-A only` — the hardware bench tests; bought now, may sit idle under the software/datasheet bench path)
+
+| # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
+|---|---|---|---|---|---|
+| 1 | Solderless breadboard, 830-pt class | T0–T8 breadboard assembly | 2 | 150–250 | 300–500 |
+| 2 | Dupont jumper packs (M–M + M–F) | all breadboard wiring | 2 | 120–250 | 240–500 |
+| 3 | Hookup wire assortment (multi-colour, 22–26 AWG) | harness revisions | 1 | 250–500 | 250–500 |
+| 4 | Pin header pack, 2.54 mm | module rows | 1 | 100–200 | 100–200 |
+| 5 | Camera tripod / clamp stand | T2 ToF fixture | 1 | 300–800 | 300–800 |
+| 6 | Measuring tape, 5 m | T2/T6/T8 ground truth; P5 course | 1 | 120–250 | 120–250 |
+| 7 | T2 surface set (white foam board + dark fabric) | T2 surface matrix | 1 | 100–250 | 100–250 |
+| 8 | Head-form fixture (printed via §8's printing lane) | T7 camera geometry | 1 | 100–300 | 100–300 |
+| | | | | **Subtotal** | **1,560–3,450** |
+
+## 7. One-time tools (`both paths`; solder kit = P3 rework per the outsourcing decision)
+
+| # | Item | Consumed by | Unit ₱ |
+|---|---|---|---|
+| 1 | Digital multimeter (with current ranges — inline mA) | bring-up + P3 inspection | 800–1,600 |
+| 2 | Adjustable soldering iron kit | P3/P4/P5 rework | 800–1,500 |
+| 3 | Solder wire 0.8 mm | P3 rework | 120–250 |
+| 4 | Flux | P3 rework | 80–150 |
+| 5 | Desoldering wick | P3 rework | 60–120 |
+| 6 | Hand tool set (strippers/cutters/pliers) | P2/P3 harness | 330–650 |
+| 7 | Tweezers | P3 inspection | 80–150 |
+| 8 | USB-A→USB-C data cables ×2 (data-capable) | flashing/logging, both paths | 300–700 |
+| | | | **2,570–5,120** |
+| *(opt.)* | Helping-hands/PCB holder | rework | *(excluded)* |
+
+## 8. Structural & materials (`P2–P5`)
+
+| # | Item | Consumed by | Unit ₱ |
+|---|---|---|---|
+| 1 | Elastic head strap band (goggle-style, adjustable) | wearable carrier | 50–150 |
+| 2 | 3D printing lane — filament or print-service voucher (brackets, IMU station, bank cradle, pointer shell, head-form jig) | structural parts | 800–2,000 |
+| 3 | Fastener set | mounts | 100–250 |
+| 4 | Attachment kit (velcro, zip ties, foam tape) | stations + management | 250–500 |
+| | | | **1,200–2,900** |
+
+## 9. Evaluation hardware (`P5`)
+
+| # | Item | Consumed by | Unit ₱ |
+|---|---|---|---|
+| 1 | Blindfolds ×3 (participant + spare + practice) | study | 100–250 |
+| 2 | Floor marking tape | course | 120–300 |
+| 3 | Obstacle props (as-needed, largely on-hand furniture) | course | 0–500 |
+| | | | **220–1,050** |
+
+## 10. Totals
+
+| Section | Low ₱ | High ₱ |
+|---|---|---|
+| Pointer electronics | 2,615 | 5,430 |
+| Wearable board-agnostic | 1,965 | 4,010 |
+| Wearable raspi-5 8 GB class | 16,300 | 22,400 |
+| Bench-conditional infrastructure | 1,560 | 3,450 |
+| One-time tools | 2,570 | 5,120 |
+| Structural & materials | 1,200 | 2,900 |
+| Evaluation hardware | 220 | 1,050 |
+| **Cart grand total** | **26,430** | **44,360** |
+
+**Indicative envelope ≈ ₱26,400–44,400 itemized; ≈ ₱30,400–51,000 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. Nothing is committed before the purchase-approval sign-off.
+
+## 11. Checkout checklist
+
+1. **Prices and stock re-verified the day of checkout** — every subtotal above is a point-in-time estimate.
+2. **Connector-ready rule re-checked on each module page** (headers/connectors pre-fitted; no fine-pitch solderable-on-bench parts).
+3. **PD bank profile** — output table must show **5 V at ≥ 3 A** on USB-C PD in its spec table; banks that fall back to 2 A underpower a Pi 5 with cameras.
+4. **Cameras RGB wide-FOV on CSI-2** — visible-light, 120°-class, Raspberry Pi 5-compatible cable; confirm ×2 interchangeable.
+5. **IMU pair from one listing** (same sensor and module revision); UWB pair likewise.
+6. **DWM3000 stock check** — if out of stock everywhere, substitute a DW1000-class module family (Ai-Thinker BU01 / M5Stack UWB Unit) and flag it in the sign-off: interface-compatible (SPI + IRQ), different driver/channel plan at the tracking gate.
+7. **Wired-only earphones** — Bluetooth/USB earphones are excluded by the audio rule regardless of cost.
+8. **microSD A2-class** (random-write endurance for the flash-buffered logs).
+9. If any price moves more than the envelope's headroom after re-verification, the changed rows go back through the sign-off lane before checkout — the buy-once rule permits buying once, not buying blind.

@@ -1,99 +1,147 @@
-# Cane — P2 bench protocol (breadboard)
+# Cane — Bench test protocol (two evidence paths)
 
-**No-soldering rule.** P2 attaches every component **non-permanently** — breadboards, dupont jumpers, zip ties, velcro, tape, friction mounts — and involves **no soldering of any kind**. This is as much a purchasing constraint as a build rule: most modules ship with headers unsoldered, so order everything with **headers pre-soldered** (or substitute a pre-soldered board); anything that arrives unsoldered is set aside for the P3 build, never soldered during P2. Full functionality of the whole system must be proven here before P3 solders anything. P3 then builds the aid itself — the evaluated device is soldered once and housed; it is not a disposable prototype, and rework there is limited to fixes, not redesign.
+The quality gates of this project are the T0–T8 matrix of the §4.2 budget (motion-to-sound ≤ 100 ms). This document holds **two evidence paths** for those gates:
 
-The pointer-tracking hardware ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu) — two wide-FOV camera modules, the UWB module pair, the pointer tracking marker (printed ArUco/AprilTag); [README §3.1](../README.md#31-pointer--electronics)/[§3.2](../README.md#32-wearable--electronics)) joins the P2 purchase list under the same pre-soldered rule; T7–T8 below validate the tracking tiers on the breadboards, and the module and board-level implementation choices are pinned at this gate ([README §9](../README.md#9-open-items)). The tracking hardware is part of the final design — the gates decide *how* it is built, never *whether*.
+- **Path A — hardware bench** (§1): the original protocol — the whole system proven on breadboards, zero soldering, module-level gates with logged metrics. Run **if this thesis phase executes the physical bench**.
+- **Path B — software/data-sheet bench** (§2): selected quality assertions are validated as substitute with the same T-gate vocabulary (SPICE, PC-pipeline simulations, cycle/MAD budgets, and datasheet/literature carry-outs — no hardware benches). Run **if hardware benching is skipped** and the wrongness of untested parts of the results is the thesis acknowledges in its limitations.
 
-## Bring-up safety
+The active path is a **co-researcher decision, adviser-informed** — it rewrites nothing else in this file: Path A runs as written if and when the bench phase happens; Path B produces its own artifacts if chosen; both keep the safety and inspection lanes (below). Evidence-class tags used in Path B: **[SIM]** (simulated), **[BUD]** (cycle/analytic budget), **[CITE]** (datasheet/literature citation), **[PROP]** (error-propagation Monte-Carlo).
 
-- Check battery-cell polarity twice before each insertion; never park a bare cell on metal.
-- First power-up of each device through a multimeter inline (mA range) or a current-limited USB source.
-- Grounds common per device: MCU GND, sensor GND, amp GND, battery negative all on one rail.
-- P2 bench sessions run from **bench USB** (the boards' own USB ports, fed from a current-limited source or the bench power banks), not the battery rail, until the power test T0 passes; battery wiring is validated on the bench (T0) before any untethered use. Watch for brownout-type resets on a weak or current-limited bench source — that is bench-source behavior, not a device failure (a microcontroller-class board resets an underpowered rail rather than running it dirty; the raspi-class boards' power-path behavior is characterized at T0 per the selected class).
-- Power off before any wiring change; hot-plugging I²C/I²S is how modules die. There is no OS image to corrupt unless the selected board class runs one (the raspi-class wearable does — power-off behavior then follows its boot discipline); the rule is module safety. Firmware flashing over the boards' USB ports (the flashing/debug path — [README §3.1](../README.md#31-pointer--electronics)/[§3.2](../README.md#32-wearable--electronics)) is bench infrastructure alongside the wiring.
+> **Always in force — minimal hardware bring-up.** Whenever any hardware is *first* powered (any path, any phase), the incoming inspection and current-limited first power-up of [`assembly.md`](assembly.md): visual solder-joint check, per-net continuity + no-short rails, battery-path polarity, current-limited energization, rail verification with a multimeter **before** modules attach, and one firmware-flash/logger-visibility check. Neither path discharges this.
 
-## Wiring maps
+## 1. Path A — hardware component bench tests (run "in case" the bench phase executes)
 
-> **To be drawn up once components are selected.** The per-device pin assignments below the selected MCU boards, sensors, amplifiers, and power path — including the UWB SPI bus and the camera interface strategy — are recorded here before the bench phase starts. The constraints they must satisfy: avoid strapping pins on devkit-class boards and keep the debug UART unshared; share one I²C bus between the IMU and the ToF sensor on the pointer (distinct fixed addresses); give each amplifier its own channel-select strapping on the wearable; the sensor rail comes from each board's own 3.3 V source per the map (devkit-class regulators, or the raspi-class power path); and leave the battery paths (charge board → protection → cell) common-grounded with the rest of each device. Under the dual-compatible criterion (second clearing 2026-09-29), the maps are drawn only after the re-selection: until then, both an esp32-s3 devkit and a raspi-class wearable stay adoptable.
+**No-soldering rule.** Any phase that attaches components physically attaches them **non-permanently** — breadboards, dupont jumpers, zip ties, velcro, tape, friction mounts — and involves **no soldering of any kind**. This is as much a purchasing constraint as a build rule: most modules ship with headers unsoldered, so order everything with **headers pre-soldered** (or substitute a pre-soldered board); anything that arrives unsoldered stays for the permanent build, never hand-soldered at the bench. The tracking hardware ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu)) joins the cart under the same rule; the gates decide *how* it is built, never *whether*.
 
-**Interface pressures the selection must resolve (P2 decisions, risk 8).** On the pointer, the UWB module needs an SPI bus plus IRQ/reset. On the wearable, the two head cameras need a capture strategy against the selected boards (camera mux / alternate-frame capture on one interface / a board with more pins or a second port / a camera co-processor); note the interface split the dual-compatible criterion carries — DVP on esp32-s3-class devkits, CSI on raspi-class boards. The T7/T8 gates settle both against the chosen boards.
+### Bring-up safety (gate to anything energized)
 
-## Test matrix
+- Check battery-cell polarity twice before insertion; never park a bare cell on metal.
+- First power-up per device through a multimeter in-line (mA range) or a current-limited USB source.
+- Grounds common per device: board ground, sensor ground, battery negative on one rail.
+- Bench sessions run from **bench USB/bank ports** (feeding the pointer's USB-C charge board and the wearable's PD bank), not exposed battery wiring, until the power test T0 passes. Watch for brownout-type resets on a weak source — that is bench-source behavior, not device failure.
+- Power off before any wiring change; hot-plugging I²C/I²S is how modules die. On the raspi-5 wearable the same rule extends to its OS: power-off follows its boot discipline (no cutting power to a writing filesystem).
+- Firmware flashing over the boards' USB ports is bench infrastructure alongside the wiring.
 
-Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order = dependency order; log every session to CSV.
+### Wiring maps
 
-### T0 — Power rails
+> **Drawn before the first wiring change once the cart arrives.** The per-device pin/connect assignments — the pointer's shared I²C bus (IMU + ToF at distinct fixed addresses), the UWB SPI + IRQ/reset, the wearable's I²S-DAC wiring + `[HiFiBerry-class ALSA overlay]`, the two CSI cameras to the Pi's two lanes, battery/charge lanes common-ground per device — are recorded here into [`bench/runbooks/`](bench/) informed by [`hardware.md`](hardware.md)'s picks. Constraints: avoid strapping pins and keep the debug UART unshared on the pointer; independent per-ear channels on the wearable; sensor rail from each board's own regulator per the map.
 
-- Setup: USB-C charge/protect board + battery cell per device (1S both devices: slim Li-ion pouch on the pointer, protected 18650 on the wearable — the cell classes are carried over from the researched selection unless the compatible list revises them), multimeter inline.
-- Procedure: measure rail voltage under idle and full-load (radio TX + amp playing, and — once the tracking extras are fitted — the tracking tier at full duty: both cameras capturing per the capture strategy + UWB ranging); 30 min soak. Camera streaming is the largest new draw: the battery budget is re-checked here with tracking active.
-- Acceptance: the sensor rail stable within ±3% under load, with **no brownout resets logged** after the soak; charge-board protection trips on short test; no thermal runaway — the housing-temp check by touch after soak is a **logged metric** (`temp_c`), first-class on the wearable under the tracking-duty soak.
-- Metric logged: `v_rail`, `i_load`, `t_soak`, `temp_c`.
+**Interface pressures settled by the selection, checked at the gate (risk 8).** On the pointer: UWB SPI + IRQ/reset. On the wearable: the two CSI lanes close the camera-mux question in hardware — the capture strategy (per-camera frame cadence at detection rate) is validated by T7 as a *software* question; the pointer's Wi-Fi joining the Pi's AP is exercised by T3.
 
-### T1 — IMU orientation & drift (both devices)
+### Test matrix
+
+Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order = dependency order; log every session to CSV (§ Logging format).
+
+**T0 — Power rails**
+
+- Setup: pointer on its 1S pouch + TP4056-C charge board; the wearable fed by its **USB-PD bank (5 V/3 A profile)**; multimeter/in-line USB meter.
+- Procedure: idle and full-load rail readings (radio TX + DAC audio on the pointer; cameras streaming + renderer + UWB on the wearable at tracking duty); 30 min soak; per the capture strategy.
+- Acceptance: sensor rail is conditions-stable within ±3 % under load, **no brownout resets logged** after the soak; charge-board protection trips on short test (pointer); wearable PD-profile current within the bank's continuous rating at full duty; no thermal runaway — the housing-temp touch check after soak is a logged metric (`temp_c`).
+- Logged: `v_rail`, `i_load`, `t_soak`, `temp_c`.
+
+**T1 — IMU orientation & drift (both devices)**
 
 - Setup: device on a flat level reference; second reference: phone inclinometer app.
-- Procedure: (a) static pitch/roll at 5 poses vs. reference; (b) gyro-only relative yaw drift over 10 min after bias calibration, both devices powered simultaneously; (c) magnetometer disturbance characterization: heading error near a steel table/rebar vs. open area.
-- Acceptance: static pitch/roll error ≤ 2°; pitch/roll drift ≤ 0.5° per 5 min; combined relative-yaw drift ≤ 2°/min (re-zero button bounds it in use); disturbance test is **characterization** (records bias), not a gate — mitigated by re-zero (§7 risk 2).
-- Metric logged: `pose_err_deg`, `drift_deg_per_min`, `mag_bias_deg`.
-### T2 — ToF accuracy & cadence
+- Procedure: (a) static pitch/roll at 5 poses vs reference; (b) gyro-only relative yaw drift over 10 min after bias calibration, both devices powered; (c) magnetometer disturbance characterization: heading error near a steel table/rebar vs open area.
+- Acceptance: static pitch/roll error ≤ 2°; pitch/roll drift ≤ 0.5° per 5 min; combined relative-yaw drift ≤ 2°/min (the re-zero button bounds it in use); disturbance is characterization (records `mag_bias_deg`), not a gate — mitigated by re-zero.
+- Logged: `pose_err_deg`, `drift_deg_per_min`, `mag_bias_deg`.
 
-- Setup: pointer breadboard clamped on a stand; tape-measured distances; surfaces: white foam board, cardboard box, dark fabric (three reflectances).
+**T2 — ToF accuracy & cadence**
+
+- Setup: pointer clamped on a stand; tape-measured distances; surfaces: white foam board, cardboard, dark fabric (three reflectances).
 - Procedure: 30 s continuous ranging at 0.3, 0.5, 1, 2, 3, 4 m per surface; record error, hit rate, cadence.
-- Acceptance: error ≤ ±3 cm ≤ 2 m and ≤ ±5% beyond, on ≥ 2 of 3 surfaces; sustained cadence ≥ 20 Hz; invalid-read rate < 5%; behavior on no-target (drop to range-max or invalid flag) documented.
-- Metric logged: `d_true`, `d_meas`, `rate_hz`, `miss_rate`.
+- Acceptance: error ≤ ±3 cm at ≤ 2 m and ≤ ±5 % beyond, on ≥ 2 of 3 surfaces; sustained cadence ≥ 20 Hz; invalid-read rate < 5 %; no-target behavior documented.
+- Logged: `d_true`, `d_meas`, `rate_hz`, `miss_rate`.
 
-### T3 — Device-to-device link
+**T3 — Device-to-device link**
 
-- Setup: pointer ↔ wearable firmware ping-pong, 12–28 B payload (d + quaternion + seq), 10–30 Hz.
-- Procedure: (a) 10 min run logging one-way latency (seq timestamp at receiver) and loss; (b) **wireless medium**: repeat at 2, 5, 10 m including body-blocked (person between devices); **wired medium**: cable flex/bend cycling and connector retention throughout the run — range is fixed by the cable.
-- Acceptance: one-way ≤ 10 ms at p99; loss < 1% at ≤ 10 m indoor with body between devices (wireless medium) / no lost packets over the session (wired medium).
-- Metric logged: `lat_ms`, `loss_pct`, `range_m`.
+- Setup: pointer ↔ wearable ping-pong over IP/Wi-Fi (pointer joins the Pi's AP), 12–28 B payload (`d` + quaternion + seq), 10–30 Hz.
+- Procedure: (a) 10 min run logging one-way latency (seq-timestamp pairing) and loss; (b) repeat at 2, 5, 10 m including body-blocked (person between devices).
+- Acceptance: one-way ≤ 10 ms at p99; loss < 1 % at ≤ 10 m indoor with body between devices.
+- Logged: `lat_ms`, `loss_pct`, `range_m`.
 
-### T4 — Renderer load
+**T4 — Renderer load**
 
-- Setup: wearable breadboard with the audio output path on the board (a mono I²S Class-D amplifier pair on devkit-class I²S, or the selected board class's audio path — one per ear, channel-strapped where the path allows); full renderer (generic-HRTF azimuth, carrier-pitch elevation cue, `g(D)` gain) at 48 kHz / 128-sample buffers through the selected output path.
-- Procedure: 10 min run; `esp_timer_get_time()` around the render callback per buffer; count I²S underruns; sweep azimuth sectors + distance classes to cover the table.
+- Setup: wearable with the audio output path live — the PCM5102A I²S DAC behind the **HiFiBerry-class ALSA overlay (overlay support verified at this gate before the path is committed)** or the USB-audio fallback; full renderer (generic-HRTF azimuth, carrier-pitch elevation cue, `g(D)` gain) at 48 kHz / 128-sample buffers.
+- Procedure: 10 min run; monotonic-clock timing around the render callback per buffer; count underruns; sweep azimuth sectors + distance classes.
 - Acceptance: render ≤ 5 ms per buffer at p99; underrun count = 0 over 10 min.
-- Metric logged: `render_ms`, `underruns`.
+- Logged: `render_ms`, `underruns`.
 
-### T5 — End-to-end latency & placement sanity
+**T5 — End-to-end latency & placement sanity**
 
-- Setup: both devices running the full pipeline; obstacle at known pose.
-- Procedure: (a) software timestamps from ToF sample to rendered buffer queue, 10 min of button sweeps; (b) sweep the pointer across a wide obstacle and verify the sound's azimuth tracks the hit; aim above/below head level and verify the elevation cue flips at head height; walk toward the obstacle with the button held and verify loudness grows monotonically.
-- Acceptance: motion-to-sound ≤ 100 ms p99; placement tracks azimuth sweep without jumps; elevation cue flips at head height; loudness monotonic in `D`.
-- Metric logged: `e2e_ms`, `placement_ok`, `notes`.
+- Setup: both devices on the full pipeline; obstacle at known pose.
+- Procedure: (a) software timestamps from ToF sample to rendered buffer queue, 10 min of button sweeps; (b) sweep the pointer across a wide obstacle and verify the sound's azimuth tracks the hit; aim above/below head level and verify the elevation cue flips at head height; walk toward the obstacle with the button held and verify monotonic loudness growth.
+- Acceptance: motion-to-sound ≤ 100 ms p99; azimuth tracks without jumps; elevation flips at head height; loudness monotonic in `D`.
+- Logged: `e2e_ms`, `placement_ok`, `notes`.
 
-### T6 — Offset calibration repeatability
+**T6 — Offset calibration repeatability**
 
 - Setup: flat grip fixture; ruler/calipers.
 - Procedure: measure the head-to-pointer offset components `o` 5×; enter into config; run `geometry` and check `D` against tape-measured head-to-hit distance at 3 poses.
 - Acceptance: repeatability ± 2 cm per component; `D` error ≤ ± 6 cm at 1–3 m with nominal grip.
-- Metric logged: `o_component`, `D_err_cm`.
+- Logged: `o_component`, `D_err_cm`.
 
-### T7 — Vision pointer tracking (tracking tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
+**T7 — Vision pointer tracking (tracking tier)**
 
-- Setup: two wide-FOV camera modules on a head-form fixture (one each side, spaced like the wearable's strap stations); **printed ArUco/AprilTag marker** (high-contrast; dictionary and physical size pinned at this gate) on the pointer shell ([README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)); tracking processes **co-resident with the full renderer** (the T4 configuration plus tracking — vision on separate cores at priority below the audio path).
-- Procedure: (a) place the pointer at tape-measured known poses across the forward hemisphere (0.5–3 m; azimuth sweep; aimed above/below head level) — log position error and tracking rate per pose; (b) record where the tag leaves each camera's FOV envelope — the tier-switch boundary; (c) 10 min co-residence run at trigger-gated duty (button held throughout, [README §1.3](../README.md#13-interaction-rule)): `esp_timer_get_time()` per render buffer and I²S underrun count, as in T4, with tracking running; (d) **low-light/contrast check**: with tracking running, dim the room stepwise toward evening-lighting levels — record the minimum illumination at which the tag still detects reliably (the tag is passive and needs scene light; watch exposure and motion blur at 15–30 Hz; a printed tag emits nothing, so there is no flash-sync interference to reject).
-- Acceptance: position error ≤ ±5 cm at 0.5–2 m and ≤ ±10% beyond (provisional — finalize at the P2 gate); cadence ≥ 15 Hz; FOV envelope documented per camera; **the renderer is unharmed by co-residence** — ≤ 5 ms/buffer p99 and 0 underruns over the 10 min run (the risk-8 gate: if full-rate detection fails it, the detect-then-track scheme (detect every Nth frame) is forced here, before P3 — and the capture-side decision (interface retained / mux / co-processor) is settled at this gate against the selected boards, [README §3.8](../README.md#38-pointer-tracking-hardware--notes--contingencies)).
-- Metric logged: `p_err_cm`, `track_rate_hz`, `fov_envelope_deg`, `render_ms`, `underruns`. The marker's PnP orientation is **not consumed and not gated** — the tracking tier is position-only ([README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu)); pointer orientation always comes from its IMU.
+- Setup: the two CSI cameras on a head-form fixture (strap-station spacing); printed ArUco/AprilTag marker (dictionary and physical size pinned at this gate) on the pointer shell; tracking **co-resident with the full renderer**, at priority below the audio path.
+- Procedure: (a) pointer at tape-measured known poses across the forward hemisphere (0.5–3 m; azimuth sweep; aimed above/below head level) — log position error and tracking rate per pose; (b) record each camera's FOV envelope — the tier-switch boundary; (c) 10 min co-residence run at trigger-gated duty: per-buffer render timing and underrun count as in T4, tracking running; (d) low-light/contrast check: dim the room stepwise toward evening lighting — record the minimum illumination at which the tag still detects reliably.
+- Acceptance: position error ≤ ±5 cm at 0.5–2 m and ≤ ±10 % beyond (provisional — finalize at this gate); cadence ≥ 15 Hz; FOV envelope documented; **the renderer is unharmed by co-residence** — ≤ 5 ms/buffer p99, 0 underruns over the run (the risk-8 gate: if full-rate detection fails it, detect-then-track — detect every Nth frame — is forced here, before the permanent build).
+- Logged: `p_err_cm`, `track_rate_hz`, `fov_envelope_deg`, `render_ms`, `underruns`. The tag's PnP orientation is not consumed and not gated — position only.
 
-### T8 — UWB ranging & tier fallback (tracking tier, [README §2.5](../README.md#25-pointer-tracking-stack-vision-uwb-imu))
+**T8 — UWB ranging & tier fallback (tracking tier)**
 
-- Setup: UWB module pair on both breadboards; **driver bring-up first on both boards** — the selected UWB module's SPI driver/stack is validated against each selected board class (tag and anchor both) before any ranging run; tape-measured baselines; logging captures the active tier for every sound update.
-- Procedure: (a) range error vs tape at 0.5–4 m line-of-sight; (b) body-blocked/NLOS profile (person between devices; pointer held behind the body) — characterization, the fallback tier absorbs degradation; (c) tier-switch run: sweep the pointer out of camera view into UWB-only and back, repeatedly, including behind-body holds; log the active tier per update and the placement continuity across switches.
-- Acceptance: range error ≤ ±10 cm at ≤ 3 m LOS, update rate ≥ 10 Hz; NLOS profile documented (characterization, not a gate); **no placement jump beyond the T6 `D`-error envelope at any tier switch** — tier changes must be inaudible.
-- Metric logged: `r_err_cm`, `uwb_rate_hz`, `tier`, `placement_jump_cm`.
+- Setup: UWB module pair on both breadboards; **driver bring-up first on both boards** (the selected module's SPI driver validated against the Pi 5 (anchor) and the Pointer (tag) before any ranging run); tape-measured baselines; the active tier logged per sound update.
+- Procedure: (a) range error vs tape at 0.5–4 m line-of-sight; (b) body-blocked/NLOS profile — characterization, the fallback tier absorbs degradation; (c) tier-switch runs: sweep the pointer out of camera view into UWB-only and back, repeatedly, including behind-body holds; log the active tier per update and placement continuity across switches.
+- Acceptance: range error ≤ ±10 cm at ≤ 3 m LOS; update rate ≥ 10 Hz; NLOS documented (characterization); **no placement jump beyond the T6 `D`-error envelope at any tier switch** — tier changes must be inaudible.
+- Logged: `r_err_cm`, `uwb_rate_hz`, `tier`, `placement_jump_cm`.
 
-## Logging format
+### Logging format
 
-One CSV per session: `session,test_id,timestamp_ms,metric,value,unit,notes` — drift curves (T1) and latency distributions (T3–T5) feed P4 calibration and thesis §3/§4 artifacts; the T7–T8 tier records (per-update active tier + pose error) feed the §2.5 realism claims. The CSV is produced by an automated pipeline, not hand transcription: **firmware event stream → host capture → reduction → row check** ([README §4.1](../README.md#41-firmware-modules), `bench-log` module).
+One CSV per session: `session,test_id,timestamp_ms,metric,value,unit,notes` — the automated pipeline (firmware/host event stream → `bench/capture.py` → `bench/runbooks/<test>.yaml` → `bench/reduce.py` with an acceptance check and `--parity` mode) produces it; no hand transcription. Both devices emit an NDJSON device event stream (sensor frames, render timers, link seq/tx–rx stamps, button state, reset reasons) over the pointer's native USB CDC — and, on the raspi-5 wearable, the same event structure over SSH/tethered USB from the `bench-log` module. The trigger-button state rides every event so `button-held` windows derive mechanically; operator entries arrive as `start`/`mark`/`set` commands with ground truths into the same session stream.
 
-**Device side — the `bench-log` event stream (both devices).** The instrumentation outputs one NDJSON event per line over the native USB CDC port (the same cable that flashes the board): device uptime `ts_ms` plus event family — sensor frames (quaternion, ToF reading + validity flag, UWB range + active tier, tracking-cycle detections/misses), render instrumentation (per-buffer `esp_timer_get_time()` deltas — the T4/T7 `render_ms` input — I²S underrun events, and the T5 stamp pairing a ToF sample id with the rendered-buffer-queue event), and link events (`seq` + TX timestamp at send on the pointer; `seq` + RX timestamp on the wearable — the one-way latency of T3 is computed post-hoc by pairing `(seq, tx)` against `(seq, rx)`, payload unchanged from [README §2.1](../README.md#21-devices)). The trigger-button state rides every event plus a 1 Hz heartbeat so reduction derives button-held windows mechanically ([§1.3](../README.md#13-interaction-rule) gating); reset reasons (`esp_reset_reason()`) are logged so T0's brownout check reads straight from the stream. When the logger task sits below the audio path's priority — like `pointer-track` — and the render timing is captured in-task by the timer, the instrumentation cannot perturb the render gate it measures. Untethered runs (the T3 walks at 2–10 m, the T5 approach) cannot trail a cable to the head strap: the event stream batch-appends to a flash partition (LittleFS; a 10-min session is tens of KB) and dumps over USB on reconnect into the same session stream, so a session never spans two ledgers.
+### P3 parity re-run
 
-**Operator entry — the command channel.** The host sends three commands over the same serial: `start <test_id>` / `stop`, `mark <label>` (station boundaries, surface changes, body-block segments, soak checkpoints, dimming steps), and `set <key>=<value>` (ground truths — tape-measured `d_true`, phone-inclinometer references, meter readings, caliper offset components). Every operator reading enters the same event stream as a timestamped event, so ground truths and annotations join the device rows in one ledger — no second notebook, no transcription drift.
+After soldering (permanent build), re-run T0–T8 on the permanent assemblies with acceptance identical, except the T7 FOV envelope re-characterized for the housing-mounted cameras (housing geometry moves the lenses). Parity is the P3 exit criterion in the hardware-bench mode — **service workmanship, housing geometry, and jack wiring are the new variables**. The re-run is always preceded by the in-house incoming inspection ([`assembly.md`](assembly.md)): nothing returned from the service is powered before inspection passes. *(Under Path B the parity re-run is not executed; §2's Residual-evidence handoff names what replaces its reassurance.)*
 
-**Host harness — capture, runbook, reduce.** The harness lives in `bench/`: `bench/capture.py` opens both USB CDC ports, generates the session ID (`YYYYMMDD-HHMM-<test_id>`), writes the raw per-device streams (`bench_logs/<session>/pointer.ndjson`, `wearable.ndjson`, plus echoed `start`/`mark`/`set` records), and relays commands; `bench/runbooks/<test>.yaml` lists each test's per-run stations with the threshold set for its acceptance rows (tagged with the protocol revision it quotes — this file stays the source of truth) and drives the session interactively ("distance 1.0 m, surface cardboard — aim, hold the button, Enter to `set` the truth"); `bench/reduce.py` joins both devices on session-relative `timestamp_ms` (a marker sent to both ports yields each device's uptime-clock offset with sub-millisecond skew; `esp_timer` is crystal-backed, so drift over one run is negligible) and emits the CSV above, deriving every metric the matrix names that the raw stream doesn't emit directly — T1 `pose_err_deg` (entered references) and `drift_deg_per_min` (slope over the 10-min window), T2 `rate_hz`/`miss_rate`, T3 `lat_ms` (p99)/`loss_pct`/`range_m`, T4/T7 `render_ms` (p99)/`underruns`, T6/T7/T8 error metrics vs the entered truths and `placement_jump_cm` across logged tier switches. The reducer then prints a per-run **acceptance check** against the runbook thresholds, and a `--parity` mode diffs a run's summary against the stored P2 session — the [P3 parity re-run](#p3-parity-re-run) numbers fall out of the same pipeline. Provenance is preserved without breaking the schema: `timestamp_ms` is normalized to session-relative ms, and each row's `notes` field states its origin (`device` vs `operator`), so touch-checked `temp_c` and meter-read `i_load` rows are never mistaken for autonomous readings.
+## 2. Path B — software / data-sheet bench tests (if the bench phase is skipped)
 
-## P3 parity re-run
+### 2.1 Scope and honest limits
 
-After soldering, re-run T0–T8 on the soldered assemblies; acceptance identical, except the T7 FOV envelope is re-characterized for the housing-mounted cameras (housing geometry moves the lenses). Parity is the P3 exit criterion (§6) — **service workmanship, housing geometry, and jack wiring are the new variables**, so the breadboard numbers are the baseline to match, and the re-run is preceded by the in-house incoming inspection ([`assembly.md` §5 Incoming inspection](assembly.md#5-incoming-inspection-in-house-gate-before-any-power-up): visual solder-joint check against the assembly drawings, per-net continuity, current-limited first power-up): the soldered build is executed by an external local hand-solder service from the in-house design package (README §3.9, decision 2026-09-26), so nothing returned from the service is powered before inspection passes.
+Path B substitutes **modeling for measurement** test by test; it never redefines the budget of §4.2 — it validates whether the design is *consistent* with it on paper, data feeds, and scaled computations. What Path B cannot deliver, and how the project carries the difference honestly:
+
+- no **measured** drift, latency, or accuracies — the thesis's §4 claims rest on budget/simulation/citation evidence and are labeled as such;
+- the **co-residence** question (risk 8) becomes a cycle budget with margins named, not a run with underruns counted;
+- the **real indoor magnetometer**, **real course surfaces**, **body-blocked link**, **real low-light camera** behaviors remain unmeasured until the device exists — these become P4/P5 observation items (surviving, unchanged);
+- the **protection/thermal** behaviors are carried by the modules' own datasheets since the charge/protection and thermal management are self-contained reference modules (and the physical inspection covers the first power-up).
+
+### 2.2 Instrument inventory (all software-only)
+
+| Instrument | What it is | Feeds |
+|---|---|---|
+| SPICE (`ngspice`) on [`bench/t0/t0-power-rails.kicad_sch`](../bench/t0/) | schematic-analyzer output → testbenches → simulation; regulators/dividers, inrush, PDN impedance | S0 |
+| PC pipeline simulator (`bench/sim/`) — the real `geometry`, `renderer`, and tiering logic compiled for the desktop, driven by synthetic sensor streams | functional end-to-end and placement behavior | S1, S5–S7 |
+| Cycle/MAD budgeting — render core measured on desktop hardware, scaled by instruction mix to the Raspberry Pi 5's 4 Cortex-A76 cores (vendor cycle tables `docs/hw-comparison.md`) | timing feasibility without a live loop | S4, S7 |
+| Error-propagation Monte-Carlo — the selected parts' datasheet noise/bias/accuracy figures seeded through the placement math into θ/φ/D distributions | statistical error budgets the §7 risks can cite | S1, S2, S8 |
+| Datasheet/literature citation ledger — per selected part: accuracy class, ambient limits, interface timings, protection behaviors | every claim that says "the component does this" gets a pinned source | S0, S2, S3, S4, S8 |
+
+### 2.3 S-series mapping — the same gates, software/datasheet evidence
+
+| S-test | Replaces | Instrument(s) | Evidence class | Thresholds carried forward |
+|---|---|---|---|---|
+| S0 — Power tree | T0 (electrical half) | SPICE `[SIM]` + citation ledger `[CITE]` | rail set-points & divider math exact; inrush approximate; PDN impedance useful; protection/thermal cited | ±3 % rail consistency becomes a *set-point tolerance* claim; the soak/thermal/short-trip rows stay physical (P3 inspection + module datasheets) |
+| S1 — IMU error budget | T1 | `fusion` code on desktop over public IMU datasets + Monte-Carlo from the BNO085 datasheet noise/bias `[PROP]` | pitch/roll/yaw error as *predicted distributions* vs the T1 thresholds | static ≤ 2°, drift ≤ 0.5°/5 min become budget claims; the real indoor magnetometer bias is **untested until P4** |
+| S2 — ToF accuracy | T2 | datasheet accuracy/mode table + family surface-matrix literature `[CITE]` | error class and cadence-caps as datasheet-cited claims; the driver's no-hit behavior cited | ±3 cm/±5 % and ≥ 20 Hz become datasheet-accuracies **for the nominal conditions**; actual course-surface behavior moves to P4 observation on the real course |
+| S3 — Link latency bound | T3 | analytical 802.11 bound (serialization + contention math for the pointer-joins-Pi's-AP topology) + the protocol logic on desktop loopback `[BUD]` | a *bounded* p99 with assumptions named; per-protocol packet loss a clean-channel assumption | structural: real channel behavior, body-blocked loss → P4 observation |
+| S4 — Render budget | T4 | render core measured on the desktop, scaled to the Pi 5 `[BUD]`; ALSA-buffering configuration argument `[CITE]` | the ≤ 5 ms/buffer p99 and underrun-free operation become budget + configuration claims for the Linux audio path | real scheduling jitter — **as-yet untested until the device runs**; the I²S-overlay support claim is kernel-version cited and **confirmed at first hardware power-up** |
+| S5 — End-to-end placement sim | T5 | desktop pipeline simulator with synthetic sweeps `[SIM]` | all **functional** T5 rows verified: azimuth tracking, elevation flip, monotonic loudness, no-hit cases; the ≤ 100 ms p99 becomes a composed per-stage budget | the composed budget carries named risks instead of a measured p99 |
+| S6 — Offset sensitivity | T6 | pipeline sim with ±2 cm-scaled offset perturbation `[SIM]` | verifies θ/φ/D error under the repeatability target; the physical caliper + D-vs-tape rows move to P4 calibration (they only need the assembled device) | the repeatability budget magnitude is carried into the placement error budget |
+| S7 — Co-residence budget | T7 | per-frame detection cost for AprilTag-class QVGA detection on Pi 5 silicon (published OpenCV/AprilTag benchmarks scaled) + render per buffer `[BUD]`; FOV envelope geometry from the camera intrinsics `[SIM]`; low-light exposure/motion-blur math from the camera datasheet `[CITE]` | the risk-8 gate becomes a margin argument with the detect-then-track fallback quantified as the pressure-relief valve; the low-light min-illum and real FOV envelope untested until hardware runs — P4/P5 observation | margins must hold with the fallback counts detected; the honest residual: a real underrun-free co-residence run is never recorded in this path |
+| S8 — UWB & tiering | T8 | module-family datasheet DS-TWR accuracy/rate + literature NLOS characterization `[CITE]`; tier-switch continuity simulated in the pipeline `[SIM]` | ±10 cm-class LOS accuracy cited; the no-placement-jump-at-switch rule verified in simulation; inaudibility unchanged (P5) | real body-blocked profiles and real ranging rate are untested until hardware runs (P4 observation) |
+
+### 2.4 Artifacts
+
+All Path-B sessions write machine-readable artifacts into `bench/sim/` — deterministic seeds saved with every stochastic run, the citation ledger pinning each claim's datasheet page — so every Path-B "accepted" maps to an artifact a defence panel can inspect, the same way every Path-A "Metric logged" maps to a CSV session. The thesis artifact chain accepts both proof types; thesis §4 labels its rows by origin: `P2-path-A measured` or `P2-path-B simulated/budgeted/cited`.
+
+### 2.5 Residual-evidence handoff (both paths meet here)
+
+Path B leaves the following residuals explicitly **unmeasured until the device runs** — the thesis's limitations and the P4/P5 phases carry them as observation items, and the risk ledger (§7) annotates them: (i) indoor magnetometer disturbance on the real course (P4 checks); (ii) ToF behavior on the actual course surfaces (P4 pre-study); (iii) link behavior body-blocked (P4); (iv) Linux audio-path jitter under real co-residence (P4); (v) camera low-light minimum and real FOV envelope (P4/P5); (vi) tier-switch audibility (P4/P5, perceptual); (vii) thermal behavior at tracking duty (P3/P4); (viii) protection trips (P3 inspection). Path A records all eight in its matrix instead.

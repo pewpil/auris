@@ -4,14 +4,14 @@
 
 ## 1. Division of labor
 
-| Task | Owner |
-|---|---|
-| Schematics, carrier-PCB layouts in KiCad, human GUI review before fabrication ([README §4.3](../README.md#43-eda-toolchain-kicad-and-mcp)) | in-house |
-| Harness/wiring design: connector selection + keying, wire gauge/color/length schedule, strain relief, labeling | in-house |
-| Assembly drawings + wiring diagrams (the service-facing build instructions) | in-house |
-| Bare carrier-PCB fabrication, ordered **with spares** | external PCB fab house |
-| Soldering + assembly of boards and harness into the permanent builds | external local hand-solder service |
-| Incoming inspection, trivial rework, T0–T8 parity re-run | in-house |
+| Task                                                                                                                                       | Owner                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| Schematics, carrier-PCB layouts in KiCad, human GUI review before fabrication ([README §4.3](../README.md#43-eda-toolchain-kicad-and-mcp)) | in-house                           |
+| Harness/wiring design: connector selection + keying, wire gauge/color/length schedule, strain relief, labeling                             | in-house                           |
+| Assembly drawings + wiring diagrams (the service-facing build instructions)                                                                | in-house                           |
+| Bare carrier-PCB fabrication, ordered **with spares**                                                                                      | external PCB fab house             |
+| Soldering + assembly of boards and harness into the permanent builds                                                                       | external local hand-solder service |
+| Incoming inspection, trivial rework, T0–T8 parity re-run                                                                                   | in-house                           |
 
 ## 2. Hand-solderability binding (the designs must fit the service)
 
