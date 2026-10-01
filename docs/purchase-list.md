@@ -48,8 +48,8 @@ These rows survive a class flip with no re-buy; the [selected class rows](#4-wea
 | 2 | Active cooler (official class) or heatsink | thermal | 1 | 500–900 | 500–900 |
 | 3 | microSD A2-class, 64–128 GB | OS + logs | 1 | 600–1,000 | 600–1,000 |
 | 4 | CSI camera, wide-angle 120°, RGB (IMX708 class) — **1 or 2 adopted at the T7 placement gate; two in the cart** (fixing the count at 1 before checkout saves ₱1,700–2,400 + one printed bracket) | vision tier | 2 | 1,700–2,400 | 3,400–4,800 |
-| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/3 A out** | worn power rail + bench source | 1 | 1,800–3,200 | 1,800–3,200 |
-| | | | | **Subtotal** | **14,800–20,400** |
+| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/5 A (25 W+) out** | worn power rail + bench source | 1 | 2,500–5,500 | 2,500–5,500 |
+| | | | | **Subtotal** | **15,500–22,700** |
 | *(opt.)* | Raspberry Pi 27 W USB-C PSU (bench supply if the bank is otherwise engaged) | bench | 0–1 | 1,000–1,500 | *(excluded)* |
 | *(opt.)* | USB-UART dongle (CP2102-class) | Pi serial console | 0–1 | 150–300 | *(excluded)* |
 
@@ -107,23 +107,24 @@ Itemized in [`hardware.md`](hardware.md) §4 — kept in sync with that file; su
 |---|---|---|
 | Pointer electronics | 2,615 | 5,430 |
 | Wearable board-agnostic | 1,965 | 4,010 |
-| Wearable — selected class (raspi-5, 4 GB) | 14,800 | 20,400 |
-| **Device electronics** | **19,380** | **29,840** |
+| Wearable — selected class (raspi-5, 4 GB) | 15,500 | 22,700 |
+| **Device electronics** | **20,080** | **32,140** |
 | One-time tools | 2,720 | 5,470 |
 | Structural & materials | 1,200 | 2,900 |
 | Evaluation hardware | 340 | 1,300 |
-| **Cart grand total** | **23,640** | **39,510** |
+| **Cart grand total** | **24,340** | **41,810** |
 
-**Indicative envelope ≈ ₱23,600–39,500 itemized; ≈ ₱27,200–45,400 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. The bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is **not** included in these totals. Nothing is committed before the purchase-approval sign-off.
+**Indicative envelope ≈ ₱24,300–41,800 itemized; ≈ ₱28,000–48,100 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. The bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is **not** included in these totals. Nothing is committed before the purchase-approval sign-off.
 
 ## 10. Checkout checklist
 
 1. **Prices and stock re-verified the day of checkout** — every subtotal above is a point-in-time estimate.
 2. **Connector-ready rule re-checked on each module page** (headers/connectors pre-fitted; no fine-pitch solderable-on-bench parts).
-3. **PD bank profile** — output table must show **5 V at ≥ 3 A** on USB-C PD in its spec table; banks that fall back to 2 A underpower a Pi 5 with cameras.
-4. **Cameras RGB wide-FOV on CSI-2** — visible-light, 120°-class, Raspberry Pi 5-compatible cable; confirm ×2 interchangeable.
-5. **IMU pair from one listing** (same sensor and module revision); UWB pair likewise.
-6. **DWM3000 stock check** — if out of stock everywhere, substitute a DW1000-class module family (Ai-Thinker BU01 / M5Stack UWB Unit) and flag it in the sign-off: interface-compatible (SPI + IRQ), different driver/channel plan at the tracking gate.
-7. **Wired-only earphones** — Bluetooth/USB earphones are excluded by the audio rule regardless of cost.
-8. **microSD A2-class** (random-write endurance for the flash-buffered logs).
-9. If any price moves more than the envelope's headroom after re-verification, the changed rows go back through the sign-off lane before checkout — the buy-once rule permits buying once, not buying blind.
+3. **PD bank profile** — output table must show **5 V at 5 A (25 W+)** on USB-C PD. The Pi 5's recommended supply is 27 W / 5.1 V / 5.0 A; a 3 A bank is the minimum only, restricts downstream USB to 600 mA, and flags the current limit at boot — inadequate for the camera + UWB + Wi-Fi tracking load. Few ≥ 20 Ah banks do 5 A; if none qualifies, the recorded fallback is a protected-cell (18650-class) rail with a 5 V/5 A buck stage.
+4. **Camera cable** — Pi 5 uses the **mini 22-pin** CSI connector, not the 15-pin of earlier boards: confirm each module ships or is bought with a Standard-Mini cable (official Camera Module 3 does; third-party IMX708 often does not).
+5. **Cameras RGB wide-FOV on CSI-2** — visible-light, 120°-class, Raspberry Pi 5-compatible; confirm ×2 interchangeable.
+6. **IMU pair from one listing** (same sensor and module revision); UWB pair likewise.
+7. **DWM3000 stock check** — if out of stock everywhere, substitute a DW1000-class module family (Ai-Thinker BU01 / M5Stack UWB Unit) and flag it in the sign-off: interface-compatible (SPI + IRQ), different driver/channel plan at the tracking gate.
+8. **Wired-only earphones** — Bluetooth/USB earphones are excluded by the audio rule regardless of cost.
+9. **microSD A2-class** (random-write endurance for the flash-buffered logs).
+10. If any price moves more than the envelope's headroom after re-verification, the changed rows go back through the sign-off lane before checkout — the buy-once rule permits buying once, not buying blind.

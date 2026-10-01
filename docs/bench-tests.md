@@ -26,6 +26,8 @@ The active path is a **co-researcher decision, adviser-informed** — it rewrite
 
 > **Drawn before the first wiring change once the cart arrives.** The per-device pin/connect assignments — the pointer's shared I²C bus (IMU + ToF at distinct fixed addresses), the UWB SPI + IRQ/reset, the wearable's I²S-DAC wiring + `[HiFiBerry-class ALSA overlay]`, the two CSI cameras to the Pi's two lanes, battery/charge lanes common-ground per device — are recorded here into [`bench/runbooks/`](bench/) informed by [`hardware.md`](hardware.md)'s picks. Constraints: avoid strapping pins and keep the debug UART unshared on the pointer; independent per-ear channels on the wearable; sensor rail from each board's own regulator per the map.
 
+**I²C + SPI + I²S are planned as one coordinated pin/overlay set (raspi-5 class).** The wearable needs the BNO085 IMU on I²C **and** the UWB anchor on SPI **and** the DAC on I²S simultaneously; on the Pi 5 those overlays contend for GPIO, so the Raspberry Pi documentation is explicit that "all other peripheral overlays that use conflicting GPIO pins must be disabled" and that any `dtparam`s enabling I²C or SPI on those pins must be commented out or inverted. The wiring map therefore resolves the three overlays (and the CSI lanes) against one GPIO budget *as a whole*, picks non-conflicting pins, and records the exact `config.txt`/overlay set — it is not three independent per-row choices. Verified at first power-up (T4 confirms the DAC overlay; T8 confirms the UWB SPI driver), with the USB-audio-dongle as the audio fallback if the I²S overlay cannot be made to coexist.
+
 **Interface pressures settled by the selection, checked at the gate (risk 8).** On the pointer: UWB SPI + IRQ/reset. On the wearable: the two CSI lanes close the camera-mux question in hardware — the capture strategy (per-camera frame cadence at detection rate) is validated by T7 as a *software* question; the pointer's Wi-Fi joining the Pi's AP is exercised by T3.
 
 ### Test matrix
@@ -34,7 +36,7 @@ Acceptance derives from the §4.2 budget (motion-to-sound ≤ 100 ms). Run order
 
 **T0 — Power rails**
 
-- Setup: pointer on its 1S pouch + TP4056-C charge board; the wearable fed by its **USB-PD bank (5 V/3 A profile)**; multimeter/in-line USB meter.
+- Setup: pointer on its 1S pouch + TP4056-C charge board; the wearable fed by its **USB-PD rail (5 V/5 A profile)**; multimeter/in-line USB meter.
 - Procedure: idle and full-load rail readings (radio TX + DAC audio on the pointer; cameras streaming + renderer + UWB on the wearable at tracking duty); 30 min soak; per the capture strategy.
 - Acceptance: sensor rail is conditions-stable within ±3 % under load, **no brownout resets logged** after the soak; charge-board protection trips on short test (pointer); wearable PD-profile current within the bank's continuous rating at full duty; no thermal runaway — the housing-temp touch check after soak is a logged metric (`temp_c`).
 - Logged: `v_rail`, `i_load`, `t_soak`, `temp_c`.

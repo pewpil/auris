@@ -39,9 +39,9 @@
 | 1 | **Raspberry Pi 5 — 4 GB RAM** | wearable compute board — renderer, CV tracking co-resident, link AP | 2× CSI-2, I²S on GPIO, Wi-Fi AP, 5 V rails | 1 | 8,500–10,500 | 8,500–10,500 |
 | 2 | Active cooler (official class) or passive heatsink | head-worn thermal control | FPC thermal mount | 1 | 500–900 | 500–900 |
 | 3 | microSD A2-class, 64–128 GB (boot + flash-buffered logs) | OS + data | microSD | 1 | 600–1,000 | 600–1,000 |
-| 4 | CSI camera module, wide angle 120° FOV, RGB (Camera Module 3 Wide class, IMX708) | vision tier — **1 or 2** modules; the count is adopted at the T7 placement gate, and two sit in the cart so either count is buildable without a re-buy (fixing it at 1 before checkout saves ₱1,700–2,400 + one printed bracket) | CSI-2 (cable ships with module) | 2 | 1,700–2,400 | 3,400–4,800 |
-| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/3 A-capable out profile** | the worn power rail (batteries + charging self-contained) | USB-C out → Pi 5 | 1 | 1,800–3,200 | 1,800–3,200 |
-| | **Selected class subtotal** | | | | | **14,800–20,400** |
+| 4 | CSI camera module, wide angle 120° FOV, RGB (Camera Module 3 Wide class, IMX708) | vision tier — **1 or 2** modules; the count is adopted at the T7 placement gate, and two sit in the cart so either count is buildable without a re-buy (fixing it at 1 before checkout saves ₱1,700–2,400 + one printed bracket) | CSI-2, **mini 22-pin** (Pi 5 uses the 22-pin connector, not the older 15-pin — the Standard-Mini cable is required; third-party modules may ship the wrong cable) | 2 | 1,700–2,400 | 3,400–4,800 |
+| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/5 A (25 W+) out profile** | the worn power rail (batteries + charging self-contained) | USB-C out → Pi 5 | 1 | 2,500–5,500 | 2,500–5,500 |
+| | **Selected class subtotal** | | | | | **15,500–22,700** |
 | 6 | *Optional* — Raspberry Pi 27 W USB-C PSU (bench-only supply for flashing/soak instead of the bank) | bench convenience | USB-C PD | 0–1 | 1,000–1,500 | *(not in totals)* |
 | 7 | *Optional* — USB-UART dongle (CP2102-class) | serial console debug on the Pi | USB↔UART | 0–1 | 150–300 | *(not in totals)* |
 
@@ -120,19 +120,20 @@ The breadboard infrastructure, test fixtures, T2 surface props, and marker-varia
 |---|---|---|
 | Pointer electronics | 2,615 | 5,430 |
 | Wearable board-agnostic | 1,965 | 4,010 |
-| Wearable — selected class (raspi-5, 4 GB) | 14,800 | 20,400 |
-| **Device electronics total** | **19,380** | **29,840** |
+| Wearable — selected class (raspi-5, 4 GB) | 15,500 | 22,700 |
+| **Device electronics total** | **20,080** | **32,140** |
 | One-time tools | 2,720 | 5,470 |
 | Structural & materials | 1,200 | 2,900 |
 | Evaluation hardware | 340 | 1,300 |
-| **Cart grand total** | **23,640** | **39,510** |
+| **Cart grand total** | **24,340** | **41,810** |
 
-**Indicative cart envelope: ≈ ₱23,600–39,500** (as itemized), **≈ ₱27,200–45,400 with a 15 % contingency** — a contingency allowance is guidance for the sign-off, not a committed line. Optional rows (marked *not in totals* in §§2–3) are extra on top, and the bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is outside this envelope by design.
+**Indicative cart envelope: ≈ ₱24,300–41,800** (as itemized), **≈ ₱28,000–48,100 with a 15 % contingency** — a contingency allowance is guidance for the sign-off, not a committed line. Optional rows (marked *not in totals* in §§2–3) are extra on top, and the bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is outside this envelope by design.
 
 ## 11. Lane & checkout notes
 
 - **Verify at checkout, every row:** current price, stock, and (for modules) that headers/connectors arrive pre-fitted or consumer-ready — no fine-pitch solderable-on-bench parts ([purchase-list.md](purchase-list.md) §1).
-- **PD bank:** confirm the output profile does 5 V at ≥ 3 A on USB-C PD in its spec table (many banks fall back to 2 A output — that underpowers a Pi 5 with cameras; a ≥ 3 A profile runs the Pi 5 headless-class compliantly for our draw).
+- **PD bank:** confirm the output profile does **5 V at 5 A (25 W+)** on USB-C PD in its spec table. The Pi 5's recommended supply is the 27 W / 5.1 V / 5.0 A unit; below 5 A the Pi 5 restricts downstream USB power to 600 mA and flags the current limit at boot, which is unacceptable with the camera + UWB + Wi-Fi load at tracking duty. Note that few ≥ 20 Ah banks deliver 5 A — if none qualifies at checkout, the recorded fallback is a protected-cell (18650-class) rail with a 5 V/5 A buck stage (heavier, and the S3 flip path's rail is the lighter option).
+- **Camera cable:** Pi 5 uses the **mini 22-pin** CSI connector, not the 15-pin used on earlier boards — confirm each camera module ships (or is bought with) a Standard-Mini cable; official Camera Module 3 variants do, third-party IMX708 modules often do not.
 - **Cameras:** RGB (visible-light) wide-FOV — NoIR variants are wrong for the printed-tag detection; cables ship with the modules but confirm Raspberry Pi 5 cable compatibility.
 - **DWM3000 stock** is the spottiest row — if unavailable at checkout time, the DW1000-class module family (e.g. Ai-Thinker BU01 / M5Stack UWB Unit) is the recorded substitute; it works per the SPI+IRQ interface but pins a different driver/channel plan at the tracking gate — flag it in the sign-off if substituted.
 - **IMU pair** (pointer + wearable) must be the same part and module revision — buy both from the same listing.
