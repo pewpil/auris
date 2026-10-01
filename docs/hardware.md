@@ -1,10 +1,10 @@
 # Cane — Hardware components & cost breakdown (pointer + wearable)
 
-> **Board class decided 2026-09-29 (co-researcher): the wearable is a Raspberry Pi 5, 8 GB.** The dual-compatible screening criterion and the deferred-class option are settled by this selection; the esp32-s3-class flavor stays recorded in [§4](#4-wearable--recorded-alternative-esp32-s3-class-flavor) as the validated alternative (₱0 in the cart, re-priced only if the class decision is ever revisited after a bring-up tripwire). The pointer keeps its own Wi-Fi-capable MCU class — an esp32-s3-class devkit, which reaches either class over the IP-over-Wi-Fi link ([README §3](../README.md#3-hardware)).
+> **Board class decided 2026-10-01 (co-researcher): the wearable is a Raspberry Pi 5, 4 GB.** 4 GB is ample for the wearable's resident workload — two QVGA CV streams, the renderer, the Wi-Fi AP, and batch-written logs sit well under ~1 GB — and no swap is configured (flash endurance on the log card); the 8 GB variant was not required and stocks less reliably. The board-class question is closed; the esp32-s3-class wearable stays recorded in [§4](#4-wearable--recorded-alternative-esp32-s3-class-flavor-itemized--₱0-in-this-cart) as the priced flip path (₱0 in the cart, ordered only if a bench tripwire forces the class back). The pointer keeps its own Wi-Fi-capable MCU class — an esp32-s3-class devkit — which is what makes the class reversible: it joins the Pi 5's access point over IP ([README §3](../README.md#3-hardware)). The vision tier's **camera count is 1 or 2**, adopted at the T7 placement gate; both modules sit in the cart so either count is buildable without a re-buy.
 >
 > **Prices are Philippine-local ballparks** (Shopee/Lazada/e-Gizmo/Circuitrocks-class lanes), point-in-time estimates to be **verified at checkout**; the purchase-approval sign-off ([README §9](../README.md#9-open-items)) precedes every checkout. Totals are ranges — nothing here is an approved spend until that sign-off. The itemized cart form of this file (with phase/path consumption tags) lives in [`purchase-list.md`](purchase-list.md); the two files share the same row set and totals.
 
-## 1. Pointer — electronics (single tranche; no dual-class requirement)
+## 1. Pointer — electronics (its own MCU class; no flip contingency)
 
 | # | Component & pick | Role (README cross-ref) | Key interface | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|---|
@@ -19,7 +19,7 @@
 | 9 | Printed ArUco/AprilTag marker (print-shop sheet) | vision tier's passive target | none (passive) | 1 | 50–150 | 50–150 |
 | | **Pointer subtotal** | | | | | **2,615–5,430** |
 
-## 2. Wearable — board-agnostic rows (serve either class; unaffected by the board decision)
+## 2. Wearable — board-agnostic rows (survive a class flip at no re-buy)
 
 | # | Component & pick | Role (README cross-ref) | Key interface | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|---|
@@ -32,16 +32,16 @@
 | | **Board-agnostic subtotal** | | | | | **1,965–4,010** |
 | 7 | *Optional* — headphone amp mini-board (opamp/LDO class) | drive headroom behind the DAC if line-out proves weak | analog | 0–1 | 80–200 | *(not in totals)* |
 
-## 3. Wearable — raspi-5, 8 GB class rows (the selected tranche)
+## 3. Wearable — the selected class rows (raspi-5, 4 GB)
 
 | # | Component & pick | Role (README cross-ref) | Key interface | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|---|
-| 1 | **Raspberry Pi 5 — 8 GB RAM** | wearable compute board — renderer, CV tracking co-resident, link AP | 2× CSI-2, I²S on GPIO, Wi-Fi AP, 5 V rails | 1 | 10,000–12,500 | 10,000–12,500 |
+| 1 | **Raspberry Pi 5 — 4 GB RAM** | wearable compute board — renderer, CV tracking co-resident, link AP | 2× CSI-2, I²S on GPIO, Wi-Fi AP, 5 V rails | 1 | 8,500–10,500 | 8,500–10,500 |
 | 2 | Active cooler (official class) or passive heatsink | head-worn thermal control | FPC thermal mount | 1 | 500–900 | 500–900 |
 | 3 | microSD A2-class, 64–128 GB (boot + flash-buffered logs) | OS + data | microSD | 1 | 600–1,000 | 600–1,000 |
-| 4 | CSI camera module, wide angle 120° FOV, RGB (Camera Module 3 Wide class, IMX708) | vision tier ×2 (head-flanking stations) | CSI-2 (cable ships with module) | 2 | 1,700–2,400 | 3,400–4,800 |
+| 4 | CSI camera module, wide angle 120° FOV, RGB (Camera Module 3 Wide class, IMX708) | vision tier — **1 or 2** modules; the count is adopted at the T7 placement gate, and two sit in the cart so either count is buildable without a re-buy (fixing it at 1 before checkout saves ₱1,700–2,400 + one printed bracket) | CSI-2 (cable ships with module) | 2 | 1,700–2,400 | 3,400–4,800 |
 | 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/3 A-capable out profile** | the worn power rail (batteries + charging self-contained) | USB-C out → Pi 5 | 1 | 1,800–3,200 | 1,800–3,200 |
-| | **raspi-5 class subtotal** | | | | | **16,300–22,400** |
+| | **Selected class subtotal** | | | | | **14,800–20,400** |
 | 6 | *Optional* — Raspberry Pi 27 W USB-C PSU (bench-only supply for flashing/soak instead of the bank) | bench convenience | USB-C PD | 0–1 | 1,000–1,500 | *(not in totals)* |
 | 7 | *Optional* — USB-UART dongle (CP2102-class) | serial console debug on the Pi | USB↔UART | 0–1 | 150–300 | *(not in totals)* |
 
@@ -49,25 +49,25 @@
 
 The complete esp32-s3-class wearable, filled in so the flip is a **priced, executable path** rather than a stub: never purchased under the current raspi-5 decision; bought only if a bring-up tripwire forces the class back. Everything in the pointer (§1) and the board-agnostic rows (§2) carries over untouched — so the flip is a software-risk question, not a procurement one.
 
-| # | Row | Function | esp32-s3-class flavor | Qty | Unit ₱ | Subtotal ₱ |
-|---|---|---|---|---|---|---|
-| 1 | Wearable compute board — class row (C) | renders the audio; runs the CV tracking; hosts the 2.4 GHz link radio; provides I²C/SPI/USB to the agnostic rows | ESP32-S3-class devkit **N16R8** (16 MB flash / 8 MB PSRAM — the PSRAM is what makes the dual QVGA frame buffers possible) | 1 | 500–700 | 500–700 |
-| 2 | 2× wide-FOV RGB cameras (B) | the vision tier | OV2640-class **DVP** modules, 160° FOV (2 + 1 spare) | 3 | 100–200 | 300–600 |
-| 3 | Camera interface adapters (B) | the DVP modules arrive as 24-pin FPC; the devkit's single parallel port takes headers | FPC-to-header breakout adapter sets (one per camera + spare) | 2–3 | 50–150 | 100–300 |
-| 4 | Capture contingency (B, conditional) | only if the T7 gate forces *simultaneous* two-camera capture on the single DVP port (risk 8) | DVP 2:1 camera mux / dual-capture switch module | 0–1 | 150–600 | *(optional)* |
-| 5 | Stereo audio output (B) | spatial audio to the wired 3.5 mm jack | the **same PCM5102A module** (§2 row 5) rides the native I²S peripheral — no new hardware, different wiring only | — | — | **0** |
-| 6 | Worn power rail (B) | the worn power | either **reuse the PD bank** (§3 row 5 — ₱0, oversized at the head) or a **protected 18650 + cradle holder** rail (lighter to wear) | 0–1 | 300–600 | *(alternative)* |
-| 7 | Camera mounts & wiring (B) | stable extrinsics + DVP leads | printed brackets per the DVP module shape (charged to the §7 print lane) + M–F leads to the devkit header | 1 | 0–300 | 0–300 |
-| 8 | Thermal | head-worn heat | **none** — the S3 class is cool to skin; no heatsink, no cooler (a mass advantage over the raspi-5 class) | — | — | **0** |
+| #   | Row                                                  | Function                                                                                                         | esp32-s3-class flavor                                                                                                               | Qty | Unit ₱  | Subtotal ₱      |
+| --- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ------- | --------------- |
+| 1   | Wearable compute board — the alternative's class row | renders the audio; runs the CV tracking; hosts the 2.4 GHz link radio; provides I²C/SPI/USB to the agnostic rows | ESP32-S3-class devkit **N16R8** (16 MB flash / 8 MB PSRAM — the PSRAM is what makes the dual QVGA frame buffers possible)           | 1   | 500–700 | 500–700         |
+| 2   | 2× wide-FOV RGB cameras (B)                          | the vision tier                                                                                                  | OV2640-class **DVP** modules, 160° FOV (2 + 1 spare)                                                                                | 3   | 100–200 | 300–600         |
+| 3   | Camera interface adapters (B)                        | the DVP modules arrive as 24-pin FPC; the devkit's single parallel port takes headers                            | FPC-to-header breakout adapter sets (one per camera + spare)                                                                        | 2–3 | 50–150  | 100–300         |
+| 4   | Capture contingency (B, conditional)                 | only if the T7 gate forces *simultaneous* two-camera capture on the single DVP port (risk 8)                     | DVP 2:1 camera mux / dual-capture switch module                                                                                     | 0–1 | 150–600 | *(optional)*    |
+| 5   | Stereo audio output (B)                              | spatial audio to the wired 3.5 mm jack                                                                           | the **same PCM5102A module** (§2 row 5) rides the native I²S peripheral — no new hardware, different wiring only                    | —   | —       | **0**           |
+| 6   | Worn power rail (B)                                  | the worn power                                                                                                   | either **reuse the PD bank** (§3 row 5 — ₱0, oversized at the head) or a **protected 18650 + cradle holder** rail (lighter to wear) | 0–1 | 300–600 | *(alternative)* |
+| 7   | Camera mounts & wiring (B)                           | stable extrinsics + DVP leads                                                                                    | printed brackets per the DVP module shape (charged to the §7 print lane) + M–F leads to the devkit header                           | 1   | 0–300   | 0–300           |
+| 8   | Thermal                                              | head-worn heat                                                                                                   | **none** — the S3 class is cool to skin; no heatsink, no cooler (a mass advantage over the raspi-5 class)                           | —   | —       | **0**           |
 
 **Cost of reversal:** base path (rows 1–3) ≈ **₱900–1,600**; with mounts/wiring (row 7) ≈ **₱900–1,900**; add the mux contingency (row 4) and the slimmer 18650 rail (row 6) only if those gates demand them, for a worst case of ≈ **₱2,800–4,100** of new hardware. The audio module, thermal, and every agnostic/pointer row survive the flip at ₱0.
 
 **Engineering burden carried by this path** (why the T7 gate decides before the permanent build):
 
 - **Two LX7 cores turn co-residence into a scheduling problem:** the renderer pins to core 0 (≈ 0.2–0.5 ms per 128-sample hop at 48 kHz — comfortably inside the audio budget), the vision pipeline to core 1; Wi-Fi/link and logging ride below both.
-- **The honest compute boundary:** AprilTag-class QVGA detection runs ≈ 30–100 ms per frame *per camera* on this silicon, so **two cameras detecting every frame at 15–30 Hz do not fit**. The plan's **detect-then-track** scheme (detect every Nth frame, track a small ROI between) is mandatory here, not a fallback — and the T7 co-residence gate (risk 8) settles it, together with the capture strategy that decides whether row 4's mux is needed.
+- **The honest compute boundary:** AprilTag-class QVGA detection runs ≈ 30–100 ms per frame *per camera* on this silicon, so **two cameras detecting every frame at 15–30 Hz do not fit** — and a single camera, the S3-friendly configuration (also the one the T7 count gate may adopt here), is the only one that leaves real headroom. The plan's **detect-then-track** scheme (detect every Nth frame, track a small ROI between) is mandatory on this class, not a fallback — and the T7 co-residence gate (risk 8) settles it, together with the capture strategy that decides whether row 4's mux is needed.
 - **Memory plan:** the 8 MB PSRAM holds the DVP DMA'd QVGA buffers in double-buffering; the 512 KB internal SRAM must cover Wi-Fi + the audio ring + task stacks.
-- **Frame-budget reading:** at 48 kHz / 128 samples the buffer period is 2.67 ms, so §4.2's "≤ 5 ms per buffer" gate is best read as **≤ ~1.3 ms per hop**; the S3 render core fits either reading.
+- **Frame-budget reading:** at 48 kHz / 128 samples the buffer period is 2.67 ms, so the plan's render gate is **≤ 2 ms per 128-sample hop** ([README §4.2](../README.md#42-latency-budget-motion-to-sound-target--100-ms)); the S3 render core fits with margin.
 - **Ergonomics upside:** no cooler and an optional slimmer rail make this the lighter wearable build — the flip's main argument for the user's own comfort, against the compute headroom the raspi-5 class buys.
 
 ## 5. Bench-conditional materials (itemized in [`bench.md`](bench.md))
@@ -120,14 +120,14 @@ The breadboard infrastructure, test fixtures, T2 surface props, and marker-varia
 |---|---|---|
 | Pointer electronics | 2,615 | 5,430 |
 | Wearable board-agnostic | 1,965 | 4,010 |
-| Wearable raspi-5 8 GB class | 16,300 | 22,400 |
-| **Device electronics total** | **20,880** | **31,840** |
+| Wearable — selected class (raspi-5, 4 GB) | 14,800 | 20,400 |
+| **Device electronics total** | **19,380** | **29,840** |
 | One-time tools | 2,720 | 5,470 |
 | Structural & materials | 1,200 | 2,900 |
 | Evaluation hardware | 340 | 1,300 |
-| **Cart grand total** | **25,140** | **41,510** |
+| **Cart grand total** | **23,640** | **39,510** |
 
-**Indicative cart envelope: ≈ ₱25,100–41,500** (as itemized), **≈ ₱28,900–47,700 with a 15 % contingency** — a contingency allowance is guidance for the sign-off, not a committed line. Optional rows (marked *not in totals* in §§2–6) are extra on top, and the bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is outside this envelope by design.
+**Indicative cart envelope: ≈ ₱23,600–39,500** (as itemized), **≈ ₱27,200–45,400 with a 15 % contingency** — a contingency allowance is guidance for the sign-off, not a committed line. Optional rows (marked *not in totals* in §§2–3) are extra on top, and the bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is outside this envelope by design.
 
 ## 11. Lane & checkout notes
 

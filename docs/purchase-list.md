@@ -1,6 +1,6 @@
 # Cane — Purchase list (the complete project cart: every component and material)
 
-> This is the **complete itemized order** — every hardware component, material, tool, and fixture the project buys across the device electronics, the build, and the study. The selections and per-row rationale live in [`hardware.md`](hardware.md); this cart follows it row for row and shares its totals. Built on the 2026-09-29 selection: **wearable = Raspberry Pi 5, 8 GB**; the earlier dual-compatible deferral and two-tranche structure are settled — a **single cart**, with the screened esp32-s3-class wearable kept in [`hardware.md`](hardware.md) §4 as the recorded alternative (₱0 until the class decision is revisited). The **bench-phase-only material slice** (breadboard infrastructure, fixtures, surface props) is itemized separately in [`bench.md`](bench.md) and is **not** counted below. Prices are Philippine-local ballparks, **verified at checkout**; the co-researcher's **purchase-approval sign-off** ([README §9](../README.md#9-open-items)) precedes any checkout.
+> This is the **complete itemized order** — every hardware component, material, tool, and fixture the project buys across the device electronics, the build, and the study. The selections and per-row rationale live in [`hardware.md`](hardware.md); this cart follows it row for row and shares its totals. Built on the 2026-10-01 decision: **wearable = Raspberry Pi 5, 4 GB** — a **single cart**, the board class decided, with the priced esp32-s3-class flip path kept in [`hardware.md`](hardware.md) §4 (₱0 in this cart until a tripwire forces it). The **bench-phase-only material slice** (breadboard infrastructure, fixtures, surface props) is itemized separately in [`bench.md`](bench.md) and is **not** counted below. Prices are Philippine-local ballparks, **verified at checkout**; the co-researcher's **purchase-approval sign-off** ([README §9](../README.md#9-open-items)) precedes any checkout.
 
 ## 1. Rules the cart binds itself to
 
@@ -27,7 +27,7 @@
 
 ## 3. Wearable — board-agnostic rows (`P2/P3/P4/P5`)
 
-These rows serve either board class and survive a class flip with no re-buy; the [raspi-5 class rows](#4-wearable--raspi-5-8-gb-class-rows-p2p3p4p5) below are the class-pinned set.
+These rows survive a class flip with no re-buy; the [selected class rows](#4-wearable--the-selected-class-rows-raspi-5-4-gb-p2p3p4p5) below are class-pinned to the decided board.
 
 | # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|
@@ -40,16 +40,16 @@ These rows serve either board class and survive a class flip with no re-buy; the
 | | | | | **Subtotal** | **1,965–4,010** |
 | *(opt.)* | Headphone amp mini-board — add only if line-out drive proves weak | audio headroom | 0–1 | 80–200 | *(excluded)* |
 
-## 4. Wearable — raspi-5, 8 GB class rows (`P2/P3/P4/P5`)
+## 4. Wearable — the selected class rows: raspi-5, 4 GB (`P2/P3/P4/P5`)
 
 | # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|
-| 1 | **Raspberry Pi 5, 8 GB RAM** | all phases | 1 | 10,000–12,500 | 10,000–12,500 |
+| 1 | **Raspberry Pi 5, 4 GB RAM** | all phases | 1 | 8,500–10,500 | 8,500–10,500 |
 | 2 | Active cooler (official class) or heatsink | thermal | 1 | 500–900 | 500–900 |
 | 3 | microSD A2-class, 64–128 GB | OS + logs | 1 | 600–1,000 | 600–1,000 |
-| 4 | CSI camera, wide-angle 120°, RGB (IMX708 class) | vision tier | 2 | 1,700–2,400 | 3,400–4,800 |
+| 4 | CSI camera, wide-angle 120°, RGB (IMX708 class) — **1 or 2 adopted at the T7 placement gate; two in the cart** (fixing the count at 1 before checkout saves ₱1,700–2,400 + one printed bracket) | vision tier | 2 | 1,700–2,400 | 3,400–4,800 |
 | 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/3 A out** | worn power rail + bench source | 1 | 1,800–3,200 | 1,800–3,200 |
-| | | | | **Subtotal** | **16,300–22,400** |
+| | | | | **Subtotal** | **14,800–20,400** |
 | *(opt.)* | Raspberry Pi 27 W USB-C PSU (bench supply if the bank is otherwise engaged) | bench | 0–1 | 1,000–1,500 | *(excluded)* |
 | *(opt.)* | USB-UART dongle (CP2102-class) | Pi serial console | 0–1 | 150–300 | *(excluded)* |
 
@@ -68,18 +68,18 @@ Itemized in [`hardware.md`](hardware.md) §4 — kept in sync with that file; su
 
 ## 6. One-time tools (`both paths`; solder kit = P3 rework per the outsourcing decision)
 
-| # | Item | Consumed by | Unit ₱ |
-|---|---|---|---|
-| 1 | Digital multimeter (with current ranges — inline mA) | bring-up + P3 inspection | 800–1,600 |
-| 2 | Adjustable soldering iron kit | P3/P4/P5 rework | 800–1,500 |
-| 3 | Solder wire 0.8 mm | P3 rework | 120–250 |
-| 4 | Flux | P3 rework | 80–150 |
-| 5 | Desoldering wick | P3 rework | 60–120 |
-| 6 | Hand tool set (strippers/cutters/pliers) | P2/P3 harness | 330–650 |
-| 7 | Tweezers | P3 inspection | 80–150 |
-| 8 | USB-A→USB-C data cables ×3 (data-capable; 3rd for the Pi's power-while-logging case) | flashing/logging, both paths | 450–1,050 |
-| | | | **2,720–5,470** |
-| *(opt.)* | Helping-hands/PCB holder | rework | *(excluded)* |
+| #        | Item                                                                                 | Consumed by                  | Unit ₱          |
+| -------- | ------------------------------------------------------------------------------------ | ---------------------------- | --------------- |
+| 1        | Digital multimeter (with current ranges — inline mA)                                 | bring-up + P3 inspection     | 800–1,600       |
+| 2        | Adjustable soldering iron kit                                                        | P3/P4/P5 rework              | 800–1,500       |
+| 3        | Solder wire 0.8 mm                                                                   | P3 rework                    | 120–250         |
+| 4        | Flux                                                                                 | P3 rework                    | 80–150          |
+| 5        | Desoldering wick                                                                     | P3 rework                    | 60–120          |
+| 6        | Hand tool set (strippers/cutters/pliers)                                             | P2/P3 harness                | 330–650         |
+| 7        | Tweezers                                                                             | P3 inspection                | 80–150          |
+| 8        | USB-A→USB-C data cables ×3 (data-capable; 3rd for the Pi's power-while-logging case) | flashing/logging, both paths | 450–1,050       |
+|          |                                                                                      |                              | **2,720–5,470** |
+| *(opt.)* | Helping-hands/PCB holder                                                             | rework                       | *(excluded)*    |
 
 ## 7. Structural & materials (`P2–P5`)
 
@@ -107,14 +107,14 @@ Itemized in [`hardware.md`](hardware.md) §4 — kept in sync with that file; su
 |---|---|---|
 | Pointer electronics | 2,615 | 5,430 |
 | Wearable board-agnostic | 1,965 | 4,010 |
-| Wearable raspi-5 8 GB class | 16,300 | 22,400 |
-| **Device electronics** | **20,880** | **31,840** |
+| Wearable — selected class (raspi-5, 4 GB) | 14,800 | 20,400 |
+| **Device electronics** | **19,380** | **29,840** |
 | One-time tools | 2,720 | 5,470 |
 | Structural & materials | 1,200 | 2,900 |
 | Evaluation hardware | 340 | 1,300 |
-| **Cart grand total** | **25,140** | **41,510** |
+| **Cart grand total** | **23,640** | **39,510** |
 
-**Indicative envelope ≈ ₱25,100–41,500 itemized; ≈ ₱28,900–47,700 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. The bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is **not** included in these totals. Nothing is committed before the purchase-approval sign-off.
+**Indicative envelope ≈ ₱23,600–39,500 itemized; ≈ ₱27,200–45,400 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. The bench-phase slice ([`bench.md`](bench.md), ≈ ₱1,600–3,500) is **not** included in these totals. Nothing is committed before the purchase-approval sign-off.
 
 ## 10. Checkout checklist
 
