@@ -1,20 +1,26 @@
-# T0 — Power rails: background and bench procedure
+# T0 — Power rails: background and bench procedure *(not executed)*
 
-> **Test-under-description:** [`docs/bench-tests.md` T0](../../docs/bench-tests.md#t0--power-rails) — the first test of the P2 matrix and the gate every other test depends on. **Circuit:** [`t0-power-rails.kicad_sch`](t0-power-rails.kicad_sch) in this folder (export: [`export/t0-power-rails.pdf`](export/t0-power-rails.pdf)). Metrics logged: `v_rail`, `i_load`, `t_soak`, `temp_c`.
+> **Status 2026-10-01: this walkthrough is NOT executed, and part of it is superseded.** Two decisions landed after it was written:
+> 1. **No hardware bench phase** ([`docs/bench-tests.md`](../../docs/bench-tests.md)). T0's threshold is retained as part of the acceptance specification and is discharged at **P2 by SPICE on [`t0-power-rails.kicad_sch`](t0-power-rails.kicad_sch)** plus the charge/protection and thermal datasheets — with the physical first power-up and inspection at the P3 incoming inspection. Nothing below is a measurement this project intends to take.
+> 2. **The wearable is a Raspberry Pi 5, 4 GB** (2026-10-01). **The wearable-side columns in §4 are written on the pre-decision ESP32-S3-DevKitC-1 topology and are superseded** — the wearable's rail is now the **5 V/5 A (25 W+) USB-C PD power bank** ([README §3.2](../../README.md#32-wearable--electronics)), with no cell, no TP4056, no linear 3.3 V sensor regulator, and no brownout detector on the Pi side; the PCM5102A-class DAC, UWB anchor, and CSI cameras sit behind the Pi's own supplies. **The pointer-side rows still describe the pointer correctly** (its own esp-class MCU, its own charge/protect board, its own cell), and the brownout reasoning in §2 applies to the pointer only.
+>
+> Kept, not deleted: the rail-stability reasoning, the load-step ordering, and the log schema remain useful to whoever runs the P3 first power-up and the P4 in-use telemetry. **Known stale content:** §4's wearable column and the `TP2/6` 3.3 V test point for the wearable; §6's "both cameras on the shared DVP bus" (the Pi has two native CSI lanes); §2's shared "both devices run a single Li-ion cell" premise. The schematic itself (`t0-power-rails.kicad_sch`) still carries the old two-cell topology and needs a rebuild at the P2 SPICE step — flagged, not yet done.
 
-## 1. What T0 decides
+> **Original test-under-description:** [`docs/bench-tests.md` T0 row](../../docs/bench-tests.md#test-matrix-specification--not-executed) — the first test of the P2 matrix and the gate every other test depends on. **Circuit:** [`t0-power-rails.kicad_sch`](t0-power-rails.kicad_sch) in this folder (export: [`export/t0-power-rails.pdf`](export/t0-power-rails.pdf)). Metrics logged: `v_rail`, `i_load`, `t_soak`, `temp_c`.
+
+## 1. What T0 decides *(pointer-side rows; wearable rail re-derived by SPICE at P2)*
 
 T0 asks one question about each device — *is the electrical foundation sound?* — and answers it with four pieces of evidence: the **sensor rail** (3.3 V) holds within **±3 % under full load**; **no brownout resets** occur across a **30-minute soak** at tracking duty; the **charge-board protection** actually trips on a forced short; and the assembly runs the soak **without thermal runaway** (a by-touch temperature check, logged). Everything downstream — IMU drift curves (T1), latency distributions (T3–T5), tracking rates (T7–T8) — inherits the rail quality established here, which is why T0 runs first: a rail that sags mid-measurement corrupts every dataset collected after it.
 
 ## 2. Background
 
-**The 1S lithium-ion cell.** Both devices run a single Li-ion cell: a slim pouch cell on the pointer, a protected 18650 on the wearable. A 1S cell operates from **4.2 V (full) down to ~3.0 V (practically empty)**, and its voltage under load also dips with current (internal resistance — tens of milliohms for a healthy cell, more for a pouch with long jumper leads). This 3.0–4.2 V window is the raw material the rest of the power path works with.
+**The 1S lithium-ion cell *(pointer only — the wearable's rail is the PD bank, see the status banner).*** The pointer runs a single Li-ion cell: a slim pouch cell on the pointer (the pre-decision wearable used a protected 18650; superseded). A 1S cell operates from **4.2 V (full) down to ~3.0 V (practically empty)**, and its voltage under load also dips with current (internal resistance — tens of milliohms for a healthy cell, more for a pouch with long jumper leads). This 3.0–4.2 V window is the raw material the rest of the power path works with.
 
 **Charge: constant-current then constant-voltage.** The TP4056-class charge/protect board charges the cell in two phases: **constant current** (~1 A, the board's fixed program) until the cell reaches 4.2 V, then **constant voltage** at 4.2 V while the current naturally tapers; charging ends near a C/10 fraction of cell capacity. During constant-current charging the board dissipates noticeable heat — a warm (not hot) TP4056 during charging is normal physics, not a defect. These boards also carry a **battery-protection stage** (a DW01-class supervisor with a dual MOSFET in the negative lead) that disconnects the cell on overcharge (~4.25–4.3 V), over-discharge (~2.4–2.5 V), or over-current (~3 A class) — all typical datasheet values, exact figures per the board's parts. The pointer's pouch cell has **no** protection of its own and relies entirely on the board; the wearable's 18650 is **protected at the cell** and wears the board's protection as a second layer.
 
 **Discharge: the load chain.** From the charge board's protected output (OUT+/OUT−), current flows through the **slide switch**, through the **inline multimeter** (mA range), into the DevKitC-1's **5 V pin**, and onward: the DevKitC-1's onboard regulator produces the **3.3 V sensor rail** that feeds every module — BNO085 IMU, VL53L1X ToF and DWM3000 UWB tag on the pointer; head IMU, UWB anchor, both cameras and (from the switched battery rail directly, which suits the amp's 2.5–5.5 V input) the two MAX98357A I²S amplifiers on the wearable. The regulator is a **linear** one: it burns the difference between battery and 3.3 V as heat, and — the part that matters at this bench — it needs **headroom**: below roughly 3.3–3.5 V of input its output begins to follow the input down. A cell sagging toward end-of-charge therefore shows up first as a sagging sensor rail, not as a device failure — T0 is designed to observe exactly this honestly (see §9).
 
-**Brownouts.** The ESP32-S3 watches its own supply with a **brownout detector** (threshold in the ≈2.4–2.9 V class, fixed at boot): if the 3.3 V rail dips below it, the chip resets deliberately rather than misbehave, and the reset reason is readable in software. Our firmware logs it (`esp_reset_reason()` through the `bench-log` stream — [README §4.1](../../README.md#41-firmware-modules)), so "no brownout resets logged" is a machine-checked acceptance row, not an operator impression.
+**Brownouts *(pointer only).** The pointer's ESP32-S3 watches its own supply with a **brownout detector** (threshold in the ≈2.4–2.9 V class, fixed at boot): if the 3.3 V rail dips below it, the chip resets deliberately rather than misbehave, and the reset reason is readable in software. Our firmware logs it (`esp_reset_reason()` through the `bench-log` stream — [README §4.1](../../README.md#41-firmware-modules)), so "no brownout resets logged" is a machine-checked acceptance row, not an operator impression.
 
 **Why the ammeter reading bounces.** The radio transmitter does not draw smoothly: an ESP-NOW transmission pulls a **burst** of hundreds of milliamps for a fraction of a millisecond, then drops back to idle tens of milliamps. A handheld multimeter integrates these bursts into a jumpy average — expect the display to dance between tens and a few hundred mA during full-load stages. The bursts also travel: thin dupont jumpers and breadboard rails add resistance precisely where the burst current flows, sagging the rail at the exact instants the brownout detector watches. This is why the acceptance is written on rail **stability** (±3 %) rather than on any single current figure.
 
@@ -25,7 +31,7 @@ T0 asks one question about each device — *is the electrical foundation sound?*
 - Both devices breadboarded per the wiring maps ([`docs/bench-tests.md`](../../docs/bench-tests.md)): USB-C charge/protect board, cell (pouch / protected 18650 in holder), slide switch, DevKitC-1, and the sensor modules of each device.
 - Digital multimeter (mA range, in series on the switched battery rail; second meter or re-probing for rail voltages).
 - Bench USB source for the first power-up (current-limited if available), charger for the protection test.
-- The logging harness: laptop running `bench/capture.py` with both devices' USB serial ports — operator entries ride the same stream (`start` / `stop` / `mark` / `set`), per [`docs/bench-tests.md` §Logging format](../../docs/bench-tests.md#logging-format).
+- The logging harness: laptop running `bench/capture.py` with both devices' USB serial ports — operator entries ride the same stream (`start` / `stop` / `mark` / `set`), per [`docs/bench-tests.md` §Telemetry format](../../docs/bench-tests.md#telemetry-format-the-log-survives-its-producer-moves-to-p4p5).
 - Optional: a second thermometer (or IR no-contact) to corroborate the by-touch temperature estimate.
 
 ## 4. The circuit
@@ -50,7 +56,7 @@ Note the node the ammeter sits in: switched-battery → 5 V pin. The DevKitC-1's
 - Check **cell polarity twice** before each insertion; never park a bare cell on metal (it shorts through the breadboard's plate).
 - **First power-up of each device through the multimeter inline** (mA range) — or a current-limited USB source — never directly from a bare cell.
 - **Power off before any wiring change**; hot-plugging I²C/I²S is how modules die.
-- All P2 bench rules hold: no soldering, modules pre-soldered, bench USB (not the battery rail) until T0 passes ([`docs/bench-tests.md` §Bring-up safety](../../docs/bench-tests.md#bring-up-safety)).
+- All bring-up rules hold at the P3 incoming inspection and first power-up ([`docs/bench-tests.md` §Bring-up safety](../../docs/bench-tests.md#bring-up-safety-gate-to-anything-energized)): connector-ready modules, USB/bank port (not the battery rail) before the rail case is closed, no in-house soldering.
 
 ## 6. Procedure
 
@@ -67,7 +73,7 @@ Run once per device, pointer first. Every stage's readings go through the harnes
 
 ## 7. Data recording
 
-The session lands in the mandated schema — one CSV per session: `session,test_id,timestamp_ms,metric,value,unit,notes` ([`docs/bench-tests.md` §Logging format](../../docs/bench-tests.md#logging-format)). Device-side rows (rail ADC, reset reasons) arrive automatically; operator rows come from the `set` commands above; the reducer derives `t_soak` from the soak marks and prints the acceptance check. A clean transcript reads like:
+The session lands in the mandated schema — one CSV per session: `session,test_id,timestamp_ms,metric,value,unit,notes` ([`docs/bench-tests.md` §Telemetry format](../../docs/bench-tests.md#telemetry-format-the-log-survives-its-producer-moves-to-p4p5)). Device-side rows (rail ADC, reset reasons) arrive automatically; operator rows come from the `set` commands above; the reducer derives `t_soak` from the soak marks and prints the acceptance check. A clean transcript reads like:
 
 ```
 > start T0 pointer
@@ -87,7 +93,7 @@ The session lands in the mandated schema — one CSV per session: `session,test_
 
 | Row | Gate | Source |
 |---|---|---|
-| Sensor rail stability | `v_rail` (3.3 V rail) within **±3 %** of nominal under full load | [`bench-tests.md` T0](../../docs/bench-tests.md#t0--power-rails) |
+| Sensor rail stability | `v_rail` (3.3 V rail) within **±3 %** of nominal under full load | [`bench-tests.md` T0 row](../../docs/bench-tests.md#test-matrix-specification--not-executed) |
 | Brownouts | **no brownout resets logged** after the soak | same |
 | Protection | charge-board protection **trips on short test** | same |
 | Thermal | no thermal runaway; by-touch `temp_c` logged | same |
@@ -95,7 +101,7 @@ The session lands in the mandated schema — one CSV per session: `session,test_
 
 ## 9. Troubleshooting
 
-- **Brownout resets during TX bursts** — the classic first failure: burst current × breadboard/jumper resistance sags the rail below the detector. Shorten the high-current path (battery → switch → 5 V pin), use thicker jumpers there, keep the sensor modules' jumpers as-is; re-run. If it persists at a healthy cell voltage, the protection board's over-current trip may be nudging — check whether the reset coincides with its re-lock behaviour.
+- **Brownout resets during TX bursts (pointer)** — the classic first failure: burst current × breadboard/jumper resistance sags the rail below the detector. Shorten the high-current path (battery → switch → 5 V pin), use thicker jumpers there, keep the sensor modules' jumpers as-is; re-run. If it persists at a healthy cell voltage, the protection board's over-current trip may be nudging — check whether the reset coincides with its re-lock behaviour.
 - **3.3 V rail sags with a healthy load** — look at the *battery* voltage simultaneously: if the cell is below ~3.4 V, the DevKitC's regulator is out of headroom and simply passing the sag through. Recharge, re-run; if it sags at 4.0 V+, that is a real finding — record it, it belongs in the T0 data, not in a workaround.
 - **Meter reading implausibly high at idle** — a module's idle state changed (a camera powered but not streaming, the UWB module in a chatty mode); check the firmware's duty state before blaming the rail.
 - **TP4056 hot to the touch during charging** — expected during the constant-current phase; hot *at idle with no charger* is not, and points at the protection stage — swap the board.
@@ -103,7 +109,7 @@ The session lands in the mandated schema — one CSV per session: `session,test_
 
 ## 10. References
 
-- [`docs/bench-tests.md`](../../docs/bench-tests.md) — the P2 protocol this walkthrough executes (T0 rows, bring-up safety, logging format).
-- [`README.md` §3.1/§3.2](../../README.md#31-pointer--electronics) — the settled electronics of both devices; [§4.2](../../README.md#42-latency-budget-motion-to-sound-target--100-ms) — the budget the rails make measurable.
-- [`docs/purchase-list.md`](../../docs/purchase-list.md) — the ordered parts this test consumes (charge boards, cells, switch, meters).
-- TP4056 / DW01-class charge+protect board datasheets, the DevKitC-1 power tree, and the ESP32-S3 brownout documentation — datasheet-grade, per component note [README §3.7](../../README.md#37-component-notes).
+- [`docs/bench-tests.md`](../../docs/bench-tests.md) — the acceptance specification (T0 rows) and the bring-up safety rule; §2.3's S0 row is what now discharges T0.
+- [`README.md` §3.1](../../README.md#31-pointer--electronics) — the pointer's settled electronics (the half of this file still valid); [§3.2](../../README.md#32-wearable--electronics) — the wearable's PD-bank rail that supersedes §4's wearable column; [§4.2](../../README.md#42-latency-budget-motion-to-sound-target--100-ms) — the budget the rails must preserve.
+- [`docs/purchase-list.md`](../../docs/purchase-list.md) — the ordered parts (charge board, cell, switch, meters on the pointer; the PD bank on the wearable).
+- TP4056 / DW01-class charge+protect board datasheets, the pointer's DevKitC-1-class power tree, and the ESP32-S3 brownout documentation — datasheet-grade, per component note [README §3.7](../../README.md#37-component-notes). The wearable-side equivalents are the Raspberry Pi power-supply documentation (27 W / 5.1 V / 5.0 A; sub-5 A caps downstream USB at 600 mA) and the PD bank's own output table.
