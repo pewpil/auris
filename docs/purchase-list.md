@@ -1,10 +1,14 @@
 # Cane — Purchase list (the complete project cart: every component and material)
 
-> This is the **complete itemized order** — every hardware component, material, tool, and fixture the project buys across the device electronics, the build, and the study. The selections and per-row rationale live in [`hardware.md`](hardware.md); this cart follows it row for row and shares its totals. Built on the 2026-10-01 decision: **wearable = Raspberry Pi 5, 4 GB** — a **single cart**, the board class decided, with the priced esp32-s3-class flip path kept in [`hardware.md`](hardware.md) §4 (₱0 in this cart until a tripwire forces it). With no hardware bench phase (2026-10-01), the former bench-phase-only slice (breadboard infrastructure, fixtures, surface props, ≈ ₱1,600–3,500) is **not bought**; it is recorded-but-retired in [`bench.md`](bench.md) §3, which also holds the bring-up and incoming-inspection checklist that this cart's tools, leads, and PD bank serve. It is **not** counted below. Prices are Philippine-local ballparks, **verified at checkout**; the co-researcher's **purchase-approval sign-off** ([README §9](../README.md#9-open-items)) precedes any checkout.
+> This is the **complete cart** — every hardware component, material, tool, and fixture the project buys across the device electronics, the build, and the study, with each row marked **supplied or to buy**. The selections and per-row rationale live in [`hardware.md`](hardware.md); this cart follows it row for row and shares its totals.
+>
+> **Purchase state as of 2026-10-03:** the **wearable is a Raspberry Pi 5, 8 GB and the board is bought — ₱6,000** (recorded against the bare board; if that purchase later proves to have included the PSU or case, the value is re-split across those rows rather than left double-counted). **Every other row in this cart is still to buy** (≈ ₱15,800–31,300), and the purchase-approval sign-off ([README §9](../README.md#9-open-items)) precedes that remaining checkout. A **single cart**, the board class closed with **no alternative class carried** ([`hardware.md`](hardware.md) §4). With no hardware bench phase (2026-10-01), the former bench-phase-only slice (breadboard infrastructure, fixtures, surface props, ≈ ₱1,600–3,500) is **not bought**; it is recorded-but-retired in [`bench.md`](bench.md) §3, which also holds the bring-up and incoming-inspection checklist that this cart's tools, leads, and PD bank serve. It is **not** counted below.
+>
+> The 8 GB SKU required no re-derivation of anything: the resident workload was already shown to fit **4 GB**, so 8 GB is a strict superset and every budget, threshold, and evidence class stands ([README §3](../README.md#3-hardware) preamble). Remaining prices are indicative Philippine-local ballparks, verified when ordered. **§10** is the received-goods inspection that runs on the board and on every later delivery.
 
 ## 1. Rules the cart binds itself to
 
-- **Buy-once rule** — each component category is purchased once; the selection is fixed before purchase, never corrected by a re-buy. Substitute-flagged rows (e.g. the UWB module) are replacements chosen *at checkout time when a row is unstocked*, not re-buy decisions.
+- **Buy-once rule (partly spent on 2026-10-03)** — the rule's purpose is *"the selection is fixed before purchase, never corrected by a re-buy,"* and for the compute board that is now **executed**: the Pi 5, 8 GB is bought and the class is closed. Rows still to buy are bought once on the same basis, and substitute-flagged rows (e.g. the UWB module) are replacements chosen *at order time when a row is unstocked*, not re-buy decisions. **Recorded consequence:** any spend on electronics **after** this purchase is a re-buy by definition and needs an explicit exception; and because only the board is bought, a part swapped later is a logged deviation rather than a covered re-buy ([README §3](../README.md#3-hardware) constraint 3).
 - **Connector-ready rule (pre-soldered, adapted)** — with no bench phase the rule serves the P3 service build: every module is ordered with headers/connectors **pre-fitted** (or consumer-ready where no header applies, e.g. the Pi kit, the power bank, earphones). Anything arriving as a fine-pitch bare IC or an unsoldered header board is returned or set aside — nothing is hand-soldered in-house.
 - **Every row carries its consuming phase** — the *Consumed by* column maps each row to the phase that uses it (`P2/P3/P4/P5` per [README §6](../README.md#6-development-phases)); the retired bench-only materials are recorded unbought in [`bench.md`](bench.md) §3.
 - **Same-part rule** — the two 9-DoF IMUs and the two UWB modules come from one listing each (matching revisions).
@@ -40,31 +44,24 @@ These rows survive a class flip with no re-buy; the [selected class rows](#4-wea
 | | | | | **Subtotal** | **1,965–4,010** |
 | *(opt.)* | Headphone amp mini-board — add only if line-out drive proves weak | audio headroom | 0–1 | 80–200 | *(excluded)* |
 
-## 4. Wearable — the selected class rows: raspi-5, 4 GB (`P2/P3/P4/P5`)
+## 4. Wearable — the selected class rows: raspi-5, 8 GB (`P2/P3/P4/P5`)
 
-| # | Item | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
-|---|---|---|---|---|---|
-| 1 | **Raspberry Pi 5, 4 GB RAM** | all phases | 1 | 8,500–10,500 | 8,500–10,500 |
-| 2 | Active cooler (official class) or heatsink | thermal | 1 | 500–900 | 500–900 |
-| 3 | microSD A2-class, 64–128 GB | OS + logs | 1 | 600–1,000 | 600–1,000 |
-| 4 | CSI camera, wide-angle 120°, RGB (IMX708 class) — **count 1 or 2 decided at P2 from the FOV-geometry and co-residence analysis; two in the cart** so either build is possible without a re-buy (dropping to 1 at checkout saves ₱1,700–2,400 + one printed bracket, but forfeits the redundancy/occlusion coverage and pushes more updates to tier 2) | vision tier | 2 | 1,700–2,400 | 3,400–4,800 |
-| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/5 A (25 W+) out** | worn power rail + first-power-up source | 1 | 2,500–5,500 | 2,500–5,500 |
-| | | | | **Subtotal** | **15,500–22,700** |
+| # | Item | State | Consumed by | Qty | Unit ₱ | Subtotal ₱ |
+|---|---|---|---|---|---|---|
+| 1 | **Raspberry Pi 5, 8 GB RAM** | ✅ **supplied 2026-10-03** | all phases | 1 | **6,000** *(paid)* | **6,000** *(paid)* |
+| 2 | Active cooler (official class) or heatsink | to buy | thermal | 1 | 500–900 | 500–900 |
+| 3 | microSD A2-class, 64–128 GB | to buy | OS + logs | 1 | 600–1,000 | 600–1,000 |
+| 4 | CSI camera, wide-angle 120°, RGB (IMX708 class) — **count 1 or 2, still undecided**; settled at P2 from the FOV-geometry and co-residence analysis. Two are carried so either build is possible, and because **neither is bought yet, adopting one camera costs ₱0** rather than stranding a part (but one camera forfeits the redundancy/occlusion coverage and pushes more updates to tier 2) | to buy | vision tier | 2 | 1,700–2,400 | 3,400–4,800 |
+| 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/5 A (25 W+) out** | to buy | worn power rail + first-power-up source | 1 | 2,500–5,500 | 2,500–5,500 |
+| | | | | | **Subtotal** | **13,000–18,200** |
 | *(opt.)* | Raspberry Pi 27 W USB-C PSU (current-limited source for first power-up if the bank is otherwise engaged) | bring-up | 0–1 | 1,000–1,500 | *(excluded)* |
 | *(opt.)* | USB-UART dongle (CP2102-class) | Pi serial console | 0–1 | 150–300 | *(excluded)* |
 
-## 5. Wearable — recorded alternative, esp32-s3-class flavor (`₱0 in this cart`)
+## 5. Board class closed — no alternative class carried
 
-Itemized in [`hardware.md`](hardware.md) §4 — kept in sync with that file; summarized here so the cart records the flip cost without duplicating the rows.
+**There is no alternative wearable board class in this cart.** The Raspberry Pi 5, 8 GB (§4 row 1) is purchased, the class question is closed ([README §3](../README.md#3-hardware) constraint 4), and the esp32-s3-class flavor previously recorded here has been retired with the flip rule it served. Nothing in this cart is held "in reserve for a class change."
 
-| Item | When bought | Indicative price if ever re-activated |
-|---|---|---|
-| esp32-s3-class devkit (N16R8) + 2× OV2640-class DVP 160° cameras (2 + spare) + FPC-to-header adapter sets | only if the class decision is revisited after a bring-up tripwire | ≈ 900–1,600 (base) |
-| DVP camera-mux module (only if the P2 evidence gate forces simultaneous two-camera capture) | same trigger, gate-dependent | +150–600 |
-| Camera brackets + M–F leads for the DVP modules (print lane) | same trigger | +0–300 |
-| Protected 18650 + cradle rail — only if the lighter head-worn rail is chosen over reusing the PD bank | same trigger | +300–600 (or ₱0 by reusing the bank) |
-| *Stereo audio (the shared PCM5102A module), thermal (none needed), every board-agnostic row, and the entire pointer survive the flip at ₱0.* | — | — |
-| **Worst-case cost of reversal** | | **≈ ₱2,800–4,100** |
+The scored comparison across the four candidate classes remains in [`hw-comparison.md`](hw-comparison.md) as the decision's dated research record — why this class was chosen, not a menu of alternatives. What absorbs a late compute or audio-path failure is now **feature-level re-scoping and the spare-PCB margin** rather than a different board: **[README §7](../README.md#7-risks-and-limitations) risk 12** — one camera with a wider FOV requirement, the detect-then-track cadence, or the USB-audio-dongle audio fallback, all purchase-free (the camera change ₱0 while neither module is bought), plus ≥ 2 spare carrier PCBs per device against a re-fab ([`assembly.md`](assembly.md) §4).
 
 ## 6. One-time tools (`both paths`; solder kit = P3 rework per the outsourcing decision)
 
@@ -107,24 +104,35 @@ Itemized in [`hardware.md`](hardware.md) §4 — kept in sync with that file; su
 |---|---|---|
 | Pointer electronics | 2,615 | 5,430 |
 | Wearable board-agnostic | 1,965 | 4,010 |
-| Wearable — selected class (raspi-5, 4 GB) | 15,500 | 22,700 |
-| **Device electronics** | **20,080** | **32,140** |
+| Wearable — selected class (raspi-5, 8 GB; board row is an actual) | 13,000 | 18,200 |
+| **Device electronics** | **17,580** | **27,640** |
 | One-time tools | 2,720 | 5,470 |
 | Structural & materials | 1,200 | 2,900 |
 | Evaluation hardware | 340 | 1,300 |
-| **Cart grand total** | **24,340** | **41,810** |
+| **Cart grand total** | **21,840** | **37,310** |
 
-**Indicative envelope ≈ ₱24,300–41,800 itemized; ≈ ₱28,000–48,100 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. The retired bench-phase slice ([`bench.md`](bench.md) §3, ≈ ₱1,600–3,500) is **not bought and not** included in these totals. Nothing is committed before the purchase-approval sign-off.
+**Envelope ≈ ₱21,800–37,300 itemized; ≈ ₱25,100–42,900 with 15 % contingency guidance.** Optional rows are extra on top of the envelope. The retired bench-phase slice ([`bench.md`](bench.md) §3, ≈ ₱1,600–3,500) is **not bought and not** included in these totals.
 
-## 10. Checkout checklist
+**Spent vs to buy (2026-10-03):** **₱6,000 spent** on the Raspberry Pi 5, 8 GB (§4 row 1); **≈ ₱15,800–31,300 still to buy** across every other row, pending the purchase-approval sign-off ([README §9](../README.md#9-open-items)). The board row is an **actual**, all others remain indicative estimates.
 
-1. **Prices and stock re-verified the day of checkout** — every subtotal above is a point-in-time estimate.
-2. **Connector-ready rule re-checked on each module page** (headers/connectors pre-fitted or consumer-ready; no fine-pitch parts, nothing soldered in-house).
-3. **PD bank profile** — output table must show **5 V at 5 A (25 W+)** on USB-C PD. The Pi 5's recommended supply is 27 W / 5.1 V / 5.0 A; a 3 A bank is the minimum only, restricts downstream USB to 600 mA, and flags the current limit at boot — inadequate for the camera + UWB + Wi-Fi tracking load. Few ≥ 20 Ah banks do 5 A; if none qualifies, the recorded fallback is a protected-cell (18650-class) rail with a 5 V/5 A buck stage.
-4. **Camera cable** — Pi 5 uses the **mini 22-pin** CSI connector, not the 15-pin of earlier boards: confirm each module ships or is bought with a Standard-Mini cable (official Camera Module 3 does; third-party IMX708 often does not).
-5. **Cameras RGB wide-FOV on CSI-2** — visible-light, 120°-class, Raspberry Pi 5-compatible; confirm ×2 interchangeable.
-6. **IMU pair from one listing** (same sensor and module revision); UWB pair likewise.
-7. **DWM3000 stock check** — if out of stock everywhere, substitute a DW1000-class module family (Ai-Thinker BU01 / M5Stack UWB Unit) and flag it in the sign-off: interface-compatible (SPI + IRQ), different driver/channel plan at the tracking gate.
-8. **Wired-only earphones** — Bluetooth/USB earphones are excluded by the audio rule regardless of cost.
-9. **microSD A2-class** (random-write endurance for the flash-buffered logs).
-10. If any price moves more than the envelope's headroom after re-verification, the changed rows go back through the sign-off lane before checkout — the buy-once rule permits buying once, not buying blind.
+## 10. Received-goods inspection & order checklist
+
+Two lanes, because only one row has been bought. **Lane A (already done): the compute board** — items A1–A2 below. **Lane B (every remaining delivery): the pre-order and on-receipt checks** — items B1–B9.
+
+**Lane A — compute board (Raspberry Pi 5, 8 GB, received 2026-10-03, ₱6,000).**
+
+- **A1. Bare board or kit?** recorded against the **bare board**. *Open:* if the purchase in fact included the 27 W PSU or a case, say so and the value is **re-split** across those cart rows (§4 optional rows) rather than left double-counted.
+- **A2. Warranty provenance.** ₱6,000 is consistent with a **grey import carrying no manufacturer warranty**, so the dead-on-arrival lane is *"replace from a local seller,"* not an RMA claim — and it is a **logged deviation**, since the buy-once rule no longer shields the board ([README §3](../README.md#3-hardware) constraint 3, [§7](../README.md#7-risks-and-limitations) risk 12). Visually inspect the board on arrival: no bent PCB, no damaged connector, both CSI connectors and the 40-pin header present and straight.
+
+**Lane B — the remaining cart (pre-order, then on receipt).**
+
+1. **B1. Prices and stock re-verified on the order day** — every remaining subtotal is a point-in-time estimate.
+2. **B2. Connector-ready rule re-checked on each module page** (headers/connectors pre-fitted or consumer-ready; no fine-pitch parts, nothing soldered in-house).
+3. **B3. PD bank profile** — output table must show **5 V at 5 A (25 W+)** on USB-C PD. The Pi 5's recommended supply is 27 W / 5.1 V / 5.0 A; a 3 A bank is the minimum only, restricts downstream USB to 600 mA, and flags the current limit at boot — inadequate for the camera + UWB + Wi-Fi tracking load. Few ≥ 20 Ah banks do 5 A; if none qualifies, the recorded fallback is a protected-cell (18650-class) rail with a 5 V/5 A buck stage. *This is the single least-certain row in the cart.*
+4. **B4. Camera cable — the sharpest procurement hazard.** Pi 5 uses the **mini 22-pin** CSI connector, not the 15-pin of earlier boards: confirm each module ships or is bought with a **Standard-Mini** cable (official Camera Module 3 does; third-party IMX708 often does not). Also settle the **camera count (1 or 2)** here — still undecided, and ₱0 to reduce while nothing is bought.
+5. **B5. Cameras RGB wide-FOV on CSI-2** — visible-light, 120°-class, Raspberry Pi 5-compatible; confirm ×2 interchangeable.
+6. **B6. IMU pair from one listing** (same sensor and module revision); UWB pair likewise.
+7. **B7. DWM3000 stock check** — if out of stock everywhere, substitute a DW1000-class module family (Ai-Thinker BU01 / M5Stack UWB Unit) and flag it in the sign-off: interface-compatible (SPI + IRQ), different driver/channel plan at the tracking gate.
+8. **B8. Wired-only earphones** — Bluetooth/USB earphones are excluded by the audio rule regardless of cost.
+9. **B9. microSD A2-class** (random-write endurance for the flash-buffered logs).
+10. **B10. If any price moves more than the envelope's headroom after re-verification, the changed rows go back through the sign-off lane before ordering** — and any spend beyond this cart is a **re-buy needing an explicit exception**, not a same-lane top-up.

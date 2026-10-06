@@ -1,10 +1,10 @@
 # Cane — Hardware components & cost breakdown (pointer + wearable)
 
-> **Board class decided 2026-10-01 (co-researcher): the wearable is a Raspberry Pi 5, 4 GB.** 4 GB is ample for the wearable's resident workload — two QVGA CV streams, the renderer, the Wi-Fi AP, and batch-written logs sit well under ~1 GB — and no swap is configured (flash endurance on the log card); the 8 GB variant was not required and stocks less reliably. The board-class question is closed; the esp32-s3-class wearable stays recorded in [§4](#4-wearable--recorded-alternative-esp32-s3-class-flavor-itemized--₱0-in-this-cart) as the priced flip path (₱0 in the cart, ordered only if first-power-up observation at P4 or the P3 smoke check forces the class back). The pointer keeps its own Wi-Fi-capable MCU class — an esp32-s3-class devkit — which is what makes the class reversible: it joins the Pi 5's access point over IP ([README §3](../README.md#3-hardware)). The vision tier's **camera count is 1 or 2**, decided at P2 from the FOV-geometry and co-residence analysis and confirmed at P4; both modules sit in the cart so either count is buildable without a re-buy.
+> **Board class decided 2026-10-01, purchased and finalised 2026-10-03 (co-researcher): the wearable is a Raspberry Pi 5, 8 GB, and the board is bought (₱6,000).** The purchased SKU is 8 GB; the operative reason was availability at purchase, and the engineering justification is that the resident workload — one or two QVGA CV streams, the renderer, the Wi-Fi AP, and batch-written logs — was already shown to fit **4 GB** with room to spare (~1 GB), so **8 GB is a strict superset and no budget, threshold, risk, or evidence class in this plan changes**. No swap is configured either way (flash endurance on the log card). The board-class question is closed and **no alternative class is carried** ([§4](#4-board-class-closed--no-alternative-class-carried)); the pointer keeps its own Wi-Fi-capable MCU class — an esp32-s3-class devkit — because the two devices differ in power, size, and workload, not because the wearable's class is reversible: it joins the Pi 5's access point over IP ([README §3](../README.md#3-hardware)). The vision tier's **camera count is 1 or 2, still undecided** — settled at P2 from the FOV-geometry and co-residence analysis, confirmed at P4, and free to reduce to one because neither module has been purchased yet.
 >
-> **Prices are Philippine-local ballparks** (Shopee/Lazada/e-Gizmo/Circuitrocks-class lanes), point-in-time estimates to be **verified at checkout**; the purchase-approval sign-off ([README §9](../README.md#9-open-items)) precedes every checkout. Totals are ranges — nothing here is an approved spend until that sign-off. The itemized cart form of this file (with phase/path consumption tags) lives in [`purchase-list.md`](purchase-list.md); the two files share the same row set and totals.
+> **Prices:** one row is now an **actual** (the Raspberry Pi 5, 8 GB, ₱6,000, purchased 2026-10-03 — recorded against the bare board; if that purchase later proves to have included the PSU or case, the value is re-split across those rows rather than left double-counted). **Every other row remains an indicative Philippine-local ballpark** (Shopee/Lazada/e-Gizmo/Circuitrocks-class lanes) to be verified when ordered, under the purchase-approval sign-off ([README §9](../README.md#9-open-items)). Totals are therefore **mixed actual-and-estimate ranges**, split spent-vs-to-buy in [§10](#10-totals--contingency-guidance). The itemized cart form of this file (with phase/path consumption tags) lives in [`purchase-list.md`](purchase-list.md); the two files share the same row set and totals.
 
-## 1. Pointer — electronics (its own MCU class; no flip contingency)
+## 1. Pointer — electronics (its own MCU class, by device design)
 
 | # | Component & pick | Role (README cross-ref) | Key interface | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|---|
@@ -32,43 +32,24 @@
 | | **Board-agnostic subtotal** | | | | | **1,965–4,010** |
 | 7 | *Optional* — headphone amp mini-board (opamp/LDO class) | drive headroom behind the DAC if line-out proves weak | analog | 0–1 | 80–200 | *(not in totals)* |
 
-## 3. Wearable — the selected class rows (raspi-5, 4 GB)
+## 3. Wearable — the selected class rows (raspi-5, 8 GB; board purchased 2026-10-03)
 
 | # | Component & pick | Role (README cross-ref) | Key interface | Qty | Unit ₱ | Subtotal ₱ |
 |---|---|---|---|---|---|---|
-| 1 | **Raspberry Pi 5 — 4 GB RAM** | wearable compute board — renderer, CV tracking co-resident, link AP | 2× CSI-2, I²S on GPIO, Wi-Fi AP, 5 V rails | 1 | 8,500–10,500 | 8,500–10,500 |
+| 1 | **Raspberry Pi 5 — 8 GB RAM** — ✅ **PURCHASED 2026-10-03, ₱6,000** | wearable compute board — renderer, CV tracking co-resident, link AP | 2× CSI-2, I²S on GPIO, Wi-Fi AP, 5 V rails | 1 | **6,000** *(paid)* | **6,000** *(paid)* |
 | 2 | Active cooler (official class) or passive heatsink | head-worn thermal control | FPC thermal mount | 1 | 500–900 | 500–900 |
 | 3 | microSD A2-class, 64–128 GB (boot + flash-buffered logs) | OS + data | microSD | 1 | 600–1,000 | 600–1,000 |
-| 4 | CSI camera module, wide angle 120° FOV, RGB (Camera Module 3 Wide class, IMX708) | vision tier — **1 or 2** modules; the count is decided at P2 from the FOV-geometry and co-residence analysis, and two sit in the cart so either count is buildable without a re-buy (fixing it at 1 before checkout saves ₱1,700–2,400 + one printed bracket) | CSI-2, **mini 22-pin** (Pi 5 uses the 22-pin connector, not the older 15-pin — the Standard-Mini cable is required; third-party modules may ship the wrong cable) | 2 | 1,700–2,400 | 3,400–4,800 |
+| 4 | CSI camera module, wide angle 120° FOV, RGB (Camera Module 3 Wide class, IMX708) | vision tier — **1 or 2, count still undecided**; settled at P2 from the FOV-geometry and co-residence analysis. Two are carried in the cart so either count is buildable, and because **neither has been purchased yet, adopting one camera instead of two costs ₱0** rather than stranding a bought part (dropping to 1 before ordering saves ₱1,700–2,400 + one printed bracket) | CSI-2, **mini 22-pin** (Pi 5 uses the 22-pin connector, not the older 15-pin — the Standard-Mini cable is required; third-party modules may ship the wrong cable) | 2 | 1,700–2,400 | 3,400–4,800 |
 | 5 | USB-C PD power bank ≥ 20,000 mAh, **5 V/5 A (25 W+) out profile** | the worn power rail (batteries + charging self-contained) | USB-C out → Pi 5 | 1 | 2,500–5,500 | 2,500–5,500 |
-| | **Selected class subtotal** | | | | | **15,500–22,700** |
-| 6 | *Optional* — Raspberry Pi 27 W USB-C PSU (bench-only supply for flashing/soak instead of the bank) | bench convenience | USB-C PD | 0–1 | 1,000–1,500 | *(not in totals)* |
+| | **Selected class subtotal** | | | | | **13,000–18,200** |
+| 6 | *Optional* — Raspberry Pi 27 W USB-C PSU (current-limited source for first power-up instead of the bank) | bring-up convenience | USB-C PD | 0–1 | 1,000–1,500 | *(not in totals)* |
 | 7 | *Optional* — USB-UART dongle (CP2102-class) | serial console debug on the Pi | USB↔UART | 0–1 | 150–300 | *(not in totals)* |
 
-## 4. Wearable — recorded alternative: esp32-s3-class flavor (itemized; ₱0 in this cart)
+## 4. Board class closed — no alternative class carried
 
-The complete esp32-s3-class wearable, filled in so the flip is a **priced, executable path** rather than a stub: never purchased under the current raspi-5 decision; bought only if a bring-up tripwire forces the class back. Everything in the pointer (§1) and the board-agnostic rows (§2) carries over untouched — so the flip is a software-risk question, not a procurement one.
+**The wearable's compute class is the purchased Raspberry Pi 5, 8 GB (§3 row 1, bought 2026-10-03 at ₱6,000), and no alternative board class is itemized, priced, or held.** The esp32-s3-class wearable that earlier occupied this section has been retired along with the flip rule it served ([README §3](../README.md#3-hardware) constraint 4). The scored comparison across the four candidate classes remains in [`hw-comparison.md`](hw-comparison.md) as the decision's dated research record — a record of why this class was chosen, not a menu of what else could be bought.
 
-| #   | Row                                                  | Function                                                                                                         | esp32-s3-class flavor                                                                                                               | Qty | Unit ₱  | Subtotal ₱      |
-| --- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ------- | --------------- |
-| 1   | Wearable compute board — the alternative's class row | renders the audio; runs the CV tracking; hosts the 2.4 GHz link radio; provides I²C/SPI/USB to the agnostic rows | ESP32-S3-class devkit **N16R8** (16 MB flash / 8 MB PSRAM — the PSRAM is what makes the dual QVGA frame buffers possible)           | 1   | 500–700 | 500–700         |
-| 2   | 2× wide-FOV RGB cameras (B)                          | the vision tier                                                                                                  | OV2640-class **DVP** modules, 160° FOV (2 + 1 spare)                                                                                | 3   | 100–200 | 300–600         |
-| 3   | Camera interface adapters (B)                        | the DVP modules arrive as 24-pin FPC; the devkit's single parallel port takes headers                            | FPC-to-header breakout adapter sets (one per camera + spare)                                                                        | 2–3 | 50–150  | 100–300         |
-| 4   | Capture contingency (B, conditional)                 | only if the P2 evidence gate forces *simultaneous* two-camera capture on the single DVP port (risk 8)                     | DVP 2:1 camera mux / dual-capture switch module                                                                                     | 0–1 | 150–600 | *(optional)*    |
-| 5   | Stereo audio output (B)                              | spatial audio to the wired 3.5 mm jack                                                                           | the **same PCM5102A module** (§2 row 5) rides the native I²S peripheral — no new hardware, different wiring only                    | —   | —       | **0**           |
-| 6   | Worn power rail (B)                                  | the worn power                                                                                                   | either **reuse the PD bank** (§3 row 5 — ₱0, oversized at the head) or a **protected 18650 + cradle holder** rail (lighter to wear) | 0–1 | 300–600 | *(alternative)* |
-| 7   | Camera mounts & wiring (B)                           | stable extrinsics + DVP leads                                                                                    | printed brackets per the DVP module shape (charged to the §7 print lane) + M–F leads to the devkit header                           | 1   | 0–300   | 0–300           |
-| 8   | Thermal                                              | head-worn heat                                                                                                   | **none** — the S3 class is cool to skin; no heatsink, no cooler (a mass advantage over the raspi-5 class)                           | —   | —       | **0**           |
-
-**Cost of reversal:** base path (rows 1–3) ≈ **₱900–1,600**; with mounts/wiring (row 7) ≈ **₱900–1,900**; add the mux contingency (row 4) and the slimmer 18650 rail (row 6) only if those gates demand them, for a worst case of ≈ **₱2,800–4,100** of new hardware. The audio module, thermal, and every agnostic/pointer row survive the flip at ₱0.
-
-**Engineering burden carried by this path** (why the P2 evidence gate decides before the permanent build):
-
-- **Two LX7 cores turn co-residence into a scheduling problem:** the renderer pins to core 0 (≈ 0.2–0.5 ms per 128-sample hop at 48 kHz — comfortably inside the audio budget), the vision pipeline to core 1; Wi-Fi/link and logging ride below both.
-- **The honest compute boundary:** AprilTag-class QVGA detection runs ≈ 30–100 ms per frame *per camera* on this silicon, so **two cameras detecting every frame at 15–30 Hz do not fit** — and a single camera, the S3-friendly configuration (also the one the P2 count analysis may adopt here), is the only one that leaves real headroom. The plan's **detect-then-track** scheme (detect every Nth frame, track a small ROI between) is mandatory on this class, not a fallback — and the **P2 co-residence budget** (S7, risk 8) settles it, together with the capture strategy that decides whether row 4's mux is needed.
-- **Memory plan:** the 8 MB PSRAM holds the DVP DMA'd QVGA buffers in double-buffering; the 512 KB internal SRAM must cover Wi-Fi + the audio ring + task stacks.
-- **Frame-budget reading:** at 48 kHz / 128 samples the buffer period is 2.67 ms, so the plan's render gate is **≤ 2 ms per 128-sample hop** ([README §4.2](../README.md#42-latency-budget-motion-to-sound-target--100-ms)); the S3 render core fits with margin.
-- **Ergonomics upside:** no cooler and an optional slimmer rail make this the lighter wearable build — the flip's main argument for the user's own comfort, against the compute headroom the raspi-5 class buys.
+What replaces the retired flip path as the response to a late compute or audio-path failure is **[README §7](../README.md#7-risks-and-limitations) risk 12**: a failure that would once have been answered by changing board class is now answered inside the chosen class, by architectural margin, by feature-level re-scoping (one camera, the detect-then-track cadence, or the USB-audio-dongle audio fallback — all purchase-free, and the camera change ₱0 while neither module is bought), and by the ≥ 2 spare carrier PCBs that absorb a re-fab inside the P3 window ([`assembly.md`](assembly.md) §4).
 
 ## 5. Retired bench materials (recorded, not bought — [`bench.md`](bench.md) §3)
 
@@ -94,7 +75,7 @@ With **no hardware bench phase** (decided 2026-10-01), the breadboard infrastruc
 | # | Item | Role | Unit ₱ |
 |---|---|---|---|
 | 1 | Elastic head strap band (goggle-style, adjustable) | the wearable's carrier | 50–150 |
-| 2 | 3D printing — filament or print-service voucher (camera brackets, IMU station, battery/bank cradle, pointer shell, printed ArUco/AprilTag marker) | all structural parts | 800–2,000 |
+| 2 | 3D printing — filament or print-service voucher (camera brackets, IMU station, battery/bank cradle, pointer shell, printed ArUco/AprilTag marker) — **bracket count follows the camera-count decision (1 or 2), still open** | all structural parts | 800–2,000 |
 | 3 | Fastener set (screws, heat-sets or nuts, in kits) | mounts | 100–250 |
 | 4 | Attachment kit — velcro ties, zip ties, double-sided foam tape | cable management + bench + strap stations | 250–500 |
 | | **Materials subtotal** | | **1,200–2,900** |
@@ -120,19 +101,29 @@ With **no hardware bench phase** (decided 2026-10-01), the breadboard infrastruc
 |---|---|---|
 | Pointer electronics | 2,615 | 5,430 |
 | Wearable board-agnostic | 1,965 | 4,010 |
-| Wearable — selected class (raspi-5, 4 GB) | 15,500 | 22,700 |
-| **Device electronics total** | **20,080** | **32,140** |
+| Wearable — selected class (raspi-5, 8 GB; board row is an actual) | 13,000 | 18,200 |
+| **Device electronics total** | **17,580** | **27,640** |
 | One-time tools | 2,720 | 5,470 |
 | Structural & materials | 1,200 | 2,900 |
 | Evaluation hardware | 340 | 1,300 |
-| **Cart grand total** | **24,340** | **41,810** |
+| **Cart grand total** | **21,840** | **37,310** |
 
-**Indicative cart envelope: ≈ ₱24,300–41,800** (as itemized), **≈ ₱28,000–48,100 with a 15 % contingency** — a contingency allowance is guidance for the sign-off, not a committed line. Optional rows (marked *not in totals* in §§2–3) are extra on top, and the retired bench-phase slice ([`bench.md`](bench.md) §3, ≈ ₱1,600–3,500) is outside this envelope **because it is not bought**.
+**Cart envelope: ≈ ₱21,800–37,300** as itemized, **≈ ₱25,100–42,900 with a 15 % contingency** — the contingency is guidance for the sign-off, not a committed line. Optional rows (marked *not in totals* in §§2–3) are extra on top, and the retired bench-phase slice ([`bench.md`](bench.md) §3, ≈ ₱1,600–3,500) is outside this envelope **because it is not bought**.
+
+**Spent vs to buy (2026-10-03):**
+
+| | Amount | Rows |
+|---|---|---|
+| **Spent** | **₱6,000** | the Raspberry Pi 5, 8 GB (§3 row 1) |
+| **Still to buy** | **≈ ₱15,800–31,300** | pointer electronics, wearable agnostic rows, and the remaining selected-class rows (cooler, microSD, cameras, PD bank) plus tools, materials, and evaluation hardware |
+| Itemized total | ≈ ₱21,800–37,300 | |
+
+**Two procurement notes carried forward.** (i) The board was bought at ₱6,000, consistent with a **grey import carrying no manufacturer warranty** — so the dead-on-arrival lane is *"replace from a local seller,"* not an RMA claim, and it is a logged deviation rather than a warranty recovery ([README §3](../README.md#3-hardware) constraint 3, [§7](../README.md#7-risks-and-limitations) risk 12). (ii) Because only the board is bought, the remaining **Pi-5-pinned rows (cooler, cameras + Standard-Mini cables) are still substitutable at zero sunk cost** until they are ordered — which is what keeps the camera-count decision free.
 
 ## 11. Lane & checkout notes
 
 - **Verify at checkout, every row:** current price, stock, and (for modules) that headers/connectors arrive pre-fitted or consumer-ready — no fine-pitch solderable-on-bench parts ([purchase-list.md](purchase-list.md) §1).
-- **PD bank:** confirm the output profile does **5 V at 5 A (25 W+)** on USB-C PD in its spec table. The Pi 5's recommended supply is the 27 W / 5.1 V / 5.0 A unit; below 5 A the Pi 5 restricts downstream USB power to 600 mA and flags the current limit at boot, which is unacceptable with the camera + UWB + Wi-Fi load at tracking duty. Note that few ≥ 20 Ah banks deliver 5 A — if none qualifies at checkout, the recorded fallback is a protected-cell (18650-class) rail with a 5 V/5 A buck stage (heavier, and the S3 flip path's rail is the lighter option).
+- **PD bank:** confirm the output profile does **5 V at 5 A (25 W+)** on USB-C PD in its spec table. The Pi 5's recommended supply is the 27 W / 5.1 V / 5.0 A unit; below 5 A the Pi 5 restricts downstream USB power to 600 mA and flags the current limit at boot, which is unacceptable with the camera + UWB + Wi-Fi load at tracking duty. Note that few ≥ 20 Ah banks deliver 5 A — if none qualifies at order time, the recorded fallback is a protected-cell (18650-class) rail with a 5 V/5 A buck stage — heavier at the head than reusing the PD bank, and the only alternative rail left now that the lighter board-class option is retired (risk 11).
 - **Camera cable:** Pi 5 uses the **mini 22-pin** CSI connector, not the 15-pin used on earlier boards — confirm each camera module ships (or is bought with) a Standard-Mini cable; official Camera Module 3 variants do, third-party IMX708 modules often do not.
 - **Cameras:** RGB (visible-light) wide-FOV — NoIR variants are wrong for the printed-tag detection; cables ship with the modules but confirm Raspberry Pi 5 cable compatibility.
 - **DWM3000 stock** is the spottiest row — if unavailable at checkout time, the DW1000-class module family (e.g. Ai-Thinker BU01 / M5Stack UWB Unit) is the recorded substitute; it works per the SPI+IRQ interface but pins a different driver/channel plan at the tracking gate — flag it in the sign-off if substituted.
