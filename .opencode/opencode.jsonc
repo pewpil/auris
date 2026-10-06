@@ -3,18 +3,11 @@
   "model": "opencode/deepseek-v4-flash",
   "default_agent": "build",
   "mcp": {
-    "kicad": {
-      "type": "local",
-      "command": ["bash", "-c", "exec \"$HOME/.local/bin/uvx\" --from mcp-server-kicad mcp-server-kicad"],
-      "enabled": true,
+    "servers": {
+      "kicad": {
+        "type": "local",
+        "command": ["bash", "-c", "exec \"$HOME/.local/bin/uvx\" --from mcp-server-kicad mcp-server-kicad"],
+      },
     },
   },
-  "instructions": [
-    ".opencode/concept.md",
-    ".opencode/new.md",
-    ".opencode/plan.md",
-    ".opencode/instruction.md",
-    ".opencode/man.md",
-    ".opencode/coding.md",
-  ],
 }
