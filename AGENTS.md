@@ -58,7 +58,6 @@ The **wearable's compute board is pinned** and is not open to change:
 |---|---|
 | **Head-mounted wearable** | **Raspberry Pi 5, 8 GB** |
 
-<!-- Make sure to remove this once the pointer mcu has been settled also remove written texts once texts like this have been settled/accounted for -->
 **The pointer's MCU is deliberately not pinned.** No part is fixed for it here — that selection stays open. What is fixed is the shape of the answer, and the asymmetry between the two devices is deliberate: the wearable must be a Linux single-board computer because it renders audio, runs computer vision alongside that audio, and hosts the Wi-Fi access point, while the pointer must be a compact battery-powered microcontroller doing onboard orientation fusion and time-of-flight ranging, because it is hand-held, runs off its own cell, and sends only data to the wearable. Those differing requirements are what make the two classes differ; no part was chosen in advance of them.
 
 ---
@@ -69,11 +68,11 @@ Every function, method, and class written in this repository must carry a docume
 
 **Form per language:**
 
-| Language         | Form                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| Python           | PEP 257 docstring (`""" ... """`) on every module-level function, method, class, and dataclass |
-| TypeScript / TSX | JSDoc block (`/** ... */`) on every function, class, component, and non-obvious type           |
-| Bash / scripts   | Header comment block stating purpose, inputs, outputs                                          |
+| Language | Form |
+|---|---|
+| Python | PEP 257 docstring (`""" ... """`) on every module-level function, method, class, and dataclass |
+| TypeScript / TSX | JSDoc block (`/** ... */`) on every function, class, component, and non-obvious type |
+| Bash / scripts | Header comment block stating purpose, inputs, outputs |
 
 **Content requirements:**
 
@@ -146,7 +145,10 @@ The reason is how these files are read: they are consumed in Obsidian, where sof
 The researcher leaves side notes for the AI inside markdown documents as HTML comments — the syntax is deliberately *not* written out literally here, so that this section cannot itself be mistaken for a pending note. They are invisible in Obsidian's reading view, which is how the researcher reads these files, so a pending note costs nothing to leave sitting in the source.
 
 - **Every HTML comment in a markdown file in this repository is an instruction to carry out, not content for a reader.** Read the comments before editing a document, act on each one, and report what each note was and what it changed.
-- **Delete each comment once it has been acted on.** A side note is a request, not a record. Once fulfilled it is stale, and a leftover comment is worse than no comment at all: a note reading *"drop it to Auris"* sitting above a heading that already says Auris actively misleads whoever reads the file next, including the AI.
+- **Delete each comment once it has been acted on.** A side note is a request, not a record. Once fulfilled it is stale, and a leftover comment is worse than no comment at all.
+- **Provisional text does not need a side note.** When a passage is provisional pending a future decision, the AI records its own removal condition as a bullet in this section, and the passage itself needs no HTML comment. Outstanding conditions are listed below. The record is temporary in exactly the way a comment is: it is deleted once its condition is met, in the same pass that settles the passage.
+- **Outstanding provisional passages, and what retires each.** These are the AI's own notes to itself, kept here rather than cluttering the sections they refer to. **When a condition is met, act on it and delete this record in the same pass** — the record is a bookmark, not a log, so a fulfilled entry left behind is as stale as a fulfilled comment:
+  - **§1.7's pointer-MCU paragraph, its heading, and the table above it.** The paragraph is provisional, and the heading *"Hardware — the wearable's board is pinned"* is already half a claim about the pointer. When the pointer MCU is settled: delete the paragraph, retitle the section to cover both devices, and fold the pointer into the table.
 - **A note that cannot be acted on yet stays until it can.** Some notes are triggers rather than tasks — *"delete this paragraph once the pointer MCU is pinned"* is not actionable while that selection is still open. Such a note is kept, and deleted at the moment its condition is met; the delete-on-completion rule above applies once the condition is satisfied. Removing it early loses the only record of what still has to be revisited.
 - **Superseded text goes with the note that retired it.** When a provisional passage is settled and replaced, delete the old passage as well — the point of the note is that the provisional text is temporary, and it should not outlive the decision it was waiting on.
 - **A comment never overrides the live conversation.** If a comment contradicts what the researcher says in the current session, the spoken instruction wins — carry out the spoken one, leave the comment in place, and say what conflicted rather than picking one silently.
