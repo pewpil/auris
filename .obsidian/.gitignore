@@ -1,0 +1,18 @@
+# Obsidian vault settings for this repository.
+#
+# Only the JSON files that *list* which plugins are enabled are tracked — they
+# are what makes the vault reproducible. Everything else Obsidian writes is
+# per-machine state (window layout, theme, hotkeys, recent files) or is the
+# plugin code itself, and none of it belongs in version control.
+#
+# Whitelist rather than blacklist: Obsidian creates new files constantly, and
+# anything not explicitly re-included below stays ignored without this file
+# needing to be updated each time.
+
+# Ignore everything in this directory...
+*
+
+# ...then re-allow only the plugin lists and this file itself.
+!.gitignore
+!community-plugins.json
+!core-plugins.json

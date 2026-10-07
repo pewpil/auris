@@ -69,11 +69,11 @@ Every function, method, and class written in this repository must carry a docume
 
 **Form per language:**
 
-| Language | Form |
-|---|---|
-| Python | PEP 257 docstring (`""" ... """`) on every module-level function, method, class, and dataclass |
-| TypeScript / TSX | JSDoc block (`/** ... */`) on every function, class, component, and non-obvious type |
-| Bash / scripts | Header comment block stating purpose, inputs, outputs |
+| Language         | Form                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| Python           | PEP 257 docstring (`""" ... """`) on every module-level function, method, class, and dataclass |
+| TypeScript / TSX | JSDoc block (`/** ... */`) on every function, class, component, and non-obvious type           |
+| Bash / scripts   | Header comment block stating purpose, inputs, outputs                                          |
 
 **Content requirements:**
 
@@ -147,6 +147,8 @@ The researcher leaves side notes for the AI inside markdown documents as HTML co
 
 - **Every HTML comment in a markdown file in this repository is an instruction to carry out, not content for a reader.** Read the comments before editing a document, act on each one, and report what each note was and what it changed.
 - **Delete each comment once it has been acted on.** A side note is a request, not a record. Once fulfilled it is stale, and a leftover comment is worse than no comment at all: a note reading *"drop it to Auris"* sitting above a heading that already says Auris actively misleads whoever reads the file next, including the AI.
+- **A note that cannot be acted on yet stays until it can.** Some notes are triggers rather than tasks — *"delete this paragraph once the pointer MCU is pinned"* is not actionable while that selection is still open. Such a note is kept, and deleted at the moment its condition is met; the delete-on-completion rule above applies once the condition is satisfied. Removing it early loses the only record of what still has to be revisited.
+- **Superseded text goes with the note that retired it.** When a provisional passage is settled and replaced, delete the old passage as well — the point of the note is that the provisional text is temporary, and it should not outlive the decision it was waiting on.
 - **A comment never overrides the live conversation.** If a comment contradicts what the researcher says in the current session, the spoken instruction wins — carry out the spoken one, leave the comment in place, and say what conflicted rather than picking one silently.
 - **A comment whose intent is ambiguous gets flagged, not guessed.** State the reading you would act on and what is uncertain, then let the researcher confirm.
 - **Only HTML comments are side notes.** Ordinary prose in the document is content and is never treated as an instruction.
