@@ -4,3 +4,6 @@
 [submodule ".opencode/skills/kicad-happy"]
 	path = .opencode/skills/kicad-happy
 	url = https://github.com/aklofas/kicad-happy.git
+[submodule "cu"]
+	path = cu
+	url = ssh://git@github.com/pewpil/auris-cu.git
