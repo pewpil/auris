@@ -24,21 +24,26 @@ The user is tasked with going from any point in the room to another point in the
 
 ### 1.4 Navigation aid
 
-The user is equipped with a head-mounted wearable and a pointer. Sound is projected to the wearable's audio apparatus, which the user then uses to aid navigation.
+The user is equipped with a head-mounted wearable and a pointer, together with a compute unit that processes data from both. Sound reaches the user's ears through stereo headphones, which the user wears. They then use that sound to aid navigation.
 
 ### 1.5 User equipment
 
-Two devices, both 3D-printed around their components.
+Three devices: two are 3D-printed around their components, and all three are Auris's own.
 
-**Head-mounted wearable** — worn by the user.
+**Head-mounted wearable** — worn by the user. Carries no compute board and no audio apparatus; it only senses. Both its outputs travel to the compute unit over the wired link.
 
-1. *Head position and orientation* — the wearable extracts the user's head position and orientation.
-2. *Audio* — the wearable carries an audio apparatus that broadcasts sound to the user's ears.
+1. *Head orientation* — the wearable carries an IMU that establishes which way the user's head faces, and supplies the reference frame the sound is placed in. It establishes orientation, not position: the head's location in the room is not observable in the output, since translating the whole configuration leaves the sound's placement unchanged.
+2. *Camera* — the wearable carries the camera whose live feed the compute unit runs ArUco tracking on. The tracking recovers the distance from the head to the pointer, which is how far the sound is placed from the listener.
 
 **Pointer** — handheld.
 
 1. *Laser* — the pointer shoots an imaginary/invisible laser toward obstacles.
 2. *Button* — the laser fires only while the button is pushed, and stops the moment the button is released.
+3. *Inertial measurement and ranging* — the pointer carries its own IMU for orientation and a time-of-flight sensor for range, and does its orientation fusion onboard before sending data onward.
+
+**Compute unit** — the third device. Holds the MCU, receives data from the wearable and the pointer, does all the processing, and renders the audio. Wired to the wearable (§1.7). A USB audio dongle is attached to it, whose only role is to present a stereo male port for the user's headphones; the dongle is part of the compute unit, not a separate device.
+
+**Stereo headphones** — worn by the user. They are the system's only sound output, and being worn is what makes the head-locked placement in [§1.6](#16-system-goal) physically possible.
 
 ### 1.6 System goal
 
@@ -50,15 +55,25 @@ The sound is also placed **vertically**: whether the shot lands above, at, or be
 
 Orientation is full 3-D — **yaw, pitch, and roll** — for both the head and the pointer. The projected sound must replicate how the laser hit would actually be heard in real life.
 
-### 1.7 Hardware — the wearable's board is pinned
+The placement is produced from three inputs, and each covers something the others cannot. The time-of-flight range and the pointer's aim direction say where the hit lies along the beam. The ArUco-recovered distance from the head to the pointer says how far the sound sits from the listener. The wearable's head orientation says which way the listener faces. The orientation is the indispensable one of the three: the other two fix *how far* a sound is and along what bearing from the pointer, but neither distinguishes a hit directly ahead from one 90 degrees to the side, because rotating the configuration about the head leaves both unchanged. Head orientation is what supplies the frame in which "ahead" and "to the side" mean anything.
 
-The **wearable's compute board is pinned** and is not open to change:
+### 1.7 Hardware — the compute unit's board is pinned
+
+**Auris has three devices: the head-mounted wearable, the pointer, and the compute unit.** The wearable carries no compute board of its own. All processing happens on the compute unit, which holds the project's single MCU:
 
 | Device | MCU |
 |---|---|
-| **Head-mounted wearable** | **Raspberry Pi 5, 8 GB** |
+| **Compute unit** | **Raspberry Pi 5, 8 GB** |
 
-**The pointer's MCU is deliberately not pinned.** No part is fixed for it here — that selection stays open. What is fixed is the shape of the answer, and the asymmetry between the two devices is deliberate: the wearable must be a Linux single-board computer because it renders audio, runs computer vision alongside that audio, and hosts the Wi-Fi access point, while the pointer must be a compact battery-powered microcontroller doing onboard orientation fusion and time-of-flight ranging, because it is hand-held, runs off its own cell, and sends only data to the wearable. Those differing requirements are what make the two classes differ; no part was chosen in advance of them.
+**The compute unit receives data from both other devices and does all the processing.** It runs the ArUco tracking on the camera's live feed, fuses the orientation data from both IMUs, and renders the binaural audio in software. The audio leaves it through an attached USB audio dongle, which exists only to present a stereo male port for the user's headphones.
+
+**The wearable is connected to the compute unit by a wired interface, deliberately.** The camera produces a live video feed that the compute unit runs ArUco tracking on, and the wired link is what keeps the delay between a marker being seen and the corresponding sound being rendered low. That latency is on the critical path of the whole interaction: the value of the aid is that the sound corresponds to what the user is aiming at *now*, and a wireless link would put delay between the aim and the answer. The specific wired standard is not pinned; what is pinned is that the link is wired.
+
+**The headphones must be worn for the placement to be physically true.** The rendering places a virtual source in the head frame, which only produces head-locked sound when the transducer sits at the listener's ear. A speaker not worn with the head would hold its position in the room, so turning the head would move the listener away from it and the apparent source would not follow — the opposite of what [§1.6](#16-system-goal) requires.
+
+**The pointer's MCU is deliberately not pinned.** No part is fixed for it here — that selection stays open. What is fixed is the shape of the answer, and the asymmetry is deliberate. The compute unit must be a Linux single-board computer because it renders audio while running computer vision on the video feed, and the pointer must be a compact battery-powered microcontroller doing onboard orientation fusion and time-of-flight ranging, because it is hand-held, runs off its own cell, and sends only data onward. Those differing requirements are what make the classes differ; no part was chosen in advance of them.
+
+Taking the compute off the wearable is what makes the wired link possible, and that in turn is what makes the tracking latency acceptable: the camera data that has to travel somewhere does not have to cross a radio.
 
 ---
 
@@ -148,7 +163,13 @@ The researcher leaves side notes for the AI inside markdown documents as HTML co
 - **Delete each comment once it has been acted on.** A side note is a request, not a record. Once fulfilled it is stale, and a leftover comment is worse than no comment at all.
 - **Provisional text does not need a side note.** When a passage is provisional pending a future decision, the AI records its own removal condition as a bullet in this section, and the passage itself needs no HTML comment. Outstanding conditions are listed below. The record is temporary in exactly the way a comment is: it is deleted once its condition is met, in the same pass that settles the passage.
 - **Outstanding provisional passages, and what retires each.** These are the AI's own notes to itself, kept here rather than cluttering the sections they refer to. **When a condition is met, act on it and delete this record in the same pass** — the record is a bookmark, not a log, so a fulfilled entry left behind is as stale as a fulfilled comment:
-  - **§1.7's pointer-MCU paragraph, its heading, and the table above it.** The paragraph is provisional, and the heading *"Hardware — the wearable's board is pinned"* is already half a claim about the pointer. When the pointer MCU is settled: delete the paragraph, retitle the section to cover both devices, and fold the pointer into the table.
+  - **§1.7's pointer-MCU paragraph.** The paragraph is provisional. When the pointer MCU is settled, delete it and add the pointer to the hardware table, so the table covers both MCUs.
+  - **§1.7's closing sentence, *"Taking the compute off the wearable ..."*.** It is a rationale for the architecture as it now stands. If the wearable later regains compute of its own, or the link becomes wireless, the sentence is what has to be re-examined.
+- **Undecided parts, deliberately left unpinned.** These are open selections, not gaps. Each is recorded here so nothing is read as pinned that is not.
+  - **The pointer's MCU.** See the §1.7 record above; it retires when the pointer MCU is settled.
+  - **The wired standard between the wearable and the compute unit.** Only the fact that the link is wired is pinned.
+  - **The USB audio dongle.** The stereo male port it presents is fixed by the requirement; the specific part is not named.
+  - **Audio-interface buffer latency.** The dongle adds its own buffer, typically 1 to 3 ms, between the Pi's output and the listener's ear. It is not yet measured anywhere and belongs in the §4.2 in-study event stream, which currently records render timings but not output-buffer delay.
 - **A note that cannot be acted on yet stays until it can.** Some notes are triggers rather than tasks — *"delete this paragraph once the pointer MCU is pinned"* is not actionable while that selection is still open. Such a note is kept, and deleted at the moment its condition is met; the delete-on-completion rule above applies once the condition is satisfied. Removing it early loses the only record of what still has to be revisited.
 - **Superseded text goes with the note that retired it.** When a provisional passage is settled and replaced, delete the old passage as well — the point of the note is that the provisional text is temporary, and it should not outlive the decision it was waiting on.
 - **A comment never overrides the live conversation.** If a comment contradicts what the researcher says in the current session, the spoken instruction wins — carry out the spoken one, leave the comment in place, and say what conflicted rather than picking one silently.
