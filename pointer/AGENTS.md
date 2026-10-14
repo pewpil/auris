@@ -27,38 +27,38 @@ The pointer is the handheld device of [§1.5](../AGENTS.md): it carries a laser 
 
 This is the wiring. Build it exactly as written, one row at a time, with the USB cable **disconnected** until the last row.
 
-Every ESP32 pin is given by its `r#c#` position **and** its GPIO number. Match the GPIO number against the table above; use the position only to find the pin, since positions are easy to misread with the board facing the other way.
+Every ESP32 pin is given by its row and number **and** its GPIO number. Remember that the two rows are numbered differently — `r1` runs 1–19 and `r2` runs 60–42 — so the same column carries two unrelated numbers. Match the GPIO number against the table above; use the position only to find the pin, since positions are easy to misread with the board facing the other way.
 
-| From                                        | To                                                    | Function                                            |
-| ------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------- |
-| `r2c14` — **GPIO21**                        | `MPU6050.SDA` and `VL53L0X.SDA`                       | I²C data — shared by both sensors                   |
-| `r2c17` — **GPIO22**                        | `MPU6050.SCL` and `VL53L0X.SCL`                       | I²C clock — shared by both sensors                  |
-| `r1c9` — **GPIO27**                         | `VL53L0X.XSHUT`                                       | ToF enable, actively driven — **not left floating** |
-| `r2c11` — **GPIO18**                        | `Button.leg A`                                        | Button input, internal pull-up                      |
-| `r1c19` — `3V3`                             | breadboard **+** rail, and from there both `VCC` pins | 3.3 V power                                         |
-| `r2c19`, `r1c2`, `r1c6`, or `r2c13` — `GND` | breadboard **−** rail                                 | Common ground                                       |
-| `Button.leg B`                              | breadboard **−** rail                                 | Closes GPIO 18 to ground when held                  |
-| `MPU6050.VCC`                               | breadboard **+** rail                                 | Power                                               |
-| `MPU6050.GND`                               | breadboard **−** rail                                 | Common ground                                       |
-| `MPU6050.AD0`                               | breadboard **−** rail                                 | Selects I²C address `0x68`                          |
-| `MPU6050.XDA`, `MPU6050.XCL`, `MPU6050.INT` | *no connection*                                       | Auxiliary bus and interrupt, unused                 |
-| `VL53L0X.VCC`                               | breadboard **+** rail                                 | Power                                               |
-| `VL53L0X.GND`                               | breadboard **−** rail                                 | Common ground                                       |
-| `VL53L0X.GPIO1`                             | *no connection*                                       | Interrupt output, unused                            |
-| `4.7 kΩ` #1                                 | between the SDA net and the **+** rail                | SDA pull-up                                         |
-| `4.7 kΩ` #2                                 | between the SCL net and the **+** rail                | SCL pull-up                                         |
-| `100 nF` #1                                 | across `MPU6050.VCC` and `MPU6050.GND`                | Decoupling, place at the module                     |
-| `100 nF` #2                                 | across `VL53L0X.VCC` and `VL53L0X.GND`                | Decoupling, place at the module                     |
- 
-This board has **four `GND` positions** — `r1c2`, `r1c6`, `r2c13`, and `r2c19`. Any of them is fine; pick the one nearest your wiring and use it consistently. Do not use the 5 V input at `r1c1` as a ground.
+| From | To | Function |
+|---|---|---|
+| `r2 #47` — **GPIO21** | `MPU6050.SDA` and `VL53L0X.SDA` | I²C data — shared by both sensors |
+| `r2 #44` — **GPIO22** | `MPU6050.SCL` and `VL53L0X.SCL` | I²C clock — shared by both sensors |
+| `r1 #9` — **GPIO27** | `VL53L0X.XSHUT` | ToF enable, actively driven — **not left floating** |
+| `r2 #50` — **GPIO18** | `Button.leg A` | Button input, internal pull-up |
+| `r1 #19` — `3V3` | breadboard **+** rail, and from there both `VCC` pins | 3.3 V power |
+| `r2 #42`, `r1 #2`, `r1 #6`, or `r2 #48` — `GND` | breadboard **−** rail | Common ground |
+| `Button.leg B` | breadboard **−** rail | Closes GPIO 18 to ground when held |
+| `MPU6050.VCC` | breadboard **+** rail | Power |
+| `MPU6050.GND` | breadboard **−** rail | Common ground |
+| `MPU6050.AD0` | breadboard **−** rail | Selects I²C address `0x68` |
+| `MPU6050.XDA`, `MPU6050.XCL`, `MPU6050.INT` | *no connection* | Auxiliary bus and interrupt, unused |
+| `VL53L0X.VCC` | breadboard **+** rail | Power |
+| `VL53L0X.GND` | breadboard **−** rail | Common ground |
+| `VL53L0X.GPIO1` | *no connection* | Interrupt output, unused |
+| `4.7 kΩ` #1 | between the SDA net and the **+** rail | SDA pull-up |
+| `4.7 kΩ` #2 | between the SCL net and the **+** rail | SCL pull-up |
+| `100 nF` #1 | across `MPU6050.VCC` and `MPU6050.GND` | Decoupling, place at the module |
+| `100 nF` #2 | across `VL53L0X.VCC` and `VL53L0X.GND` | Decoupling, place at the module |
+
+This board has **four `GND` positions** — `r1 #2`, `r1 #6`, `r2 #48`, and `r2 #42`. Any of them is fine; pick the one nearest your wiring and use it consistently. Do not use the 5 V input at `r1 #1` as a ground.
 
 ### Per-module detail
 
-**MPU6050 (GY-521).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` to `r2c14` (GPIO21), `SCL` to `r2c17` (GPIO22), `AD0` to ground. `XDA`, `XCL`, and `INT` stay unconnected. Tying `AD0` low puts the part at `0x68`; leaving it floating puts it at `0x69`, which nothing here probes for.
+**MPU6050 (GY-521).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` to `r2 #47` (GPIO21), `SCL` to `r2 #44` (GPIO22), `AD0` to ground. `XDA`, `XCL`, and `INT` stay unconnected. Tying `AD0` low puts the part at `0x68`; leaving it floating puts it at `0x69`, which nothing here probes for.
 
-**VL53L0X.** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `r1c9` (GPIO27), `GPIO1` unconnected. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
+**VL53L0X.** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `r1 #9` (GPIO27), `GPIO1` unconnected. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
 
-**Button.** One leg to `r2c11` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected and will never close the circuit.
+**Button.** One leg to `r2 #50` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected and will never close the circuit.
 
 ## I²C bus
 
@@ -72,7 +72,7 @@ Run the bus at **400 kHz**, which both parts rate well above. Keep SDA and SCL r
 
 This is the single most important change from the previous build, and it is a correction rather than a preference.
 
-With `XSHUT` left unconnected, the ToF either never enables or holds the bus in a state that makes **every other device on it unreadable**. In the previous prototype the IMU never produced a valid sample with the ToF attached — readings came back as dropped transfers or as all-zero register dumps — and recovered completely once the ToF was removed. Driving `XSHUT` from `r1c9` (GPIO27) is what makes it possible to have both sensors on one bus.
+With `XSHUT` left unconnected, the ToF either never enables or holds the bus in a state that makes **every other device on it unreadable**. In the previous prototype the IMU never produced a valid sample with the ToF attached — readings came back as dropped transfers or as all-zero register dumps — and recovered completely once the ToF was removed. Driving `XSHUT` from `r1 #9` (GPIO27) is what makes it possible to have both sensors on one bus.
 
 The firmware must therefore assert `XSHUT` deliberately rather than assuming the sensor comes up on its own: hold it **low** briefly to force a hardware reset, release it **high**, and wait for the part to become responsive before issuing any I²C transaction to it. The datasheet requires a settling interval after enable; treat anything under about 100 ms as unverified.
 
@@ -80,35 +80,35 @@ The firmware must therefore assert `XSHUT` deliberately rather than assuming the
 
 This is a **38-pin NodeMCU-32S** (Ai-Thinker layout, 2.54 mm pitch). The board is named for the 32 usable GPIOs it breaks out, but it also exposes pins wired to the module's own SPI flash, and those must never be used. This board labels them by their flash function rather than by GPIO number, so they read like harmless signal names.
 
-**Positions are written `r#c#`: `r1` is the top row, `r2` the bottom row, and `c1`–`c19` run across both.** Read a cell by finding its column, then taking the top pin for `r1` or the bottom pin for `r2`. Because each column pairs one pin from each row, the two halves of the board interleave in this numbering — `c1` holds the 5 V input and the flash clock together, not two adjacent pins on the same side.
+**The two rows are numbered differently, and this is deliberate.** `r1` is the top row, numbered **1 to 19**. `r2` is the bottom row, numbered **60 down to 42** across those same columns. Each physical column therefore has two different numbers, and a column is identified by both: the top pin as `r1 #n`, the bottom pin as `r2 #n`. Do not assume a number carries over between rows — `r1 #9` and `r2 #50` are in the same column but are unrelated numbers.
 
 **The GPIO number is the authority, not the position.** Board revisions differ in how the headers are numbered, and positions are easy to misread with the board facing the other way. The position tells you where to look; the GPIO number is what tells you what the pin is.
 
-| Position | `r1` — top row | `r2` — bottom row |
-|---|---|---|
-| `c1` | **5V** — labelled `su`, power input | `clk` — **GPIO6** — **flash** |
-| `c2` | `GND` | `sdd` / `SD0` — **GPIO7** — **flash** |
-| `c3` | `sd3` / `SD3` — **GPIO10** — **flash** | `sd1` / `SD1` — **GPIO8** — **flash** |
-| `c4` | `sd2` / `SD2` — **GPIO9** — **flash** | `p15` — **GPIO15** — strapping |
-| `c5` | `p13` — **GPIO13** — strapping | `p2` — **GPIO2** — strapping, on-board LED |
-| `c6` | `GND` | `p0` — **GPIO0** — strapping, BOOT button |
-| `c7` | `p12` — **GPIO12** — strapping | `p4` — **GPIO4** — free |
-| `c8` | `p14` — **GPIO14** — strapping | `p16` — **GPIO16** — free |
-| `c9` | `p27` — **GPIO27** — free — **ToF `XSHUT`** | `p17` — **GPIO17** — free |
-| `c10` | `p26` — **GPIO26** — free | `p5` — **GPIO5** — strapping |
-| `c11` | `p25` — **GPIO25** — free | `p18` — **GPIO18** — free — **button** |
-| `c12` | `p33` — **GPIO33** — free | `p19` — **GPIO19** — free |
-| `c13` | `p32` — **GPIO32** — free | `GND` |
-| `c14` | `p35` — **GPIO35** — input only | `p21` — **GPIO21** — free — **I²C SDA** |
-| `c15` | `p34` — **GPIO34** — input only | `px` / `RX` — **GPIO3** — UART0 serial |
-| `c16` | `svn` / `SVN` — **GPIO39** — input only | `tx` / `TX` — **GPIO1** — UART0 serial |
-| `c17` | `svp` / `SVP` — **GPIO36** — input only | `p22` — **GPIO22** — free — **I²C SCL** |
-| `c18` | `EN` — chip enable / reset, active **LOW** | `p23` — **GPIO23** — free |
-| `c19` | `3V3` — 3.3 V output rail | `GND` |
+| Column | `r1` # | `r1` — top row | `r2` # | `r2` — bottom row |
+|---|---|---|---|---|
+| **1** | **1** | **5V** — labelled `su`, power input | **60** | `clk` — **GPIO6** — **flash** |
+| **2** | **2** | `GND` | **59** | `sdd` / `SD0` — **GPIO7** — **flash** |
+| **3** | **3** | `sd3` / `SD3` — **GPIO10** — **flash** | **58** | `sd1` / `SD1` — **GPIO8** — **flash** |
+| **4** | **4** | `sd2` / `SD2` — **GPIO9** — **flash** | **57** | `p15` — **GPIO15** — strapping |
+| **5** | **5** | `p13` — **GPIO13** — strapping | **56** | `p2` — **GPIO2** — strapping, on-board LED |
+| **6** | **6** | `GND` | **55** | `p0` — **GPIO0** — strapping, BOOT button |
+| **7** | **7** | `p12` — **GPIO12** — strapping | **54** | `p4` — **GPIO4** — free |
+| **8** | **8** | `p14` — **GPIO14** — strapping | **53** | `p16` — **GPIO16** — free |
+| **9** | **9** | `p27` — **GPIO27** — free — **ToF `XSHUT`** | **52** | `p17` — **GPIO17** — free |
+| **10** | **10** | `p26` — **GPIO26** — free | **51** | `p5` — **GPIO5** — strapping |
+| **11** | **11** | `p25` — **GPIO25** — free | **50** | `p18` — **GPIO18** — free — **button** |
+| **12** | **12** | `p33` — **GPIO33** — free | **49** | `p19` — **GPIO19** — free |
+| **13** | **13** | `p32` — **GPIO32** — free | **48** | `GND` |
+| **14** | **14** | `p35` — **GPIO35** — input only | **47** | `p21` — **GPIO21** — free — **I²C SDA** |
+| **15** | **15** | `p34` — **GPIO34** — input only | **46** | `px` / `RX` — **GPIO3** — UART0 serial |
+| **16** | **16** | `svn` / `SVN` — **GPIO39** — input only | **45** | `tx` / `TX` — **GPIO1** — UART0 serial |
+| **17** | **17** | `svp` / `SVP` — **GPIO36** — input only | **44** | `p22` — **GPIO22** — free — **I²C SCL** |
+| **18** | **18** | `EN` — chip enable / reset, active **LOW** | **43** | `p23` — **GPIO23** — free |
+| **19** | **19** | `3V3` — 3.3 V output rail | **42** | `GND` |
 
-All four pins this build uses fall in the free category: **`r1c9`** (GPIO27, ToF `XSHUT`), **`r2c11`** (GPIO18, button), **`r2c14`** (GPIO21, SDA), and **`r2c17`** (GPIO22, SCL).
+All four pins this build uses fall in the free category: **`r1 #9`** (GPIO27, ToF `XSHUT`), **`r2 #50`** (GPIO18, button), **`r2 #47`** (GPIO21, SDA), and **`r2 #44`** (GPIO22, SCL).
 
-One discrepancy worth recording: this board's headers do not appear to expose `CMD`, the sixth flash line (GPIO11). The five flash pins that are present sit at `r2c1` (`clk`), `r2c2` (`sdd`), `r2c3` (`sd1`), `r1c3` (`sd3`), and `r1c4` (`sd2`).
+One discrepancy worth recording: this board's headers do not appear to expose `CMD`, the sixth flash line (GPIO11). The five flash pins that are present sit at `r2 #60` (`clk`), `r2 #59` (`sdd`), `r2 #58` (`sd1`), `r1 #3` (`sd3`), and `r1 #4` (`sd2`).
 
 ### Pins to treat with care
 
