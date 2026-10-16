@@ -84,27 +84,27 @@ This is a **38-pin NodeMCU-32S** (Ai-Thinker layout, 2.54 mm pitch). The board i
 
 **The GPIO number is the authority, not the position.** Board revisions differ in how the headers are numbered, and positions are easy to misread with the board facing the other way. The position tells you where to look; the GPIO number is what tells you what the pin is.
 
-| Column | `r1` # | `r1` — top row | `r2` # | `r2` — bottom row |
-|---|---|---|---|---|
-| **1** | **1** | **5V** — labelled `su`, power input | **60** | `clk` — **GPIO6** — **flash** |
-| **2** | **2** | `GND` | **59** | `sdd` / `SD0` — **GPIO7** — **flash** |
-| **3** | **3** | `sd3` / `SD3` — **GPIO10** — **flash** | **58** | `sd1` / `SD1` — **GPIO8** — **flash** |
-| **4** | **4** | `sd2` / `SD2` — **GPIO9** — **flash** | **57** | `p15` — **GPIO15** — strapping |
-| **5** | **5** | `p13` — **GPIO13** — strapping | **56** | `p2` — **GPIO2** — strapping, on-board LED |
-| **6** | **6** | `GND` | **55** | `p0` — **GPIO0** — strapping, BOOT button |
-| **7** | **7** | `p12` — **GPIO12** — strapping | **54** | `p4` — **GPIO4** — free |
-| **8** | **8** | `p14` — **GPIO14** — strapping | **53** | `p16` — **GPIO16** — free |
-| **9** | **9** | `p27` — **GPIO27** — free — **ToF `XSHUT`** | **52** | `p17` — **GPIO17** — free |
-| **10** | **10** | `p26` — **GPIO26** — free | **51** | `p5` — **GPIO5** — strapping |
-| **11** | **11** | `p25` — **GPIO25** — free | **50** | `p18` — **GPIO18** — free — **button** |
-| **12** | **12** | `p33` — **GPIO33** — free | **49** | `p19` — **GPIO19** — free |
-| **13** | **13** | `p32` — **GPIO32** — free | **48** | `GND` |
-| **14** | **14** | `p35` — **GPIO35** — input only | **47** | `p21` — **GPIO21** — free — **I²C SDA** |
-| **15** | **15** | `p34` — **GPIO34** — input only | **46** | `px` / `RX` — **GPIO3** — UART0 serial |
-| **16** | **16** | `svn` / `SVN` — **GPIO39** — input only | **45** | `tx` / `TX` — **GPIO1** — UART0 serial |
-| **17** | **17** | `svp` / `SVP` — **GPIO36** — input only | **44** | `p22` — **GPIO22** — free — **I²C SCL** |
-| **18** | **18** | `EN` — chip enable / reset, active **LOW** | **43** | `p23` — **GPIO23** — free |
-| **19** | **19** | `3V3` — 3.3 V output rail | **42** | `GND` |
+| Column | `r1` # | `r1` — top row                              | `r2` # | `r2` — bottom row                          |
+| ------ | ------ | ------------------------------------------- | ------ | ------------------------------------------ |
+| **1**  | **1**  | **5V** — labelled `su`, power input         | **60** | `clk` — **GPIO6** — **flash**              |
+| **2**  | **2**  | `GND`                                       | **59** | `sdd` / `SD0` — **GPIO7** — **flash**      |
+| **3**  | **3**  | `sd3` / `SD3` — **GPIO10** — **flash**      | **58** | `sd1` / `SD1` — **GPIO8** — **flash**      |
+| **4**  | **4**  | `sd2` / `SD2` — **GPIO9** — **flash**       | **57** | `p15` — **GPIO15** — strapping             |
+| **5**  | **5**  | `p13` — **GPIO13** — strapping              | **56** | `p2` — **GPIO2** — strapping, on-board LED |
+| **6**  | **6**  | `GND`                                       | **55** | `p0` — **GPIO0** — strapping, BOOT button  |
+| **7**  | **7**  | `p12` — **GPIO12** — strapping              | **54** | `p4` — **GPIO4** — free                    |
+| **8**  | **8**  | `p14` — **GPIO14** — strapping              | **53** | `p16` — **GPIO16** — free                  |
+| **9**  | **9**  | `p27` — **GPIO27** — free — **ToF `XSHUT`** | **52** | `p17` — **GPIO17** — free                  |
+| **10** | **10** | `p26` — **GPIO26** — free                   | **51** | `p5` — **GPIO5** — strapping               |
+| **11** | **11** | `p25` — **GPIO25** — free                   | **50** | `p18` — **GPIO18** — free — **button**     |
+| **12** | **12** | `p33` — **GPIO33** — free                   | **49** | `p19` — **GPIO19** — free                  |
+| **13** | **13** | `p32` — **GPIO32** — free                   | **48** | `GND`                                      |
+| **14** | **14** | `p35` — **GPIO35** — input only             | **47** | `p21` — **GPIO21** — free — **I²C SDA**    |
+| **15** | **15** | `p34` — **GPIO34** — input only             | **46** | `px` / `RX` — **GPIO3** — UART0 serial     |
+| **16** | **16** | `svn` / `SVN` — **GPIO39** — input only     | **45** | `tx` / `TX` — **GPIO1** — UART0 serial     |
+| **17** | **17** | `svp` / `SVP` — **GPIO36** — input only     | **44** | `p22` — **GPIO22** — free — **I²C SCL**    |
+| **18** | **18** | `EN` — chip enable / reset, active **LOW**  | **43** | `p23` — **GPIO23** — free                  |
+| **19** | **19** | `3V3` — 3.3 V output rail                   | **42** | `GND`                                      |
 
 All four pins this build uses fall in the free category: **`r1 #9`** (GPIO27, ToF `XSHUT`), **`r2 #50`** (GPIO18, button), **`r2 #47`** (GPIO21, SDA), and **`r2 #44`** (GPIO22, SCL).
 

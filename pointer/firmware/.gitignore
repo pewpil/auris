@@ -1,2 +1,6 @@
 # arduino-cli build artifacts
 build/
+
+# Network credentials — must never be committed.
+wifi_secrets.h
+*.secrets.h

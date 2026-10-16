@@ -1,0 +1,15 @@
+# arduino-cli sketch project for the Auris pointer VL53L0X bring-up test.
+#
+# The third-party Pololu VL53L0X driver is used rather than the sensor's own
+# ST API: the part requires a long, delicate initialisation sequence (a per-part
+# SPAD map read from flash) that the driver already performs, and reimplementing
+# it would add failure modes rather than remove them.
+default_fqbn: esp32:esp32:nodemcu-32s
+
+profiles:
+  tof-test:
+    fqbn: esp32:esp32:nodemcu-32s
+    platforms:
+      - platform: esp32:esp32 (3.3.12)
+    libraries:
+      - VL53L0X (1.3.1)

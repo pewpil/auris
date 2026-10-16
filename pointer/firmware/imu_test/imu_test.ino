@@ -22,8 +22,17 @@
  *   Ground: r2 #42, or r1 #2 / r1 #6 / r2 #48 -- any of them.
  *   No external pull-ups needed: the GY-521 carries its own 4.7k on SDA and SCL.
  *
- * Purpose: stream the IMU's orientation, its raw motion data, and the button state
- *          as CSV on the USB serial port, continuously, until the board is reset.
+ * Purpose: stream the IMU's orientation and raw motion data as CSV on the USB serial
+ *          port, continuously, until the board is reset; and, WHILE THE BUTTON IS
+ *          HELD, broadcast the same rows to the compute unit over UDP.
+ *
+ *          The button is not a data column. It gates the wireless link: held, samples
+ *          are transmitted; released, transmission stops. The local USB stream runs
+ *          either way, because it is the operator's own record and must not depend on
+ *          the radio. There is no pin-level connection for the radio -- the ESP32's
+ *          antenna is on the module -- so Wi-Fi adds no wiring, but it does add two
+ *          requirements: a 2.4 GHz network (this radio cannot see 5 GHz at all) and
+ *          credentials in wifi_secrets.h.
  *
  *          Orientation is a complementary filter: gravity from the accelerometer pins
  *          down roll and pitch absolutely, and the gyroscope carries them between
@@ -32,14 +41,49 @@
  *          sensor set, not a defect in this filter, and the gyro bias is calibrated
  *          out at startup to keep it slow.
  *
- * Inputs:  MPU6050 on I2C address 0x68; momentary button pulling GPIO 18 to GND.
- * Outputs: CSV on the USB serial port at 115200 baud; see emitCsvHeader() for the schema.
+ * Inputs:  MPU6050 on I2C address 0x68; momentary button pulling GPIO 18 to GND;
+ *          Wi-Fi credentials from the untracked wifi_secrets.h.
+ * Outputs: CSV on the USB serial port at 115200 baud; the same rows broadcast to the
+ *           compute unit over UDP port 5005 while the button is held. See
+ *           emitCsvHeader() for the column schema.
  *
  * Build:   arduino-cli compile --profile imu-test
  * Flash:   arduino-cli upload  --profile imu-test --port /dev/ttyUSB0
  */
 
 #include <Wire.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>   // core 3.x spells it this way; it typedefs WiFiUDP
+
+// Credentials live in an untracked header so the password never reaches git. The
+// sketch still builds without it, falling back to USB serial only.
+#if __has_include("wifi_secrets.h")
+#include "wifi_secrets.h"
+#define HAVE_WIFI_CREDENTIALS 1
+#endif
+
+// ---------------------------------------------------------------------------
+// Types.
+//
+// The struct is declared here, immediately after the includes and ahead of every
+// function, and not down beside the other constants. That is deliberate: the Arduino
+// preprocessor hoists function prototypes to the top of the file, so a struct defined
+// after the first function gets referenced by a prototype that appears before the
+// struct exists, and the build fails with "ImuState was not declared in this scope".
+// Putting the type first is what keeps that from happening.
+// ---------------------------------------------------------------------------
+
+/** One decoded IMU measurement: raw sensor data plus the derived orientation. */
+struct ImuState {
+  float accel_g[3];   ///< X, Y, Z specific force in g, bias-corrected.
+  float gyro_dps[3];  ///< X, Y, Z angular rate in deg/s, bias-corrected.
+  float temp_c;       ///< Die temperature in degrees Celsius.
+  float roll_deg;     ///< Rotation about the X axis, degrees, +ve right-side down.
+  float pitch_deg;    ///< Rotation about the Y axis, degrees, +ve nose up.
+  float yaw_deg;      ///< Rotation about the Z axis, degrees; gyro-integrated, drifts.
+  bool fresh;         ///< False when the last transfer failed and the angles are held.
+};
+
 
 // ---------------------------------------------------------------------------
 // Pin map — matches the wiring comment above.
@@ -76,6 +120,58 @@ static constexpr uint32_t LOOP_PERIOD_MS = 20;
  * attaches afterwards -- and attaching afterwards is the normal case.
  */
 static constexpr uint32_t PROBE_PERIOD_MS = 5000;
+
+// ---------------------------------------------------------------------------
+// Pointer -> compute unit link.
+//
+// The pointer is wirelessly connected to the compute unit, so samples leave over
+// UDP rather than the USB cable. Datagrams are BROADCAST to the subnet's directed
+// broadcast address and the compute unit binds 0.0.0.0, so neither side needs to know
+// the other's IP address. That matters in practice: this project's compute unit has
+// moved address three times, which is why the repository AGENTS.md records its MAC as
+// the stable identity instead.
+// ---------------------------------------------------------------------------
+
+/** UDP port the compute unit listens on. Must match --port on the cu side. */
+static constexpr uint16_t LINK_PORT = 5005;
+
+/** Milliseconds allowed for the Wi-Fi association to complete at boot. */
+static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
+
+/**
+ * Optional unicast override for the datagram destination.
+ *
+ * Empty (the default) means broadcast to the subnet's directed broadcast address.
+ * Set it to an address such as "192.168.1.16" if the access point turns out to
+ * filter client-to-client broadcast, which some do when AP isolation is on. A
+ * unicast destination is a moving target under DHCP, so broadcast is the better
+ * default and this is the escape hatch, not the other way round.
+ */
+static const char *LINK_UNICAST_HOST = "";
+
+/** Whether the link came up and datagrams may be sent. */
+static bool linkUp = false;
+
+/** Set on the first send failure, so repeated failures do not spam the serial log. */
+static bool linkFaultReported = false;
+
+/**
+ * Work out where datagrams should be sent.
+ *
+ * @return LINK_UNICAST_HOST when set, otherwise the subnet's directed broadcast
+ *     address derived from the address DHCP handed out.
+ */
+static IPAddress linkDestination() {
+  if (strlen(LINK_UNICAST_HOST) > 0) {
+    return IPAddress(LINK_UNICAST_HOST);
+  }
+  const IPAddress ip = WiFi.localIP();
+  const IPAddress subnet = WiFi.subnetMask();
+  return IPAddress(static_cast<uint8_t>(ip[0] | ~subnet[0]),
+                   static_cast<uint8_t>(ip[1] | ~subnet[1]),
+                   static_cast<uint8_t>(ip[2] | ~subnet[2]),
+                   static_cast<uint8_t>(ip[3] | ~subnet[3]));
+}
 
 // ---------------------------------------------------------------------------
 // MPU6050 register map (MPU-6000A register map, RM-MPU-6000A-1).
@@ -129,17 +225,6 @@ static constexpr float FILTER_TIME_CONSTANT_S = 0.5f;
 /** Duration of the startup bias measurement, during which the board must be still. */
 static constexpr uint32_t CALIBRATION_MS = 2000;
 
-/** One decoded IMU measurement: raw sensor data plus the derived orientation. */
-struct ImuState {
-  float accel_g[3];   ///< X, Y, Z specific force in g, bias-corrected.
-  float gyro_dps[3];  ///< X, Y, Z angular rate in deg/s, bias-corrected.
-  float temp_c;       ///< Die temperature in degrees Celsius.
-  float roll_deg;     ///< Rotation about the X axis, degrees, +ve right-side down.
-  float pitch_deg;    ///< Rotation about the Y axis, degrees, +ve nose up.
-  float yaw_deg;      ///< Rotation about the Z axis, degrees; gyro-integrated, drifts.
-  bool fresh;         ///< False when the last transfer failed and the angles are held.
-};
-
 /** Per-axis zero offsets measured at startup, subtracted from every reading. */
 static float g_accelBiasG[3] = {0.0f, 0.0f, 0.0f};
 /** Per-axis zero offsets measured at startup, subtracted from every reading. */
@@ -151,6 +236,8 @@ static ImuState setLine{};
 static uint32_t lastUpdateMs = 0;
 /** Timestamp of the last periodic sensor probe. */
 static uint32_t lastProbeMs = 0;
+/** Last observed button state, so press and release are reported once each. */
+static bool wasButtonHeld = false;
 
 /**
  * Reinterpret an unsigned 16-bit I2C payload as the signed value it encodes.
@@ -471,6 +558,126 @@ static void reportSensorState() {
 }
 
 /**
+ * Scan and print every network this module can currently see.
+ *
+ * Printed after a failed join, because the single most likely cause is that the
+ * configured SSID names a 5 GHz band: the ESP32-WROOM-32 radio is 2.4 GHz only, so
+ * such a network does not appear in a scan and does not fail for any reason a status
+ * code alone would explain.
+ */
+static void scanAndPrintNetworks() {
+  // The radio will not start a scan while it is still in a failed-join state, so
+  // cycle it through off and back before scanning. Disconnect without erasing the
+  // stored configuration, so nothing else has to be re-entered.
+  WiFi.disconnect(false, false);
+  WiFi.mode(WIFI_OFF);
+  delay(300);
+  WiFi.mode(WIFI_STA);
+  delay(300);
+
+  const int found = WiFi.scanNetworks(false, true);
+  if (found < 0) {
+    Serial.println("wifi: scan failed to start");
+    return;
+  }
+  Serial.printf("wifi: %d network(s) in range\n", found);
+  for (int i = 0; i < found; ++i) {
+    Serial.printf("  [%d] %s  ch=%d  rssi=%d dBm  %s\n", i,
+                  WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i),
+                  (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "encrypted");
+  }
+  WiFi.scanDelete();
+  if (found == 0) {
+    Serial.println("  none -- check the module is seated and the antenna is clear");
+  }
+}
+
+/**
+ * Bring up Wi-Fi and join the configured network.
+ *
+ * Returns without raising when no credentials file is present, because the sketch is
+ * still useful over USB serial alone and a missing secret should not stop the bring-up
+ * test from running.
+ *
+ * @return true when the station is associated and datagrams may be sent.
+ */
+static bool wifiConnect() {
+#ifdef HAVE_WIFI_CREDENTIALS
+  Serial.printf("wifi: joining \"%s\"\n", WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  const uint32_t startMs = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startMs < WIFI_CONNECT_TIMEOUT_MS) {
+    delay(250);
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.printf("wifi: FAILED to join after %lu ms (status %d)\n",
+                  static_cast<unsigned long>(WIFI_CONNECT_TIMEOUT_MS), WiFi.status());
+    // Scan on ANY failure. The status code after a failed join is usually the
+    // generic WL_DISCONNECTED rather than anything specific, so branching on it tells
+    // you nothing; the scan is what actually identifies the cause.
+    if (WiFi.status() == WL_CONNECT_FAILED) {
+      Serial.println("wifi: SSID was found but the join was refused -- check the password.");
+    } else {
+      Serial.println("wifi: did not join. This module is 2.4 GHz ONLY -- a 5 GHz SSID is");
+      Serial.println("wifi: invisible to it and will never appear in the scan below.");
+    }
+    Serial.println("wifi: networks this module can see:");
+    scanAndPrintNetworks();
+    return false;
+  }
+
+  Serial.print("wifi: joined, local address ");
+  Serial.println(WiFi.localIP());
+
+  // Directed broadcast for this subnet, which more access points pass through than
+  // 255.255.255.255. Computed from the address the DHCP server actually handed out,
+  // so it needs no configuration here.
+  const IPAddress destination = linkDestination();
+  Serial.printf("wifi: sending to %s", LINK_UNICAST_HOST[0] ? "unicast " : "broadcast ");
+  Serial.print(destination);
+  Serial.printf(":%u\n", static_cast<unsigned>(LINK_PORT));
+  return true;
+#else
+  Serial.println("wifi: no wifi_secrets.h found - USB serial only, no link to the cu");
+  return false;
+#endif
+}
+
+/**
+ * Broadcast one already-formatted CSV line to the compute unit.
+ *
+ * Fire and forget: a datagram that does not arrive is not retried, because on this
+ * link a late sample is worse than a missing one. The sample is printed locally either
+ * way, so a broken link costs the compute unit a line, never the local record.
+ *
+ * @param line NUL-terminated CSV row, without its trailing newline.
+ */
+static void linkSend(const char *line) {
+  if (!linkUp) {
+    return;
+  }
+  WiFiUDP udp;
+  if (!udp.begin(LINK_PORT)) {
+    if (!linkFaultReported) {
+      Serial.println("link: udp.begin failed - not sending");
+      linkFaultReported = true;
+    }
+    return;
+  }
+
+  const IPAddress destination = linkDestination();
+
+  if (udp.beginPacket(destination, LINK_PORT)) {
+    udp.write(reinterpret_cast<const uint8_t *>(line), strlen(line));
+    udp.endPacket();
+  }
+  udp.stop();
+}
+
+/**
  * Sample the laser button.
  *
  * @return true while the button is held down, i.e. while GPIO 18 is pulled to GND.
@@ -483,32 +690,34 @@ static bool buttonPressed() {
  * Print the CSV header naming every column and its unit.
  *
  * Column meanings: t_ms milliseconds since boot, roll/pitch/yaw orientation in
- * degrees, ax_g/ay_g/az_g accelerometer in g, gx/gy/gz gyroscope in deg/s,
- * temp_c die temperature, btn 1 while the button is held.
+ * degrees, ax_g/ay_g/az_g accelerometer in g, gx/gy/gz gyroscope in deg/s, temp_c die
+ * temperature in degC.
  */
 static void emitCsvHeader() {
-  Serial.println(
-      "t_ms,roll_d,pitch_d,yaw_d,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps,temp_c,btn");
+  Serial.println("t_ms,roll_d,pitch_d,yaw_d,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps,temp_c");
 }
 
 /**
- * Print one sample as a single CSV line.
+ * Format one sample as a CSV row into a caller-supplied buffer.
  *
- * @param tMs Milliseconds since boot.
- * @param state Orientation and motion state; a stale sample is flagged in the line.
- * @param pressed Whether the button is held.
+ * The same formatted row is used for both sinks -- the USB serial port and the link to
+ * the compute unit -- so the two can never disagree about what was measured. Kept
+ * separate from printing because the link needs the text and not a write to Serial.
+ *
+ * @param state Orientation and motion state; a stale sample is flagged in the row.
+ * @param[out] buf Destination buffer; always NUL-terminated.
+ * @param capacity Size of @p buf in bytes, including room for the terminator.
+ * @return Number of characters written, excluding the terminator.
  */
-static void emitSample(uint32_t tMs, const ImuState &state, bool pressed) {
-  const unsigned button = pressed ? 1u : 0u;
+static size_t formatCsvRow(const ImuState &state, char *buf, size_t capacity) {
   if (!state.fresh) {
-    Serial.printf("%lu,stale,stale,stale,nan,nan,nan,nan,nan,nan,nan,%u\n",
-                  static_cast<unsigned long>(tMs), button);
-    return;
+    return snprintf(buf, capacity, "%lu,stale,stale,stale,nan,nan,nan,nan,nan,nan,nan",
+                    static_cast<unsigned long>(millis()));
   }
-  Serial.printf("%lu,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%u\n",
-                static_cast<unsigned long>(tMs), state.roll_deg, state.pitch_deg,
-                state.yaw_deg, state.accel_g[0], state.accel_g[1], state.accel_g[2],
-                state.gyro_dps[0], state.gyro_dps[1], state.gyro_dps[2], state.temp_c, button);
+  return snprintf(buf, capacity, "%lu,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f",
+                  static_cast<unsigned long>(millis()), state.roll_deg, state.pitch_deg,
+                  state.yaw_deg, state.accel_g[0], state.accel_g[1], state.accel_g[2],
+                  state.gyro_dps[0], state.gyro_dps[1], state.gyro_dps[2], state.temp_c);
 }
 
 /**
@@ -572,8 +781,11 @@ void setup() {
     anglesFromGravity(state.accel_g, &state.roll_deg, &state.pitch_deg);
   }
 
+  linkUp = wifiConnect();
+
   Serial.println();
   Serial.println("yaw is gyro-integrated with no absolute reference; it will drift.");
+  Serial.println("hold the button to stream samples to the compute unit over wifi");
   emitCsvHeader();
   Serial.flush();
 
@@ -583,11 +795,17 @@ void setup() {
 }
 
 /**
- * Read the IMU, advance the filter, and emit the resulting CSV line.
+ * Read the IMU, advance the filter, and emit the resulting CSV row.
  *
  * A failed transfer holds the previous orientation rather than advancing it, so a
  * dropped sample cannot inject a fictitious rotation into the integral. The loop is
  * paced to LOOP_PERIOD_MS so the serial link is never overrun.
+ *
+ * The row is formatted once and then used for both sinks. The USB serial port receives
+ * it unconditionally, because it is the local record; the compute unit receives it only
+ * while the button is held, which is what the button now means. Edge transitions are
+ * reported on the serial port so the operator can see the gate opening and closing
+ * without having to watch the cu's shell to know it is running.
  */
 void loop() {
   const uint32_t nowMs = millis();
@@ -609,7 +827,24 @@ void loop() {
     setLine.fresh = false;
   }
 
-  emitSample(nowMs, setLine, buttonPressed());
+  char row[128];
+  const size_t len = formatCsvRow(setLine, row, sizeof(row));
+  Serial.write(reinterpret_cast<const uint8_t *>(row), len);
+  Serial.println();
+
+  const bool held = buttonPressed();
+  if (held != wasButtonHeld) {
+    Serial.println();
+    if (held) {
+      Serial.println("button DOWN - streaming to the compute unit");
+    } else {
+      Serial.println("button UP - stopped streaming to the compute unit");
+    }
+    wasButtonHeld = held;
+  }
+  if (held) {
+    linkSend(row);
+  }
 
   if (nowMs - lastProbeMs >= PROBE_PERIOD_MS) {
     lastProbeMs = nowMs;
