@@ -1,0 +1,13 @@
+# arduino-cli sketch project for the Auris pointer VL53L1X bring-up test.
+# The module on the bench is a CJMCU-531, whose silicon is a VL53L1X (model id
+# 0xEACC at 16-bit index 0x010F), so this sketch uses Pololu's VL53L1X driver.
+# The VL53L0X driver cannot speak this part's two-byte-index register protocol.
+default_fqbn: esp32:esp32:nodemcu-32s
+
+profiles:
+  tof-test-l1x:
+    fqbn: esp32:esp32:nodemcu-32s
+    platforms:
+      - platform: esp32:esp32 (3.3.12)
+    libraries:
+      - VL53L1X (1.3.1)
