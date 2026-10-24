@@ -58,7 +58,7 @@ This board has **four `GND` positions** — `r1 #2`, `r1 #6`, `r2 #48`, and `r2 
 
 **VL53L0X.** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `r1 #9` (GPIO27), `GPIO1` unconnected. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
 
-**Button.** One leg to `r2 #50` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected and will never close the circuit.
+**Button.** One leg to `r2 #50` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected, so a button wired across one side is permanently closed and reads pressed all the time.
 
 ## I²C bus
 
