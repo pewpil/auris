@@ -1,7 +1,8 @@
 /*
  * Auris pointer — sensor-node bring-up test (ToF + IMU + button together).
  *
- * FULL NODE TEST WIRING  (laptop USB only; no link to the cu — session scope)
+ * FULL NODE TEST WIRING  (laptop USB for power and the local record; the cu
+ *                         link is Wi-Fi and active only while the button is held)
  *
  *   The two rows are numbered differently: r1 is the top row numbered 1-19, r2 is
  *   the bottom row numbered 60-42 across the same columns.  A column therefore has
@@ -43,21 +44,38 @@
  *          MPU6050 with the parent contract's minimal register sequence (a
  *          WHO_AM_I probe, four configuration writes, one 14-byte burst per
  *          sample) - the one library exception being the VL53L1X's own driver,
- *          whose init sequence is long and must be correct.
+ *          whose init sequence is long and must be correct. While the button is
+ *          held, each combined row is also broadcast to the compute unit over
+ *          UDP on port 5005, mirroring imu_test/; released, the broadcast stops
+ *          and the USB record carries on.
  *
  * Inputs:  VL53L1X on I2C address 0x29 (XSHUT on GPIO 27), MPU6050 at 0x68,
  *          button on GPIO 18 with the internal pull-up.
  * Outputs: Bring-up diagnostics (bus scan, both identities, config, 5-second
- *          probes with stats) and a tabular combined stream at 115200 baud.
- *          emitTableHeader() lists the columns; the 5-second probe reprints
- *          identity and the column header so a late-attaching monitor orients.
+ *          probes with stats and link state) and a tabular combined stream at
+ *          115200 baud. emitTableHeader() lists the columns; the 5-second probe
+ *          reprints identity, link state, and the column header so a
+ *          late-attaching monitor orients. While the button is held, each row is
+ *          also sent to the compute unit as one UDP datagram on LINK_PORT.
+ *
+ * Secrets: Wi-Fi credentials live in wifi_secrets.h, untracked by git. With no
+ *          such file the sketch builds and runs USB-only, saying so at boot.
  *
  * Build:   arduino-cli compile --profile node-test
  * Flash:   arduino-cli upload  --profile node-test --port /dev/ttyUSB0
  */
 
 #include <Wire.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>   // core 3.x spells it this way; it typedefs WiFiUDP
 #include <VL53L1X.h>
+
+// Credentials live in an untracked header so the password never reaches git. The
+// sketch still builds without it, falling back to USB serial only.
+#if __has_include("wifi_secrets.h")
+#include "wifi_secrets.h"
+#define HAVE_WIFI_CREDENTIALS 1
+#endif
 
 // ---------------------------------------------------------------------------
 // Pin map — matches the wiring comment above.
@@ -88,6 +106,192 @@ static constexpr uint8_t ADDR_MPU6050 = 0x68;
 
 /** I2C bus speed in Hz, at the datasheet's 400 kHz ceiling for both parts. */
 static constexpr uint32_t I2C_CLOCK_HZ = 400000;
+
+// ---------------------------------------------------------------------------
+// Pointer -> compute unit link.
+//
+// Rows leave the pointer over Wi-Fi UDP while the laser button is held, mirroring
+// imu_test/. Datagrams are broadcast to the subnet's directed broadcast address
+// and the compute unit binds 0.0.0.0, so neither side needs the other's address;
+// the compute unit has moved address repeatedly, which is why the repository
+// records its MAC instead. The USB stream keeps running either way, so a broken
+// link costs the compute unit rows, never the local record.
+// ---------------------------------------------------------------------------
+
+/** UDP port the compute unit listens on. Must match --port on the cu side. */
+static constexpr uint16_t LINK_PORT = 5005;
+
+/** Milliseconds allowed for the Wi-Fi association to complete at boot. */
+static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 20000;
+
+/**
+ * Optional unicast override for the datagram destination.
+ *
+ * Empty (the default) means broadcast to the subnet's directed broadcast address.
+ * Set it to an address such as "192.168.1.16" if the access point filters
+ * client-to-client broadcast (AP isolation). A unicast destination is a moving
+ * target under DHCP, so broadcast is the better default and this is the escape
+ * hatch.
+ */
+static const char *LINK_UNICAST_HOST = "";
+
+/** Whether the link came up and datagrams may be sent. */
+static bool linkUp = false;
+
+/** Set on the first send failure, so repeated failures do not spam the serial log. */
+static bool linkFaultReported = false;
+
+/** Rows handed to the link since boot, whether or not the datagram arrived. */
+static uint32_t g_linkSentCount = 0;
+/** Send attempts that failed at the UDP layer, since boot. */
+static uint32_t g_linkFailCount = 0;
+
+/**
+ * Work out where datagrams should be sent.
+ *
+ * @return LINK_UNICAST_HOST when set, otherwise the subnet's directed broadcast
+ *     address derived from the address DHCP handed out.
+ */
+static IPAddress linkDestination() {
+  if (strlen(LINK_UNICAST_HOST) > 0) {
+    return IPAddress(LINK_UNICAST_HOST);
+  }
+  const IPAddress ip = WiFi.localIP();
+  const IPAddress subnet = WiFi.subnetMask();
+  return IPAddress(static_cast<uint8_t>(ip[0] | ~subnet[0]),
+                   static_cast<uint8_t>(ip[1] | ~subnet[1]),
+                   static_cast<uint8_t>(ip[2] | ~subnet[2]),
+                   static_cast<uint8_t>(ip[3] | ~subnet[3]));
+}
+
+/**
+ * Scan and print every network this module can currently see.
+ *
+ * Printed after a failed join, because the most likely cause is that the
+ * configured SSID names a 5 GHz band: the ESP32-WROOM-32 radio is 2.4 GHz only,
+ * so such a network does not appear in a scan and never produces a useful status
+ * code on its own.
+ */
+static void scanAndPrintNetworks() {
+  // The radio will not start a scan from a failed-join state, so cycle it off
+  // and back before scanning. Disconnect without erasing the stored config.
+  WiFi.disconnect(false, false);
+  WiFi.mode(WIFI_OFF);
+  delay(300);
+  WiFi.mode(WIFI_STA);
+  delay(300);
+
+  const int found = WiFi.scanNetworks(false, true);
+  if (found < 0) {
+    Serial.println("wifi: scan failed to start");
+    return;
+  }
+  Serial.printf("wifi: %d network(s) in range\n", found);
+  for (int i = 0; i < found; ++i) {
+    Serial.printf("  [%d] %s  ch=%d  rssi=%d dBm  %s\n", i,
+                  WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i),
+                  (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "encrypted");
+  }
+  WiFi.scanDelete();
+  if (found == 0) {
+    Serial.println("  none -- check the module is seated and the antenna is clear");
+  }
+}
+
+/**
+ * Bring up Wi-Fi and join the configured network.
+ *
+ * Returns without raising when no credentials file is present: the sensor test
+ * is still useful over USB alone, and a missing secret must not stop bring-up.
+ *
+ * @return true when the station is associated and datagrams may be sent.
+ */
+static bool wifiConnect() {
+#ifdef HAVE_WIFI_CREDENTIALS
+  Serial.printf("wifi: joining \"%s\"\n", WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  const uint32_t startMs = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startMs < WIFI_CONNECT_TIMEOUT_MS) {
+    delay(250);
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.printf("wifi: FAILED to join after %lu ms (status %d)\n",
+                  static_cast<unsigned long>(WIFI_CONNECT_TIMEOUT_MS), WiFi.status());
+    if (WiFi.status() == WL_CONNECT_FAILED) {
+      Serial.println("wifi: SSID was found but the join was refused -- check the password.");
+    } else {
+      Serial.println("wifi: did not join. This module is 2.4 GHz ONLY -- a 5 GHz SSID is");
+      Serial.println("wifi: invisible to it and will never appear in the scan below.");
+    }
+    Serial.println("wifi: networks this module can see:");
+    scanAndPrintNetworks();
+    return false;
+  }
+
+  Serial.print("wifi: joined, local address ");
+  Serial.println(WiFi.localIP());
+
+  const IPAddress destination = linkDestination();
+  Serial.printf("wifi: sending to %s", LINK_UNICAST_HOST[0] ? "unicast " : "broadcast ");
+  Serial.print(destination);
+  Serial.printf(":%u\n", static_cast<unsigned>(LINK_PORT));
+  return true;
+#else
+  Serial.println("wifi: no wifi_secrets.h found - USB serial only, no link to the cu");
+  return false;
+#endif
+}
+
+/**
+ * Broadcast one already-formatted row to the compute unit.
+ *
+ * Fire and forget: a datagram that does not arrive is not retried, because on
+ * this link a late sample is worse than a missing one. The row is printed
+ * locally either way, so a broken link never costs the local record.
+ *
+ * @param line NUL-terminated row, without its trailing newline.
+ */
+static void linkSend(const char *line) {
+  if (!linkUp) {
+    return;
+  }
+  WiFiUDP udp;
+  if (!udp.begin(LINK_PORT)) {
+    ++g_linkFailCount;
+    if (!linkFaultReported) {
+      Serial.println("link: udp.begin failed - not sending");
+      linkFaultReported = true;
+    }
+    return;
+  }
+
+  const IPAddress destination = linkDestination();
+
+  if (udp.beginPacket(destination, LINK_PORT)) {
+    udp.write(reinterpret_cast<const uint8_t *>(line), strlen(line));
+    udp.endPacket();
+    ++g_linkSentCount;
+  } else {
+    ++g_linkFailCount;
+    if (!linkFaultReported) {
+      Serial.println("link: beginPacket failed - not sending");
+      linkFaultReported = true;
+    }
+  }
+  udp.stop();
+}
+
+/**
+ * Sample the laser button.
+ *
+ * @return true while the button is held down, i.e. while GPIO 18 is pulled to GND.
+ */
+static bool buttonPressed() {
+  return digitalRead(PIN_BUTTON) == LOW;
+}
 
 // ---------------------------------------------------------------------------
 // MPU6050 register map and conversion constants — driven from raw registers per
@@ -407,8 +611,9 @@ static bool attemptBringUp() {
  *
  * The stats are the test's verdict in one line pair: ToF ok/timeout counts and
  * valid-range extremes, IMU ok/short/nack counts, and the button presses
- * counted. Sending the header last means a monitor attaching after boot
- * orients on the first thing it sees.
+ * counted. A link line follows, because a monitor attaching after boot cannot
+ * see the one-shot Wi-Fi join messages. Sending the header last means a monitor
+ * attaching after boot orients on the first thing it sees.
  */
 static void reportSensorState() {
   printToFIdentity();
@@ -443,6 +648,19 @@ static void reportSensorState() {
                   static_cast<unsigned long>(g_imuShortCount),
                   static_cast<unsigned long>(g_imuNackCount),
                   static_cast<unsigned long>(g_pressCount));
+  }
+  if (linkUp) {
+    Serial.print("link: up, sending to ");
+    Serial.print(linkDestination());
+    Serial.printf(":%u, sent=%lu failed=%lu\n",
+                  static_cast<unsigned>(LINK_PORT),
+                  static_cast<unsigned long>(g_linkSentCount),
+                  static_cast<unsigned long>(g_linkFailCount));
+  } else {
+    Serial.printf("link: down (no wifi_secrets.h or join failed),"
+                  " sent=%lu failed=%lu\n",
+                  static_cast<unsigned long>(g_linkSentCount),
+                  static_cast<unsigned long>(g_linkFailCount));
   }
   emitTableHeader();
 }
@@ -498,7 +716,7 @@ void setup() {
 
   Serial.println();
   Serial.println("Auris pointer - sensor-node test (ToF + IMU + button; laptop"
-                 " USB only, nothing to the cu)");
+                 " USB power; Wi-Fi link to the cu while the button is held)");
 #ifdef ESP_ARDUINO_VERSION_STR
   Serial.printf("arduino-esp32 core %s\n", ESP_ARDUINO_VERSION_STR);
 #endif
@@ -511,11 +729,14 @@ void setup() {
     delay(1000);
   }
 
+  linkUp = wifiConnect();
+
   sensor.startContinuous(RANGE_PERIOD_MS);
 
   Serial.println("streaming ToF long mode (to 4 m) alongside IMU and button:"
                  " wave a hand across the lens for range, tap the button for"
                  " btn=1, tilt the board for the gyro columns");
+  Serial.println("hold the button to broadcast the same rows to the compute unit");
   emitStatusLegend();
   emitTableHeader();
   Serial.flush();
@@ -530,7 +751,9 @@ void setup() {
  * the range columns while the IMU columns still carry that row's true burst,
  * an IMU transfer that is short or NAKed emits nan for the IMU columns while
  * the range columns still carry the row's fresh measurement, and neither ever
- * decrescendos into a plausible-looking zero. The loop is paced to
+ * decrescendos into a plausible-looking zero. While the button is held, the
+ * same row is also broadcast to the compute unit; the local print happens first,
+ * so the USB record does not depend on the link. The loop is paced to
  * LOOP_PERIOD_MS so the serial link is never overrun; with the ToF's blocking
  * read doing the waiting, the effective row cadence is the ~94 ms two-period
  * stride the tof_test_l1x bench captures measured.
@@ -586,8 +809,13 @@ void loop() {
     ++g_imuNackCount;
   }
 
-  // --- Button: raw level, one column, press edges counted for the stats ------
-  const bool pressed = (digitalRead(PIN_BUTTON) == LOW);
+  // --- Button: raw level, one column, and the gate on the UDP link ------------
+  const bool pressed = buttonPressed();
+  if (pressed != g_buttonWasPressed) {
+    Serial.println();
+    Serial.println(pressed ? "button DOWN - streaming to the compute unit"
+                           : "button UP - stopped streaming to the compute unit");
+  }
   if (!g_buttonWasPressed && pressed) {
     ++g_pressCount;
   }
@@ -632,11 +860,17 @@ void loop() {
     ++g_tofTimeoutCount;
   }
 
-  Serial.printf("%-7lu\t%-3d\t%-7.3f\t%-7.3f\t%-7.3f\t%-8.2f\t%-8.2f\t%-8.2f"
-                "\t%-6.2f\t%-6s\t%-8s\t%-6s\t%-8s\t%-8s\t%s\n",
-                static_cast<unsigned long>(millis()), pressed ? 1 : 0,
-                accelXg, accelYg, accelZg, gyroXdps, gyroYdps, gyroZdps,
-                tempC, imuStatus, rangeBuf, statusBuf, sigBuf, ambBuf, tofBuf);
+  char row[192];
+  snprintf(row, sizeof(row),
+           "%-7lu\t%-3d\t%-7.3f\t%-7.3f\t%-7.3f\t%-8.2f\t%-8.2f\t%-8.2f"
+           "\t%-6.2f\t%-6s\t%-8s\t%-6s\t%-8s\t%-8s\t%s",
+           static_cast<unsigned long>(millis()), pressed ? 1 : 0,
+           accelXg, accelYg, accelZg, gyroXdps, gyroYdps, gyroZdps,
+           tempC, imuStatus, rangeBuf, statusBuf, sigBuf, ambBuf, tofBuf);
+  Serial.println(row);
+  if (pressed) {
+    linkSend(row);
+  }
   ++g_rowCount;
 
   if (nowMs - lastProbeMs >= PROBE_PERIOD_MS) {
