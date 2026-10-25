@@ -4,3 +4,6 @@ build/
 # Network credentials — must never be committed.
 wifi_secrets.h
 *.secrets.h
+
+# Exported binaries from pointer_sensor_node/build.sh.
+dist/

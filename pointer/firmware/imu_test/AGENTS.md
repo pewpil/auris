@@ -121,7 +121,7 @@ The receiving counter keeps rising even when printing is throttled, so a rate-li
 
 ## Build, flash, and monitor
 
-arduino-cli with the `esp32:esp32` core pinned in `sketch.yaml`. **This sketch's profile is `imu-test`.** The parent's build section documents `--profile pointer-sensor-node`, and that profile does not exist in this repository — the directory it names has not been created. Copying the parent's commands into this directory verbatim will fail; use these instead, from this directory:
+arduino-cli with the `esp32:esp32` core pinned in `sketch.yaml`. **This sketch's profile is `imu-test`.** The parent's `--profile pointer-sensor-node` now belongs to the deployed firmware in [`../pointer_sensor_node/`](../pointer_sensor_node/); profiles are per sketch, so copying the parent's commands into this directory verbatim will still fail. Use these instead, from this directory:
 
 ```bash
 arduino-cli compile --profile imu-test

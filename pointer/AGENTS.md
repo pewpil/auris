@@ -10,7 +10,7 @@ Standing instructions and hardware specification for the Auris pointer. This fil
 
 The pointer is the handheld device of [§1.5](../AGENTS.md): it carries a laser and its button, an IMU that establishes the pointer's own orientation, and a time-of-flight sensor that gives the range to whatever the laser is aimed at. It does all of its own orientation fusion onboard and sends the result onward to the compute unit. It is not the compute unit — that is the Raspberry Pi, which lives in `cu/`.
 
-**Current state: a breadboard prototype.** The ESP32, the IMU breakout, and the ToF breakout are on a breadboard and the wiring is being established from the connection list below. Nothing in this directory has been built yet; the firmware rewrite follows the wiring, not the other way round.
+**Current state: the deployable firmware exists; the final harness is still being assembled.** The ESP32, the IMU breakout, and the ToF breakout are on a breadboard and the wiring follows the connection list below. The firmware that runs on the pointer itself lives in [`firmware/pointer_sensor_node/`](firmware/pointer_sensor_node/AGENTS.md); the three sibling sketches in `firmware/` are the bring-up record. The bench harness that produced the current measurements is not yet the final pointer assembly, so its numbers stay development observations.
 
 ## Components
 
@@ -18,7 +18,7 @@ The pointer is the handheld device of [§1.5](../AGENTS.md): it carries a laser 
 |---|---|---|
 | MCU | ESP32 NodeMCU-32S (ESP32-D0WD-V3, ESP32-WROOM-32), **38-pin** breadboard layout | 19 pins per row at 2.54 mm. Onboard CP2102 USB-UART, so the laptop's USB port both powers the board and carries the serial link. See the pin table below before touching it — this layout also breaks out six flash pins |
 | IMU | MPU6050 on a GY-521 breakout | 3-axis accelerometer and gyroscope, plus die temperature |
-| ToF | VL53L0X breakout | Single-zone time-of-flight, non-contact range |
+| ToF | VL53L1X breakout (CJMCU-531, sold mislabeled "VL53L0X") | Single-zone time-of-flight, non-contact range; identity `EA CC 10 FF` (`0xEACC`) at 16-bit index `0x010F` |
 | Input | Tactile push button, momentary, 4-leg | Laser trigger |
 | Passives | 2 × 4.7 kΩ resistor, 2 × 100 nF ceramic capacitor | I²C pull-ups and decoupling |
 | Common | Half-size breadboard, jumper wires, USB **data** cable | |
@@ -31,9 +31,9 @@ Every ESP32 pin is given by its row and number **and** its GPIO number. Remember
 
 | From | To | Function |
 |---|---|---|
-| `r2 #47` — **GPIO21** | `MPU6050.SDA` and `VL53L0X.SDA` | I²C data — shared by both sensors |
-| `r2 #44` — **GPIO22** | `MPU6050.SCL` and `VL53L0X.SCL` | I²C clock — shared by both sensors |
-| `r1 #9` — **GPIO27** | `VL53L0X.XSHUT` | ToF enable, actively driven — **not left floating** |
+| `r2 #47` — **GPIO21** | `MPU6050.SDA` and `VL53L1X.SDA` | I²C data — shared by both sensors |
+| `r2 #44` — **GPIO22** | `MPU6050.SCL` and `VL53L1X.SCL` | I²C clock — shared by both sensors |
+| `r1 #9` — **GPIO27** | `VL53L1X.XSHUT` | ToF enable, actively driven — **not left floating** |
 | `r2 #50` — **GPIO18** | `Button.leg A` | Button input, internal pull-up |
 | `r1 #19` — `3V3` | breadboard **+** rail, and from there both `VCC` pins | 3.3 V power |
 | `r2 #42`, `r1 #2`, `r1 #6`, or `r2 #48` — `GND` | breadboard **−** rail | Common ground |
@@ -42,13 +42,13 @@ Every ESP32 pin is given by its row and number **and** its GPIO number. Remember
 | `MPU6050.GND` | breadboard **−** rail | Common ground |
 | `MPU6050.AD0` | breadboard **−** rail | Selects I²C address `0x68` |
 | `MPU6050.XDA`, `MPU6050.XCL`, `MPU6050.INT` | *no connection* | Auxiliary bus and interrupt, unused |
-| `VL53L0X.VCC` | breadboard **+** rail | Power |
-| `VL53L0X.GND` | breadboard **−** rail | Common ground |
-| `VL53L0X.GPIO1` | *no connection* | Interrupt output, unused |
+| `VL53L1X.VCC` | breadboard **+** rail | Power |
+| `VL53L1X.GND` | breadboard **−** rail | Common ground |
+| `VL53L1X.GPIO1` | *no connection* | Interrupt output, unused |
 | `4.7 kΩ` #1 | between the SDA net and the **+** rail | SDA pull-up |
 | `4.7 kΩ` #2 | between the SCL net and the **+** rail | SCL pull-up |
 | `100 nF` #1 | across `MPU6050.VCC` and `MPU6050.GND` | Decoupling, place at the module |
-| `100 nF` #2 | across `VL53L0X.VCC` and `VL53L0X.GND` | Decoupling, place at the module |
+| `100 nF` #2 | across `VL53L1X.VCC` and `VL53L1X.GND` | Decoupling, place at the module |
 
 This board has **four `GND` positions** — `r1 #2`, `r1 #6`, `r2 #48`, and `r2 #42`. Any of them is fine; pick the one nearest your wiring and use it consistently. Do not use the 5 V input at `r1 #1` as a ground.
 
@@ -56,13 +56,13 @@ This board has **four `GND` positions** — `r1 #2`, `r1 #6`, `r2 #48`, and `r2 
 
 **MPU6050 (GY-521).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` to `r2 #47` (GPIO21), `SCL` to `r2 #44` (GPIO22), `AD0` to ground. `XDA`, `XCL`, and `INT` stay unconnected. Tying `AD0` low puts the part at `0x68`; leaving it floating puts it at `0x69`, which nothing here probes for.
 
-**VL53L0X.** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `r1 #9` (GPIO27), `GPIO1` unconnected. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
+**VL53L1X (CJMCU-531).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `r1 #9` (GPIO27), `GPIO1` unconnected. The CJMCU-531 regulates its own 2.8 V core from the 3.3 V rail; feed it from 3V3 only and never put 5 V on its `VCC`. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
 
 **Button.** One leg to `r2 #50` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected, so a button wired across one side is permanently closed and reads pressed all the time.
 
 ## I²C bus
 
-Both sensors share one bus. There is no address conflict: the MPU6050 answers at `0x68` (or `0x69` if `AD0` is tied high), and the **VL53L0X has no address pins at all** — it is fixed at `0x29`.
+Both sensors share one bus. There is no address conflict: the MPU6050 answers at `0x68` (or `0x69` if `AD0` is tied high), and the **VL53L1X has no address pins at all** — it is fixed at `0x29`.
 
 **Fit both 4.7 kΩ pull-ups even though the GY-521 usually carries its own.** If your GY-521 already has 4.7 kΩ on each line, the two in parallel give roughly 2.3 kΩ, which is still comfortably within spec for 400 kHz over breadboard-length wiring. Do not stack three sets — that approaches 1.6 kΩ and is needlessly stiff for the bus.
 
@@ -130,8 +130,8 @@ The pins this build uses — **16, 17, 21, and 28** (`GPIO21`, `GPIO22`, `GPIO18
 
 Check these with the USB cable disconnected and the breadboard fully populated. Each one is a way to damage a module or waste an afternoon.
 
-1. **`VL53L0X.VREF` must be 2.8 V.** The VL53L0X is a 2.8 V part and its `VREF` pins must be held at 2.8 V, never at 3.3 V or 5 V. Most breakouts supply this from an on-board regulator, but cheap clones vary and some tie `VREF` directly to `VCC`. Identify how your module sets `VREF`, and confirm with a multimeter that the pin sits at 2.8 V **before** powering the board. If your breakout ties `VREF` straight to `VCC`, then feeding it 3.3 V from the ESP32 rail will overdrive it — stop and get a breakout that regulates.
-2. **Every ground is joined.** `ESP32.GND`, `MPU6050.GND`, `VL53L0X.GND`, and the button's second leg must all share the breadboard's `−` rail. I²C needs a real common ground, not a shared 3V3 connection.
+1. **The ToF breakout must regulate its own 2.8 V core supply.** The VL53L1X's laser and core run at 2.8 V; the CJMCU-531 provides that regulation from the 3V3 rail. Feed the module from the 3.3 V rail only — never 5 V on its `VCC` — and do not substitute a bare VL53L1X die without its regulator. The CJMCU-531 has been used on this bench across several sessions and is the supported module.
+2. **Every ground is joined.** `ESP32.GND`, `MPU6050.GND`, `VL53L1X.GND`, and the button's second leg must all share the breadboard's `−` rail. I²C needs a real common ground, not a shared 3V3 connection.
 3. **No rail short.** Confirm the `+` and `−` rails are not bridged before applying power.
 4. **Continuity on SDA and SCL.** Each pull-up resistor must reach 3V3 and the correct data line; a resistor bridging the two data lines together is the classic breadboard error and shows up only as a completely dead bus.
 5. **Button legs are opposite sides.** Confirm continuity between the two legs you chose before relying on them.
@@ -148,10 +148,12 @@ Once the above hold, connect the USB cable. The board powers the sensors through
 
 ## Firmware contract
 
-The firmware is being rewritten to match this wiring. When it exists, it is expected to meet the following. Until it does, treat `pointer/README.md` as unverified or absent rather than as documentation.
+The deployable firmware in [`firmware/pointer_sensor_node/`](firmware/pointer_sensor_node/AGENTS.md) now implements the following contract. The bring-up sketches in `firmware/` remain a record, not the deployment.
 
-- **Read the MPU6050 directly over `Wire`.** No third-party library is required: a `WHO_AM_I` probe, four configuration writes, and one 14-byte burst per sample cover it. The VL53L0X driver is the one legitimate exception, because that part's init sequence is long and must be correct.
-- **Emit CSV on the USB serial port**, one line per sample, with units named in the column headers — acceleration in g, angular rate in deg/s, temperature in degC, range in millimetres. Include an explicit status column rather than folding failure into the value.
+- **Read the MPU6050 directly over `Wire`.** No third-party library is required: a `WHO_AM_I` probe, four configuration writes, and one 14-byte burst per sample cover it. The VL53L1X driver is the one legitimate exception, because that part's init sequence is long and must be correct.
+- **Emit CSV on the USB serial port**, one line per sample, with units named in the column headers — acceleration in g, angular rate in deg/s, temperature in degC, range in millimetres. Include an explicit status column rather than folding failure into the value. The deployed firmware also emits the same rows over the prototype's Wi-Fi UDP link while the button is held, so a tethered laptop and the compute unit see one schema.
+- **While the button is held, send the fused orientation and range onward to the compute unit.** The prototype link is Wi-Fi UDP on port 5005 (the `imu_test` path); the final link medium is still open. Release stops the stream, and the compute unit times out so a lost release cannot leave sound running.
+- **Persist per-device calibration.** The GY-521 on this bench has a zero-g offset far outside the MPU6050 datasheet, so the firmware stores accelerometer and gyro offsets in NVS through the `@CAL` procedure rather than trusting raw registers.
 - **Never emit a plausible-looking zero for a failed read.** A dropped transfer must be visibly missing data, so a disconnection is diagnosable from the stream alone rather than looking like a sensor reading zero.
 - **Drive `XSHUT` through the startup sequence** described above, and gate all ToF traffic behind that.
 - **Report presence, not just data.** The firmware should say at boot which addresses acknowledged, so a miswired sensor is named outright instead of surfacing later as an unexplained column of zeros.
@@ -167,13 +169,15 @@ The USB-UART device is owned by `root:uucp`, so the user account must be in the 
 sudo usermod -aG uucp "$USER"   # then log out and back in
 ```
 
-Commands, from the sketch directory:
+Commands, from the deployed sketch directory [`firmware/pointer_sensor_node/`](firmware/pointer_sensor_node/AGENTS.md):
 
 ```bash
 arduino-cli compile --profile pointer-sensor-node
 arduino-cli upload  --profile pointer-sensor-node --port /dev/ttyUSB0
 arduino-cli monitor --port /dev/ttyUSB0 --config baudrate=115200
 ```
+
+That directory's `build.sh` writes the flashable images into `dist/`, and its `wifi_secrets.h` (copied from `firmware/imu_test/`, untracked) is what enables the link. The sibling bring-up sketches keep their own profiles (`imu-test`, `node-test`, …) and are not the deployment.
 
 **Pin no port in `sketch.yaml`.** arduino-cli aborts a `compile` outright when a `default_port` names a device that is not currently plugged in, which silently breaks offline builds, and the CP2102 renumbers between `/dev/ttyUSB0` and `/dev/ttyUSB1` across replugs anyway. Pass `--port` explicitly on every command that needs one.
 

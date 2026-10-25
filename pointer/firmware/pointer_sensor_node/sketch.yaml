@@ -1,0 +1,13 @@
+# arduino-cli sketch project for the deployable Auris pointer firmware.
+# One profile, one binary, used on the bench and untethered in the field. The
+# VL53L1X is the parent contract's single library exception; the MPU6050 is
+# driven from raw registers.
+default_fqbn: esp32:esp32:nodemcu-32s
+
+profiles:
+  pointer-sensor-node:
+    fqbn: esp32:esp32:nodemcu-32s
+    platforms:
+      - platform: esp32:esp32 (3.3.12)
+    libraries:
+      - VL53L1X (1.3.1)

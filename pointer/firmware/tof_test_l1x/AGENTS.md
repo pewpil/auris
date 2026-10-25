@@ -111,7 +111,7 @@ The bus-traffic conclusion stands: this sketch proves the ToF half of the bus an
 
 ## Build, flash, and monitor
 
-arduino-cli with the `esp32:esp32` core and the Pololu VL53L1X 1.3.1 library pinned in `sketch.yaml`. **This sketch's profile is `tof-test-l1x`.** The parent's build section documents `--profile pointer-sensor-node`, and that profile does not exist in this repository; copying it into this directory will fail. From this directory:
+arduino-cli with the `esp32:esp32` core and the Pololu VL53L1X 1.3.1 library pinned in `sketch.yaml`. **This sketch's profile is `tof-test-l1x`.** The parent's `--profile pointer-sensor-node` now belongs to the deployed firmware in [`../pointer_sensor_node/`](../pointer_sensor_node/); profiles are per sketch, so copying it into this directory will still fail. From this directory:
 
 ```bash
 arduino-cli compile --profile tof-test-l1x

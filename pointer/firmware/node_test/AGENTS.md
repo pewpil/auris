@@ -149,7 +149,7 @@ Not defects — the distance between a bring-up sketch and a firmware, recorded 
 
 ## Build, flash, and monitor
 
-arduino-cli with the `esp32:esp32` core and the Pololu VL53L1X 1.3.1 library pinned in `sketch.yaml`. **This sketch's profile is `node-test`.** The parent's `--profile pointer-sensor-node` does not exist in this repository; copying it in verbatim will fail. From this directory:
+arduino-cli with the `esp32:esp32` core and the Pololu VL53L1X 1.3.1 library pinned in `sketch.yaml`. **This sketch's profile is `node-test`.** The parent's `--profile pointer-sensor-node` now belongs to the deployed firmware in [`../pointer_sensor_node/`](../pointer_sensor_node/); use `node-test` here. From this directory:
 
 ```bash
 arduino-cli compile --profile node-test
