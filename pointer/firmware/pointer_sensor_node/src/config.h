@@ -18,15 +18,15 @@ namespace cfg {
 // and the ToF enable must be actively driven, never floated.
 // ---------------------------------------------------------------------------
 
-/** I2C SDA, shared by the MPU6050 and the VL53L1X. */
+/** Pointer I2C SDA: bottom-row label D21 (between D19 and RX0), shared by both sensors. */
 constexpr uint8_t PIN_I2C_SDA = 21;
-/** I2C SCL, shared by the MPU6050 and the VL53L1X. */
+/** Pointer I2C SCL: bottom-row label D22 (between TX0 and D23), shared by both sensors. */
 constexpr uint8_t PIN_I2C_SCL = 22;
-/** ToF enable (XSHUT), driven low for a hardware reset and high for the run. */
+/** ToF enable (XSHUT): top-row label D27 (between D12 and D26); driven low for reset, high for the run. */
 constexpr uint8_t PIN_TOF_XSHUT = 27;
-/** Laser-trigger button, INPUT_PULLUP: idle high, pressed low. */
+/** Laser-trigger button: bottom-row label D18 (between D5 and D19); INPUT_PULLUP, idle high, pressed low. */
 constexpr uint8_t PIN_BUTTON = 18;
-/** Onboard LED on the NodeMCU-32S; used for provisioning and fault status. */
+/** Onboard LED: bottom-row label D2 (between D15 and D4); provisioning and fault status. */
 constexpr uint8_t PIN_LED = 2;
 
 /** MPU6050 address with AD0 tied to ground. Floating AD0 would move it to 0x69. */
@@ -143,6 +143,17 @@ constexpr uint16_t LINK_PORT = 5005;
 constexpr uint32_t WIFI_RETRY_MS = 5000;
 /** Hostname advertised on the network. */
 constexpr const char *WIFI_HOSTNAME = "auris-pointer";
+
+/**
+ * Whether the button gates the UDP stream.
+ *
+ * The deployed pointer is button-gated: rows leave only while the trigger is
+ * held, and one release packet follows. The current bench phase sets this false
+ * so the link can be exercised continuously without a working button; the
+ * packet still carries the live button field and the gating path stays in the
+ * firmware. Set it true to restore the deployed behaviour.
+ */
+constexpr bool LINK_BUTTON_GATED = false;
 
 // ---------------------------------------------------------------------------
 // Storage.

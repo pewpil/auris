@@ -2,11 +2,11 @@
 # One profile, one binary, used on the bench and untethered in the field. The
 # VL53L1X is the parent contract's single library exception; the MPU6050 is
 # driven from raw registers.
-default_fqbn: esp32:esp32:nodemcu-32s
+default_fqbn: esp32:esp32:esp32doit-devkit-v1
 
 profiles:
   pointer-sensor-node:
-    fqbn: esp32:esp32:nodemcu-32s
+    fqbn: esp32:esp32:esp32doit-devkit-v1
     platforms:
       - platform: esp32:esp32 (3.3.12)
     libraries:

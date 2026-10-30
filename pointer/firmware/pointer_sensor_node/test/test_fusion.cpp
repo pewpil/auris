@@ -163,6 +163,41 @@ int main() {
           "header names the range field");
   }
 
+  // 10. The USB table row is compact, fixed-width, and one line.
+  {
+    PointerPacket p;
+    p.seq = 7;
+    p.tUs = 45384000ULL;  // 45.384 s, prints as t_ms 45384
+    p.bootId = 42;
+    p.button = 1;
+    p.euler = EulerDeg{-158.4f, 25.3f, 124.0f};
+    p.accelG = Vec3{-0.28f, -0.24f, -0.58f};
+    p.flags = kFlagImuOk | kFlagLinkUp;
+    p.rangeMm = 1234;
+    p.rangeStatus = 0;
+    p.rangeAgeMs = 42;
+    p.resetReason = 9;
+
+    char line[320];
+    const int written = formatTableRow(line, sizeof(line), p);
+    check(written > 0, "table row formats");
+    check(written <= 80, "table row fits one 80-column line");
+    check(line[0] == '4', "table row starts with t_ms");
+    check(std::strchr(line, '\t') == nullptr,
+          "table row uses spaces, not tabs");
+    check(std::strchr(line, ',') == nullptr, "table row has no commas");
+    check(std::strstr(line, "0x0A") != nullptr, "table row carries flags");
+
+    char header[320];
+    check(formatTableHeader(header, sizeof(header)) > 0,
+          "table header formats");
+    check(std::strlen(header) <= 80, "table header fits one line");
+    check(std::strstr(header, "roll") != nullptr,
+          "table header names orientation");
+    check(std::strstr(header, "range") != nullptr,
+          "table header names range");
+  }
+
   if (g_failures == 0) {
     std::printf("all host tests passed\n");
     return 0;

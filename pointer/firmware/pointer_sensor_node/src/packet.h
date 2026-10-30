@@ -58,3 +58,34 @@ int formatPacket(char *out, size_t outSize, const PointerPacket &p);
  * @return The comma-separated field names matching `formatPacket()`.
  */
 const char *packetHeader();
+
+/**
+ * Format one packet as a compact fixed-width line for the USB monitor.
+ *
+ * The line is deliberately narrower than the full packet so it fits in one
+ * 80-column terminal line: time in milliseconds, button, ZYX Euler angles in
+ * degrees (one decimal), calibrated acceleration in g (two decimals), range in
+ * mm, range status, range age in ms and the flags byte. The quaternion, gyro,
+ * temperature, sequence, boot id and reset reason remain in the UDP `P1`
+ * packet and are reachable through `@STATUS`; the monitor row is a health and
+ * orientation view, not the link schema.
+ *
+ * Every field is padded to a fixed width and separated by one space, so a
+ * monitor lines the stream up without tabs expanding to the next stop. The row
+ * has no trailing newline and is NUL-terminated.
+ *
+ * @param out Destination buffer; 128 bytes is ample.
+ * @param outSize Capacity of `out` in bytes.
+ * @param p Packet to serialise.
+ * @return Number of characters written, excluding the terminator.
+ */
+int formatTableRow(char *out, size_t outSize, const PointerPacket &p);
+
+/**
+ * Format the column header matching `formatTableRow()`.
+ *
+ * @param out Destination buffer; 128 bytes is ample.
+ * @param outSize Capacity of `out` in bytes.
+ * @return Number of characters written, excluding the terminator.
+ */
+int formatTableHeader(char *out, size_t outSize);

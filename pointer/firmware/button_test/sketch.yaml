@@ -1,0 +1,9 @@
+# arduino-cli sketch project for the button-only bring-up test.
+# One switch on GPIO18; no sensors, no Wi-Fi, no libraries beyond the core.
+default_fqbn: esp32:esp32:esp32doit-devkit-v1
+
+profiles:
+  button-test:
+    fqbn: esp32:esp32:esp32doit-devkit-v1
+    platforms:
+      - platform: esp32:esp32 (3.3.12)

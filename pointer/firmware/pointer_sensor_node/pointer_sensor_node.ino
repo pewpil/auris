@@ -15,8 +15,8 @@
  *   - poll the ToF without blocking, with a hard-reset recovery path;
  *   - while the button is held, send a versioned CSV packet at 100 Hz to the
  *     compute unit over UDP, and stop on release;
- *   - emit the same packet row over USB at 25 Hz for bench work, plus a small
- *     `@` command console for calibration and link provisioning;
+ *   - emit a compact fixed-width table over USB at 25 Hz for bench work, plus a
+ *     small `@` command console for calibration and link provisioning;
  *   - persist calibration, the boot counter, and the unicast override in NVS;
  *   - recover from sensor resets and Wi-Fi drops without rebooting.
  *
@@ -182,14 +182,18 @@ static void updateTimeUs() {
 }
 
 /**
- * Print the USB column header.
+ * Print the USB table header.
  *
- * The row schema is shared with the UDP datagram, so the header is the same
- * string; it is prefixed with `#` to keep it distinguishable from data rows.
+ * The UDP packet is the versioned `P1` CSV schema; the USB stream is a compact
+ * fixed-width table of the orientation, acceleration, range and health fields,
+ * narrow enough for one 80-column line. The header is repeated every five
+ * seconds so a late-attaching monitor orients.
  */
-static void printPacketHeader() {
-  Serial.print("#");
-  Serial.println(packetHeader());
+static void printTableHeader() {
+  char header[320];
+  if (formatTableHeader(header, sizeof(header)) > 0) {
+    Serial.println(header);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -368,9 +372,26 @@ static void serviceButton() {
   }
 }
 
-/** Send held-button packets at 100 Hz and the one-shot release packet. */
+/**
+ * Send packets at 100 Hz.
+ *
+ * In the current bench mode (`LINK_BUTTON_GATED == false`) every row leaves
+ * whenever the link is up, and the packet's button field reports the live
+ * input without gating anything. In the deployed mode (`true`) sending starts
+ * on a press and stops on release, with one final button=0 packet so the
+ * compute unit can stop without waiting for its timeout.
+ */
 static void servicePacket() {
   const bool canSend = g_link.up();
+  if (!cfg::LINK_BUTTON_GATED) {
+    if (canSend && g_timeUs - g_lastPacketUs >= cfg::PACKET_PERIOD_US) {
+      g_lastPacketUs = g_timeUs;
+      sendPacket(g_timeUs, g_buttonStable ? 1 : 0);
+    }
+    g_releasePending = false;
+    return;
+  }
+
   if (g_buttonStable && canSend &&
       g_timeUs - g_lastPacketUs >= cfg::PACKET_PERIOD_US) {
     g_lastPacketUs = g_timeUs;
@@ -389,11 +410,13 @@ static void servicePacket() {
 // ---------------------------------------------------------------------------
 
 /**
- * Emit the USB debug row at 25 Hz and repeat the header every five seconds.
+ * Emit the USB debug table at 25 Hz and repeat the header every five seconds.
  *
- * This is the desktop-interoperability path: the same schema as the UDP
- * datagram, readable with `arduino-cli monitor`, and harmless when no host is
- * connected because every write is non-blocking at this rate.
+ * This is the desktop-interoperability path: a compact fixed-width view of the
+ * same data, readable with `arduino-cli monitor` and harmless when no host is
+ * connected because every write is non-blocking at this rate. The full
+ * quaternion, gyro, temperature, sequence, boot id and reset reason stay in the
+ * UDP packet and `@STATUS`.
  */
 static void serviceSerial() {
   if (g_timeUs - g_lastSerialUs < cfg::SERIAL_PERIOD_US) {
@@ -404,12 +427,12 @@ static void serviceSerial() {
   const uint32_t nowMs = millis();
   if (nowMs - g_lastHeaderMs >= cfg::HEADER_PERIOD_MS) {
     g_lastHeaderMs = nowMs;
-    printPacketHeader();
+    printTableHeader();
   }
 
   PointerPacket p = buildPacket(g_timeUs, g_buttonStable ? 1 : 0);
-  char line[256];
-  if (formatPacket(line, sizeof(line), p) > 0) {
+  char line[320];
+  if (formatTableRow(line, sizeof(line), p) > 0) {
     Serial.println(line);
   }
 }
@@ -630,9 +653,10 @@ static void serviceConsole() {
  * Show a coarse device state on the onboard LED.
  *
  * Patterns: fast blink for a sensor fault, slow blink while the Wi-Fi link is
- * down (or disabled), solid while the button is held, off when everything is
- * nominal. The LED is for the researcher during provisioning; it is not the
- * user-facing interface.
+ * down (or disabled), and, when nominal, solid while the button is held and off
+ * when it is not. In continuous-link bench mode (`LINK_BUTTON_GATED == false`)
+ * the button is ignored for the LED, so nominal means off. The LED is for the
+ * researcher during provisioning; it is not the user-facing interface.
  *
  * @param nowMs Current `millis()` value.
  */
@@ -647,7 +671,7 @@ static void updateLed(uint32_t nowMs) {
     setLed(((nowMs / 500) % 2) == 0);
     return;
   }
-  setLed(g_buttonStable);
+  setLed(cfg::LINK_BUTTON_GATED ? g_buttonStable : false);
 }
 
 /**
@@ -712,13 +736,22 @@ static void bringUpSensors() {
 // ---------------------------------------------------------------------------
 
 /**
- * Initialise the device: bus, settings, link, sensors, fusion seed, and the
- * initial USB banner. Never waits for a serial host.
+ * Initialise the device: bus, button pull-up, settings, link, sensors, fusion
+ * seed, and the initial USB banner. Never waits for a serial host.
  */
 void setup() {
   Serial.begin(115200);
   pinMode(cfg::PIN_LED, OUTPUT);
   setLed(false);
+
+  // The button pin must be pulled up before the first digitalRead. Without
+  // this the pin floats and can read LOW with nothing touching it, which looks
+  // exactly like a permanently held button. button_test/ had this line; the
+  // deployable firmware had lost it.
+  pinMode(cfg::PIN_BUTTON, INPUT_PULLUP);
+  g_buttonRaw = digitalRead(cfg::PIN_BUTTON) == LOW;
+  g_buttonStable = false;
+  g_buttonChangedMs = millis();
 
   Wire.begin(cfg::PIN_I2C_SDA, cfg::PIN_I2C_SCL);
   Wire.setClock(cfg::I2C_CLOCK_HZ);
@@ -754,7 +787,7 @@ void setup() {
   g_lastMicrosUs = micros();
   g_lastTofPollMs = millis();
   g_lastHeaderMs = millis();
-  printPacketHeader();
+  printTableHeader();
   printStatus();
   Serial.println("#ready; hold the button to stream to the compute unit");
   Serial.flush();

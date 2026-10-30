@@ -10,13 +10,14 @@ Standing instructions and hardware specification for the Auris pointer. This fil
 
 The pointer is the handheld device of [§1.5](../AGENTS.md): it carries a laser and its button, an IMU that establishes the pointer's own orientation, and a time-of-flight sensor that gives the range to whatever the laser is aimed at. It does all of its own orientation fusion onboard and sends the result onward to the compute unit. It is not the compute unit — that is the Raspberry Pi, which lives in `cu/`.
 
-**Current state: the deployable firmware exists; the final harness is still being assembled.** The ESP32, the IMU breakout, and the ToF breakout are on a breadboard and the wiring follows the connection list below. The firmware that runs on the pointer itself lives in [`firmware/pointer_sensor_node/`](firmware/pointer_sensor_node/AGENTS.md); the three sibling sketches in `firmware/` are the bring-up record. The bench harness that produced the current measurements is not yet the final pointer assembly, so its numbers stay development observations.
+**Current state: the deployable firmware exists and the bench harness is populated with both 100 nF capacitors and the optional 100 µF; the final enclosure, power source, and button check are open.** The pointer's **30-pin ESP32 DevKit V1**, the IMU breakout, and the ToF breakout are on a breadboard and the wiring follows the connection list below. The **38-pin NodeMCU-32S** that previously served as the bench pointer is now the compute unit's ESP-NOW bridge, wired to the Pi by USB. The firmware that runs on the pointer itself lives in [`firmware/pointer_sensor_node/`](firmware/pointer_sensor_node/AGENTS.md); the sibling sketches in `firmware/` are the bring-up record, including the button-only [`firmware/button_test/`](firmware/button_test/AGENTS.md). The bench harness is not yet the final pointer assembly, so its numbers stay development observations.
 
 ## Components
 
 | Component | Part | Notes |
 |---|---|---|
-| MCU | ESP32 NodeMCU-32S (ESP32-D0WD-V3, ESP32-WROOM-32), **38-pin** breadboard layout | 19 pins per row at 2.54 mm. Onboard CP2102 USB-UART, so the laptop's USB port both powers the board and carries the serial link. See the pin table below before touching it — this layout also breaks out six flash pins |
+| MCU (pointer) | **30-pin ESP32 DevKit V1** (ESP32-D0WD-V3, ESP32-WROOM-32), silkscreen-labelled pins | 15 pins per row; the printed labels are the authority, not a row/column number. USB powers it and carries the serial link during provisioning. See [the pointer pin map](#pointer-board-pin-map-30-pin-devkit-v1) for the labels and their neighbours. |
+| Compute-unit bridge | **38-pin NodeMCU-32S** (the previous bench pointer), USB to the Pi | Runs [`cu/espnow_bridge/`](../../cu/espnow_bridge/AGENTS.md); its pin table is [below](#compute-unit-bridge-pin-table-38-pin-nodemcu-32s). |
 | IMU | MPU6050 on a GY-521 breakout | 3-axis accelerometer and gyroscope, plus die temperature |
 | ToF | VL53L1X breakout (CJMCU-531, sold mislabeled "VL53L0X") | Single-zone time-of-flight, non-contact range; identity `EA CC 10 FF` (`0xEACC`) at 16-bit index `0x010F` |
 | Input | Tactile push button, momentary, 4-leg | Laser trigger |
@@ -27,16 +28,16 @@ The pointer is the handheld device of [§1.5](../AGENTS.md): it carries a laser 
 
 This is the wiring. Build it exactly as written, one row at a time, with the USB cable **disconnected** until the last row.
 
-Every ESP32 pin is given by its row and number **and** its GPIO number. Remember that the two rows are numbered differently — `r1` runs 1–19 and `r2` runs 60–42 — so the same column carries two unrelated numbers. Match the GPIO number against the table above; use the position only to find the pin, since positions are easy to misread with the board facing the other way.
+The pointer's board prints its pin names on the silkscreen, so the labels are the authority; the 38-pin bridge's row/column numbering does not apply here. The bottom row runs `3V3, GND, D15, D2, D4, RX2, TX2, D5, D18, D19, D21, RX0, TX0, D22, D23`; the top row is `VN, GND, D13, D12, D27, D26, D25, D33, D32, D35, D34, VN, VP, EN` as printed. The used pins and their neighbours are in [the pointer pin map](#pointer-board-pin-map-30-pin-devkit-v1).
 
 | From | To | Function |
 |---|---|---|
-| `r2 #47` — **GPIO21** | `MPU6050.SDA` and `VL53L1X.SDA` | I²C data — shared by both sensors |
-| `r2 #44` — **GPIO22** | `MPU6050.SCL` and `VL53L1X.SCL` | I²C clock — shared by both sensors |
-| `r1 #9` — **GPIO27** | `VL53L1X.XSHUT` | ToF enable, actively driven — **not left floating** |
-| `r2 #50` — **GPIO18** | `Button.leg A` | Button input, internal pull-up |
-| `r1 #19` — `3V3` | breadboard **+** rail, and from there both `VCC` pins | 3.3 V power |
-| `r2 #42`, `r1 #2`, `r1 #6`, or `r2 #48` — `GND` | breadboard **−** rail | Common ground |
+| `D21` — **GPIO21** (bottom, between `D19` and `RX0`) | `MPU6050.SDA` and `VL53L1X.SDA` | I²C data — shared by both sensors |
+| `D22` — **GPIO22** (bottom, between `TX0` and `D23`) | `MPU6050.SCL` and `VL53L1X.SCL` | I²C clock — shared by both sensors |
+| `D27` — **GPIO27** (top, between `D12` and `D26`) | `VL53L1X.XSHUT` | ToF enable, actively driven — **not left floating** |
+| `D18` — **GPIO18** (bottom, between `D5` and `D19`) | `Button.leg A` | Button input, internal pull-up |
+| `3V3` (bottom, next to `GND`) | breadboard **+** rail, and from there both `VCC` pins | 3.3 V power |
+| `GND` (bottom, next to `3V3`; top row also has `GND`) | breadboard **−** rail | Common ground |
 | `Button.leg B` | breadboard **−** rail | Closes GPIO 18 to ground when held |
 | `MPU6050.VCC` | breadboard **+** rail | Power |
 | `MPU6050.GND` | breadboard **−** rail | Common ground |
@@ -50,15 +51,15 @@ Every ESP32 pin is given by its row and number **and** its GPIO number. Remember
 | `100 nF` #1 | across `MPU6050.VCC` and `MPU6050.GND` | Decoupling, place at the module |
 | `100 nF` #2 | across `VL53L1X.VCC` and `VL53L1X.GND` | Decoupling, place at the module |
 
-This board has **four `GND` positions** — `r1 #2`, `r1 #6`, `r2 #48`, and `r2 #42`. Any of them is fine; pick the one nearest your wiring and use it consistently. Do not use the 5 V input at `r1 #1` as a ground.
+The pointer board exposes `GND` on both rows (bottom next to `3V3`, and one on the top row). Pick the bottom one next to the 3V3 feed and keep the sensor returns on the same rail. Do not use the `VIN`/5 V pin as a ground.
 
 ### Per-module detail
 
-**MPU6050 (GY-521).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` to `r2 #47` (GPIO21), `SCL` to `r2 #44` (GPIO22), `AD0` to ground. `XDA`, `XCL`, and `INT` stay unconnected. Tying `AD0` low puts the part at `0x68`; leaving it floating puts it at `0x69`, which nothing here probes for.
+**MPU6050 (GY-521).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` to `D21` (GPIO21), `SCL` to `D22` (GPIO22), `AD0` to ground. `XDA`, `XCL`, and `INT` stay unconnected. Tying `AD0` low puts the part at `0x68`; leaving it floating puts it at `0x69`, which nothing here probes for.
 
-**VL53L1X (CJMCU-531).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `r1 #9` (GPIO27), `GPIO1` unconnected. The CJMCU-531 regulates its own 2.8 V core from the 3.3 V rail; feed it from 3V3 only and never put 5 V on its `VCC`. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
+**VL53L1X (CJMCU-531).** `VCC` to the **+** rail, `GND` to the **−** rail, `SDA` and `SCL` shared with the IMU, `XSHUT` to `D27` (GPIO27), `GPIO1` unconnected. The CJMCU-531 regulates its own 2.8 V core from the 3.3 V rail; feed it from 3V3 only and never put 5 V on its `VCC`. **Read the "Verify before first power-up" section before connecting this one** — its supply requirements differ from the IMU's.
 
-**Button.** One leg to `r2 #50` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected, so a button wired across one side is permanently closed and reads pressed all the time.
+**Button.** One leg to `D18` (GPIO18), the opposite leg to ground. The firmware configures GPIO 18 as `INPUT_PULLUP`, so an idle button reads `HIGH` and a pressed one reads `LOW`. On a four-leg tactile switch, pick two legs on **opposite sides** of the switch's electrical contact; the two outer legs on the same side are internally connected, so a button wired across one side is permanently closed and reads pressed all the time.
 
 ## I²C bus
 
@@ -72,13 +73,36 @@ Run the bus at **400 kHz**, which both parts rate well above. Keep SDA and SCL r
 
 This is the single most important change from the previous build, and it is a correction rather than a preference.
 
-With `XSHUT` left unconnected, the ToF either never enables or holds the bus in a state that makes **every other device on it unreadable**. In the previous prototype the IMU never produced a valid sample with the ToF attached — readings came back as dropped transfers or as all-zero register dumps — and recovered completely once the ToF was removed. Driving `XSHUT` from `r1 #9` (GPIO27) is what makes it possible to have both sensors on one bus.
+With `XSHUT` left unconnected, the ToF either never enables or holds the bus in a state that makes **every other device on it unreadable**. In the previous prototype the IMU never produced a valid sample with the ToF attached — readings came back as dropped transfers or as all-zero register dumps — and recovered completely once the ToF was removed. Driving `XSHUT` from `D27` (GPIO27) is what makes it possible to have both sensors on one bus.
 
 The firmware must therefore assert `XSHUT` deliberately rather than assuming the sensor comes up on its own: hold it **low** briefly to force a hardware reset, release it **high**, and wait for the part to become responsive before issuing any I²C transaction to it. The datasheet requires a settling interval after enable; treat anything under about 100 ms as unverified.
 
-## ESP32 header pins
+## Pointer board pin map (30-pin DevKit V1)
 
-This is a **38-pin NodeMCU-32S** (Ai-Thinker layout, 2.54 mm pitch). The board is named for the 32 usable GPIOs it breaks out, but it also exposes pins wired to the module's own SPI flash, and those must never be used. This board labels them by their flash function rather than by GPIO number, so they read like harmless signal names.
+The pointer uses the **30-pin ESP32 DevKit V1**. Its pins are labelled on the silkscreen, and those labels are the authority; there is no row/column number to translate. The two rows as reported are:
+
+| Row | Labels, left to right |
+|---|---|
+| Top | `VN`, `GND`, `D13`, `D12`, `D27`, `D26`, `D25`, `D33`, `D32`, `D35`, `D34`, `VN`, `VP`, `EN` |
+| Bottom | `3V3`, `GND`, `D15`, `D2`, `D4`, `RX2`, `TX2`, `D5`, `D18`, `D19`, `D21`, `RX0`, `TX0`, `D22`, `D23` |
+
+The top row as reported has 14 labels and two `VN`s; a standard 30-pin DevKit V1 has 15 per side, usually with `VIN` at one end and `D14` between `D12` and `D27`. Confirm the printed labels before relying on the full row; the signals this build uses are unambiguous: `D27` sits between `D12` and `D26`, and `D18`, `D21`, `D22`, `3V3` and `GND` are on the bottom row as listed.
+
+| Signal | Pin | Neighbours / note |
+|---|---|---|
+| I²C SDA | `D21` (GPIO21) | bottom row, between `D19` and `RX0` |
+| I²C SCL | `D22` (GPIO22) | bottom row, between `TX0` and `D23` |
+| ToF XSHUT | `D27` (GPIO27) | top row, between `D12` and `D26`; driven, never floated |
+| Button | `D18` (GPIO18) | bottom row, between `D5` and `D19`; `INPUT_PULLUP`, pressed LOW |
+| Onboard LED | `D2` (GPIO2) | bottom row, between `D15` and `D4`; no external wire |
+| 3V3 rail | `3V3` | bottom row, next to `GND` |
+| Ground rail | `GND` | bottom row, next to `3V3`; the top row also exposes `GND` |
+
+The 30-pin board does not break out the SPI-flash pins, so the flash-pin warning below applies only to the 38-pin bridge.
+
+## Compute-unit bridge pin table (38-pin NodeMCU-32S)
+
+This table is for the **bridge**, not the pointer; the pointer's labels are above. This is a **38-pin NodeMCU-32S** (Ai-Thinker layout, 2.54 mm pitch). The board is named for the 32 usable GPIOs it breaks out, but it also exposes pins wired to the module's own SPI flash, and those must never be used. This board labels them by their flash function rather than by GPIO number, so they read like harmless signal names.
 
 **The two rows are numbered differently, and this is deliberate.** `r1` is the top row, numbered **1 to 19**. `r2` is the bottom row, numbered **60 down to 42** across those same columns. Each physical column therefore has two different numbers, and a column is identified by both: the top pin as `r1 #n`, the bottom pin as `r2 #n`. Do not assume a number carries over between rows — `r1 #9` and `r2 #50` are in the same column but are unrelated numbers.
 
@@ -106,7 +130,7 @@ This is a **38-pin NodeMCU-32S** (Ai-Thinker layout, 2.54 mm pitch). The board i
 | **18** | **18** | `EN` — chip enable / reset, active **LOW**  | **43** | `p23` — **GPIO23** — free                  |
 | **19** | **19** | `3V3` — 3.3 V output rail                   | **42** | `GND`                                      |
 
-All four pins this build uses fall in the free category: **`r1 #9`** (GPIO27, ToF `XSHUT`), **`r2 #50`** (GPIO18, button), **`r2 #47`** (GPIO21, SDA), and **`r2 #44`** (GPIO22, SCL).
+The pointer's four signals are **`D18`**, **`D21`**, **`D22`** and **`D27`** (GPIO18, 21, 22, 27), with the onboard LED on **`D2`** (GPIO2). The bridge uses only its USB connection to the Pi; the 38-pin table above is retained for the bridge hardware, not the pointer.
 
 One discrepancy worth recording: this board's headers do not appear to expose `CMD`, the sixth flash line (GPIO11). The five flash pins that are present sit at `r2 #60` (`clk`), `r2 #59` (`sdd`), `r2 #58` (`sd1`), `r1 #3` (`sd3`), and `r1 #4` (`sd2`).
 
@@ -135,7 +159,7 @@ Check these with the USB cable disconnected and the breadboard fully populated. 
 3. **No rail short.** Confirm the `+` and `−` rails are not bridged before applying power.
 4. **Continuity on SDA and SCL.** Each pull-up resistor must reach 3V3 and the correct data line; a resistor bridging the two data lines together is the classic breadboard error and shows up only as a completely dead bus.
 5. **Button legs are opposite sides.** Confirm continuity between the two legs you chose before relying on them.
-6. **No wire is on a flash pin.** Check that nothing is connected to pins 4, 5, 6, 10, 11, or 12 — the ones labelled `cmd`, `sd3`, `sd2`, `sd1`, `sdd`, `clk`. A board that boots now and not after you finish wiring is almost always this.
+6. **No wire is on a flash pin.** On the 38-pin bridge, check that nothing is connected to pins 4, 5, 6, 10, 11, or 12 — the ones labelled `cmd`, `sd3`, `sd2`, `sd1`, `sdd`, `clk`. The pointer's 30-pin board does not break those pins out; check its labels against [the pointer pin map](#pointer-board-pin-map-30-pin-devkit-v1).
 
 Once the above hold, connect the USB cable. The board powers the sensors through the 3V3 regulator, so there is no separate supply to sequence.
 
@@ -151,17 +175,55 @@ Once the above hold, connect the USB cable. The board powers the sensors through
 The deployable firmware in [`firmware/pointer_sensor_node/`](firmware/pointer_sensor_node/AGENTS.md) now implements the following contract. The bring-up sketches in `firmware/` remain a record, not the deployment.
 
 - **Read the MPU6050 directly over `Wire`.** No third-party library is required: a `WHO_AM_I` probe, four configuration writes, and one 14-byte burst per sample cover it. The VL53L1X driver is the one legitimate exception, because that part's init sequence is long and must be correct.
-- **Emit CSV on the USB serial port**, one line per sample, with units named in the column headers — acceleration in g, angular rate in deg/s, temperature in degC, range in millimetres. Include an explicit status column rather than folding failure into the value. The deployed firmware also emits the same rows over the prototype's Wi-Fi UDP link while the button is held, so a tethered laptop and the compute unit see one schema.
-- **While the button is held, send the fused orientation and range onward to the compute unit.** The prototype link is Wi-Fi UDP on port 5005 (the `imu_test` path); the final link medium is still open. Release stops the stream, and the compute unit times out so a lost release cannot leave sound running.
+- **Emit a compact fixed-width table on the USB serial port**, one line per sample, narrow enough for one 80-column terminal row: the fused orientation, acceleration in g, range in millimetres, range status, range age and flags, with units in the column headers. Include an explicit status column rather than folding failure into the value. The prototype link sends the full data as a versioned `P1` CSV over Wi-Fi UDP while the button is held; the table is the human view, the CSV is the machine schema, and the quaternion, gyro, temperature, sequence and reset reason live in the packet.
+- **While the button is held, send the fused orientation and range onward to the compute unit.** The link is **ESP-NOW**, a direct peer-to-peer radio link between the pointer and the compute unit with no access point, router, DHCP server or IP addressing in the path — see [The link is ESP-NOW, not Wi-Fi UDP](#the-link-is-esp-now-not-wi-fi-udp). Release stops the stream, and the compute unit times out so a lost release cannot leave sound running. The current bench build sets `LINK_BUTTON_GATED` false and streams continuously so the link can be exercised without a button; the gated behaviour above is the deployment target.
 - **Persist per-device calibration.** The GY-521 on this bench has a zero-g offset far outside the MPU6050 datasheet, so the firmware stores accelerometer and gyro offsets in NVS through the `@CAL` procedure rather than trusting raw registers.
 - **Never emit a plausible-looking zero for a failed read.** A dropped transfer must be visibly missing data, so a disconnection is diagnosable from the stream alone rather than looking like a sensor reading zero.
 - **Drive `XSHUT` through the startup sequence** described above, and gate all ToF traffic behind that.
 - **Report presence, not just data.** The firmware should say at boot which addresses acknowledged, so a miswired sensor is named outright instead of surfacing later as an unexplained column of zeros.
 - **Document every function and class**, per [§2](../AGENTS.md). The `.ino` is no exception.
 
+### The link is ESP-NOW, not Wi-Fi UDP
+
+**The pointer and the compute unit must be the only two devices in the link.** This is a hard constraint rather than a preference: the connection may not depend on a router, an access point, or any other device that neither side owns.
+
+**The firmware in `firmware/pointer_sensor_node/` does not satisfy it yet.** `src/link.h` includes `WiFi.h` and `WiFiUdp.h`, and `src/link.cpp` binds `cfg::LINK_PORT` (5005, in `src/config.h`) and sends to the subnet's directed broadcast address unless a unicast override is stored. A broadcast reaches the compute unit only by way of an access point, which is a third device in the path, and the link fails outright when that access point applies client isolation — which is what the `@DEST` escape hatch exists to work around. **The Wi-Fi UDP transport is to be swapped out, and that swap is outstanding.**
+
+**ESP-NOW replaces it.** ESP-NOW is a peer-to-peer radio link with no access point, no router, no DHCP and no IP addressing, so it involves exactly the two boards. The ESP32 speaks it natively. The Raspberry Pi's radio cannot, so the compute unit carries a second ESP32 as its ESP-NOW interface, already built and flashed as [`cu/espnow_bridge/`](../../cu/espnow_bridge/AGENTS.md), which relays received payloads verbatim onto USB serial for `pointer_link` to read. The resulting path is:
+
+```
+pointer ESP32  --ESP-NOW-->  bridge ESP32  --USB serial-->  Raspberry Pi
+```
+
+**The bridge board is the 38-pin NodeMCU-32S previously used as the bench pointer; the pointer is now the 30-pin DevKit V1.** Both use the ESP32-D0WD-V3, but the board layouts differ. Its identity was read off the hardware rather than assumed, because the only thing that reliably tells the two boards apart is the MAC address:
+
+| | |
+|---|---|
+| Chip | **ESP32-D0WD-V3, revision v3.1**, dual core + LP core, 240 MHz |
+| Flash | 4 MB (manufacturer `0x68`, device `0x4016`) |
+| Crystal | 40 MHz |
+| USB-UART bridge | CP2102 (`10c4:ea60`), presents as `/dev/ttyUSB0` |
+| **MAC (station)** | **`B0:CB:D8:CF:70:1C`** |
+
+That MAC is confirmed two independent ways: `esptool` reads it from eFuse, and the bridge firmware prints it at boot. They agree. This matters because reading the MAC before the Wi-Fi driver starts returns an unset value that looks entirely plausible — an early build of the bridge reported `CC:09:FC:3F:03:00` — so a board identified that way could have been mistaken for the pointer.
+
+These link facts were established on that hardware, so the pointer-side swap can be written against them:
+
+| | |
+|---|---|
+| ESP-NOW channel | **1** — both ends must agree; a mismatch receives nothing while looking perfectly healthy |
+| Peer address | the bridge's MAC above, for unicast; broadcast (`FF:FF:FF:FF:FF:FF`) needs no peer address |
+| Payload limit | 250 bytes per ESP-NOW packet |
+| `P1` worst case | **179 bytes**, measured against maximum field widths — 71 bytes of headroom |
+| Packet schema | unchanged; ESP-NOW carries the same `P1` CSV as opaque bytes |
+
+**Where the swap belongs.** `src/link.h` and `src/link.cpp` are the entire transport, and `Link`'s interface is what the rest of the firmware calls, so the sensor, fusion and packet code do not change. Three things do not survive untouched: `cfg::LINK_PORT` is an IP concept and disappears; `@DEST` and the stored unicast override become meaningless and are replaced by a stored peer MAC or broadcast; and `@STATUS`'s IP and destination fields become MAC and RSSI.
+
+**Both ends start the Wi-Fi driver without joining anything.** ESP-NOW requires the driver to be running, so each board is put into station mode with no SSID configured and `WiFi.disconnect()` called. Neither associates with a network, which is what keeps the link two-node while still using the radio. The compute unit's side already behaves this way and is verified to boot with no association; the pointer side must do the same when it is swapped.
+
 ## Build, flash, monitor
 
-The toolchain is arduino-cli with the `esp32:esp32` core pinned in the sketch's `sketch.yaml`; the board is `esp32:esp32:nodemcu-32s`, the variant Espressif ships for this part.
+The toolchain is arduino-cli with the `esp32:esp32` core pinned in the sketch's `sketch.yaml`. The pointer is **`esp32:esp32:esp32doit-devkit-v1`** (30-pin DevKit V1); the 38-pin bridge is `esp32:esp32:nodemcu-32s` and has its own firmware in `cu/espnow_bridge/`.
 
 The USB-UART device is owned by `root:uucp`, so the user account must be in the `uucp` group on Arch (`dialout` elsewhere) before the port can be opened at all:
 
@@ -177,7 +239,7 @@ arduino-cli upload  --profile pointer-sensor-node --port /dev/ttyUSB0
 arduino-cli monitor --port /dev/ttyUSB0 --config baudrate=115200
 ```
 
-That directory's `build.sh` writes the flashable images into `dist/`, and its `wifi_secrets.h` (copied from `firmware/imu_test/`, untracked) is what enables the link. The sibling bring-up sketches keep their own profiles (`imu-test`, `node-test`, …) and are not the deployment.
+That directory's `build.sh` writes the flashable images into `dist/`. The current pointer firmware still uses the Wi-Fi UDP transport and its untracked `wifi_secrets.h`; the ESP-NOW requirement above is a pending swap. The sibling bring-up sketches keep their own profiles (`imu-test`, `node-test`, `button-test`, …) and are not the deployment.
 
 **Pin no port in `sketch.yaml`.** arduino-cli aborts a `compile` outright when a `default_port` names a device that is not currently plugged in, which silently breaks offline builds, and the CP2102 renumbers between `/dev/ttyUSB0` and `/dev/ttyUSB1` across replugs anyway. Pass `--port` explicitly on every command that needs one.
 
