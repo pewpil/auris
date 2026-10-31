@@ -6,10 +6,10 @@
  * Compile-time configuration for the deployable Auris pointer firmware.
  *
  * Every value here is a build constant: pins, bus speed, sample and packet
- * rates, full-scale gains, recovery thresholds, and the NVS namespace. Runtime
- * values that a technician can change — calibration offsets, the unicast
- * destination override, the boot counter — live in NVS and are handled by
- * Store (src/store.h), not here.
+ * rates, full-scale gains, recovery thresholds, the ESP-NOW peer, and the NVS
+ * namespace. Runtime values that a technician can change — calibration offsets
+ * and the boot counter — live in NVS and are handled by Store (src/store.h),
+ * not here.
  */
 namespace cfg {
 
@@ -131,21 +131,23 @@ constexpr float CAL_GYRO_MAX_SPREAD_DPS = 8.0f;
 constexpr float CAL_ACCEL_MAX_SPREAD_G = 0.35f;
 
 // ---------------------------------------------------------------------------
-// Link. The same Wi-Fi UDP path as imu_test: a station join, datagrams to the
-// subnet's directed broadcast unless a unicast override is stored, one
-// datagram per packet while the button is held. The link never blocks the
-// sensor loop; a failed send is counted and dropped.
+// Link. A direct ESP-NOW peer-to-peer radio link to the compute unit's bridge.
+// There is no access point, no router, no DHCP and no IP addressing: both ends
+// start the Wi-Fi driver in station mode with no SSID, then pin the same
+// channel. The link never blocks the sensor loop; a failed send is counted and
+// dropped, because a late sample is worse than a missing one.
 // ---------------------------------------------------------------------------
 
-/** UDP port the compute unit listens on. */
-constexpr uint16_t LINK_PORT = 5005;
-/** Interval between reconnect attempts while the station is down, in ms. */
-constexpr uint32_t WIFI_RETRY_MS = 5000;
-/** Hostname advertised on the network. */
-constexpr const char *WIFI_HOSTNAME = "auris-pointer";
+/** ESP-NOW channel shared with the compute unit's bridge. A mismatch receives
+ *  nothing while looking perfectly healthy. */
+constexpr uint8_t ESPNOW_CHANNEL = 1;
+/** Bridge station MAC: the 38-pin NodeMCU-32S on the compute unit. */
+constexpr uint8_t ESPNOW_PEER_MAC[6] = {0xB0, 0xCB, 0xD8, 0xCF, 0x70, 0x1C};
+/** Interval between radio or peer retry attempts, in milliseconds. */
+constexpr uint32_t LINK_RETRY_MS = 1000;
 
 /**
- * Whether the button gates the UDP stream.
+ * Whether the button gates the stream.
  *
  * The deployed pointer is button-gated: rows leave only while the trigger is
  * held, and one release packet follows. The current bench phase sets this false
@@ -159,7 +161,7 @@ constexpr bool LINK_BUTTON_GATED = false;
 // Storage.
 // ---------------------------------------------------------------------------
 
-/** NVS namespace holding calibration, boot counter, and link override. */
+/** NVS namespace holding calibration and the boot counter. */
 constexpr const char *NVS_NAMESPACE = "auris";
 
 }  // namespace cfg

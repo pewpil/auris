@@ -3,10 +3,11 @@
  *
  * This is the firmware that runs on the pointer itself, untethered from any
  * desktop: the ESP32 is powered from a USB power bank, a laptop USB port, or a
- * LiPo feeding a 5 V regulator, and it talks to the compute unit over the same
- * Wi-Fi UDP link imu_test established. USB is optional in every sense — the
- * firmware never waits for a serial host, never blocks on a send, and the exact
- * same binary is used on the bench and in the field.
+ * LiPo feeding a 5 V regulator, and it talks to the compute unit over a direct
+ * ESP-NOW link with no access point, router or IP address in the path. USB is
+ * optional in every sense — the firmware never waits for a serial host, never
+ * blocks on a send, and the exact same binary is used on the bench and in the
+ * field.
  *
  * Responsibilities:
  *   - bring up the MPU6050 (raw registers, no IMU library) and the VL53L1X
@@ -14,11 +15,11 @@
  *   - fuse the IMU into a body-to-world quaternion at 200 Hz;
  *   - poll the ToF without blocking, with a hard-reset recovery path;
  *   - while the button is held, send a versioned CSV packet at 100 Hz to the
- *     compute unit over UDP, and stop on release;
+ *     compute unit's ESP-NOW bridge, and stop on release;
  *   - emit a compact fixed-width table over USB at 25 Hz for bench work, plus a
- *     small `@` command console for calibration and link provisioning;
- *   - persist calibration, the boot counter, and the unicast override in NVS;
- *   - recover from sensor resets and Wi-Fi drops without rebooting.
+ *     small `@` command console for calibration and status;
+ *   - persist calibration and the boot counter in NVS;
+ *   - recover from sensor resets and radio restarts without rebooting.
  *
  * The "laser" is the VL53L1X's invisible IR ranging beam; there is no separate
  * laser output pin. The button gates the pointer's output (and therefore the
@@ -50,13 +51,6 @@
 #include "src/store.h"
 #include "src/tof.h"
 
-// Credentials live in an untracked header so the password never reaches git. The
-// sketch still builds without it, falling back to USB serial only.
-#if __has_include("wifi_secrets.h")
-#include "wifi_secrets.h"
-#define HAVE_WIFI_CREDENTIALS 1
-#endif
-
 /** Degrees-to-radians factor for the fused gyro rate. */
 static constexpr float kDegToRad = 0.017453292519943295f;
 
@@ -70,7 +64,7 @@ static Mpu6050 g_mpu;
 static Tof g_tof;
 /** Attitude filter instance. */
 static MahonyFilter g_fusion;
-/** Wi-Fi/UDP link instance. */
+/** ESP-NOW link instance. */
 static Link g_link;
 /** NVS-backed settings instance. */
 static Store g_store;
@@ -106,7 +100,7 @@ static uint64_t g_lastImuUs = 0;
 static uint64_t g_lastFusionUs = 0;
 /** Timestamp of the last USB debug row, in extended microseconds. */
 static uint64_t g_lastSerialUs = 0;
-/** Timestamp of the last UDP packet, in extended microseconds. */
+/** Timestamp of the last link packet, in extended microseconds. */
 static uint64_t g_lastPacketUs = 0;
 /** Last ToF poll time in milliseconds. */
 static uint32_t g_lastTofPollMs = 0;
@@ -115,7 +109,7 @@ static uint32_t g_lastHeaderMs = 0;
 /** Last MPU configuration rewrite, in milliseconds. */
 static uint32_t g_lastReconfigMs = 0;
 
-/** Datagram sequence counter, incremented for every UDP packet. */
+/** Packet sequence counter, incremented for every link packet. */
 static uint32_t g_seq = 0;
 /** LOW-going button edges, since boot. */
 static uint32_t g_pressEdges = 0;
@@ -184,7 +178,7 @@ static void updateTimeUs() {
 /**
  * Print the USB table header.
  *
- * The UDP packet is the versioned `P1` CSV schema; the USB stream is a compact
+ * The link packet is the versioned `P1` CSV schema; the USB stream is a compact
  * fixed-width table of the orientation, acceleration, range and health fields,
  * narrow enough for one 80-column line. The header is repeated every five
  * seconds so a late-attaching monitor orients.
@@ -252,7 +246,7 @@ static PointerPacket buildPacket(uint64_t nowUs, uint8_t button) {
 }
 
 /**
- * Format and send one UDP packet at the current time.
+ * Format and send one link packet at the current time.
  *
  * The sequence counter advances even when the send fails, so the receiver can
  * distinguish a lost datagram from a silent pointer by the gap.
@@ -416,7 +410,7 @@ static void servicePacket() {
  * same data, readable with `arduino-cli monitor` and harmless when no host is
  * connected because every write is non-blocking at this rate. The full
  * quaternion, gyro, temperature, sequence, boot id and reset reason stay in the
- * UDP packet and `@STATUS`.
+ * link packet and `@STATUS`.
  */
 static void serviceSerial() {
   if (g_timeUs - g_lastSerialUs < cfg::SERIAL_PERIOD_US) {
@@ -455,7 +449,7 @@ static void printStatus() {
                 g_cal.gyroBiasDps.y, g_cal.gyroBiasDps.z);
   Serial.printf("#counters imu_err=%lu imu_zero=%lu imu_reconfig=%lu "
                 "tof_reinit=%lu tof_recover_fail=%lu link_sent=%lu "
-                "link_fail=%lu link_reconnects=%lu presses=%lu releases=%lu\n",
+                "link_fail=%lu link_retries=%lu presses=%lu releases=%lu\n",
                 static_cast<unsigned long>(g_mpu.readErrors()),
                 static_cast<unsigned long>(g_imuZeroBursts),
                 static_cast<unsigned long>(g_imuReconfigs),
@@ -463,20 +457,13 @@ static void printStatus() {
                 static_cast<unsigned long>(g_tof.recoverFailures()),
                 static_cast<unsigned long>(g_link.sent()),
                 static_cast<unsigned long>(g_link.failed()),
-                static_cast<unsigned long>(g_link.reconnects()),
+                static_cast<unsigned long>(g_link.retries()),
                 static_cast<unsigned long>(g_pressEdges),
                 static_cast<unsigned long>(g_releaseEdges));
-  if (g_link.enabled()) {
-    Serial.print("#link ip=");
-    Serial.print(g_link.localIp());
-    Serial.print(" dest=");
-    Serial.print(g_link.destination());
-    Serial.print(" override=");
-    Serial.print(g_link.unicast().isEmpty() ? "broadcast" : g_link.unicast());
-    Serial.printf(" rssi=%ld\n", static_cast<long>(g_link.rssi()));
-  } else {
-    Serial.println("#link disabled (no wifi_secrets.h)");
-  }
+  Serial.printf("#link espnow peer=%s channel=%u ready=%d\n",
+                g_link.peerMac().c_str(),
+                static_cast<unsigned>(g_link.channel()),
+                g_link.up() ? 1 : 0);
 }
 
 /**
@@ -569,7 +556,7 @@ static void runCalibration() {
 /**
  * Execute one `@` command from the USB console.
  *
- * Commands are case-insensitive and intentionally small: CAL, STATUS, DEST,
+ * Commands are case-insensitive and intentionally small: CAL, STATUS,
  * DEFAULTS, REBOOT, HELP. Everything writes back a `#` line.
  *
  * @param line Command text after the leading `@`, NUL-terminated.
@@ -583,45 +570,17 @@ static void handleCommand(char *line) {
     runCalibration();
   } else if (strcasecmp(line, "STATUS") == 0) {
     printStatus();
-  } else if (strncasecmp(line, "DEST", 4) == 0 &&
-             (line[4] == ' ' || line[4] == '\0')) {
-    char *arg = line + 4;
-    while (*arg == ' ' || *arg == '\t') {
-      ++arg;
-    }
-    if (*arg == '\0' || strcasecmp(arg, "broadcast") == 0) {
-      g_store.setUnicastDestination("");
-      g_link.setUnicast("");
-      Serial.println("#dest broadcast");
-      return;
-    }
-    unsigned a = 0;
-    unsigned b = 0;
-    unsigned c = 0;
-    unsigned d = 0;
-    if (std::sscanf(arg, "%u.%u.%u.%u", &a, &b, &c, &d) != 4 || a > 255 ||
-        b > 255 || c > 255 || d > 255) {
-      Serial.println("#dest invalid; expected dotted-quad or broadcast");
-      return;
-    }
-    char normalized[16];
-    std::snprintf(normalized, sizeof(normalized), "%u.%u.%u.%u", a, b, c, d);
-    g_store.setUnicastDestination(String(normalized));
-    g_link.setUnicast(String(normalized));
-    Serial.printf("#dest %s\n", normalized);
   } else if (strcasecmp(line, "DEFAULTS") == 0) {
     g_store.clearAll();
     g_cal = Calibration{};
-    g_link.setUnicast("");
-    Serial.println("#defaults cleared (calibration and destination)");
+    Serial.println("#defaults cleared (calibration and boot counter)");
   } else if (strcasecmp(line, "REBOOT") == 0) {
     Serial.println("#rebooting");
     Serial.flush();
     delay(100);
     ESP.restart();
   } else if (strcasecmp(line, "HELP") == 0 || *line == '\0') {
-    Serial.println("#commands: @CAL @STATUS @DEST <ip|broadcast> @DEFAULTS"
-                   " @REBOOT");
+    Serial.println("#commands: @CAL @STATUS @DEFAULTS @REBOOT");
   } else {
     Serial.printf("#unknown command: %s\n", line);
   }
@@ -652,8 +611,8 @@ static void serviceConsole() {
 /**
  * Show a coarse device state on the onboard LED.
  *
- * Patterns: fast blink for a sensor fault, slow blink while the Wi-Fi link is
- * down (or disabled), and, when nominal, solid while the button is held and off
+ * Patterns: fast blink for a sensor fault, slow blink while the link is down,
+ * and, when nominal, solid while the button is held and off
  * when it is not. In continuous-link bench mode (`LINK_BUTTON_GATED == false`)
  * the button is ignored for the LED, so nominal means off. The LED is for the
  * researcher during provisioning; it is not the user-facing interface.
@@ -678,8 +637,8 @@ static void updateLed(uint32_t nowMs) {
  * Bring both sensors up, retrying until each answers.
  *
  * This is the only intentionally blocking loop in the firmware, and it runs
- * before the device is usable. The Wi-Fi state machine is polled during the
- * waits so the link can associate in parallel. Every failure is reported on USB
+ * before the device is usable. The link state machine is polled during the
+ * waits so the radio can come up in parallel. Every failure is reported on USB
  * so a technician can diagnose a dead module without a logic analyser.
  */
 static void bringUpSensors() {
@@ -773,13 +732,7 @@ void setup() {
     Serial.println("#cal missing: run @CAL with the pointer flat, Z up, still");
   }
 
-  g_link.setUnicast(g_store.unicastDestination());
-#ifdef HAVE_WIFI_CREDENTIALS
-  g_link.begin(WIFI_SSID, WIFI_PASSWORD);
-#else
-  g_link.begin(nullptr, nullptr);
-  Serial.println("#wifi disabled: no wifi_secrets.h; USB serial only");
-#endif
+  g_link.begin();
 
   bringUpSensors();
 

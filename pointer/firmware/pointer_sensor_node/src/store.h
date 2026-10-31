@@ -25,11 +25,10 @@ struct Calibration {
 /**
  * NVS-backed settings for the pointer.
  *
- * Responsibility: load and save the calibration, the boot counter, and the
- * optional unicast destination override. The store owns the Preferences handle
- * for the lifetime of the sketch; `begin()` must be called once before any
- * other method. Corrupt or absent values fall back to safe defaults rather than
- * throwing.
+ * Responsibility: load and save the calibration and the boot counter. The store
+ * owns the Preferences handle for the lifetime of the sketch; `begin()` must be
+ * called once before any other method. Corrupt or absent values fall back to safe
+ * defaults rather than throwing.
  */
 class Store {
  public:
@@ -61,17 +60,6 @@ class Store {
    * @return The new boot id, starting at 1 on a factory-fresh namespace.
    */
   uint32_t nextBootId();
-
-  /** @return The stored unicast destination, or an empty String for broadcast. */
-  String unicastDestination();
-
-  /**
-   * Persist or clear the unicast destination override.
-   *
-   * @param destination Dotted-quad address, or empty to use broadcast.
-   * @return true when the write succeeded.
-   */
-  bool setUnicastDestination(const String &destination);
 
   /** Erase every key in the namespace, including calibration and boot count. */
   void clearAll();

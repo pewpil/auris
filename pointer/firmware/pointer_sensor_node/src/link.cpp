@@ -1,126 +1,129 @@
 #include "link.h"
 
+#include <WiFi.h>
+#include <esp_wifi.h>
+
 #include <cstdio>
 #include <cstring>
 
 #include "config.h"
 
-void Link::begin(const char *ssid, const char *password) {
-  if (ssid == nullptr || ssid[0] == '\0') {
-    enabled_ = false;
-    return;
-  }
-  std::strncpy(ssid_, ssid, sizeof(ssid_) - 1);
-  std::strncpy(password_, password == nullptr ? "" : password,
-               sizeof(password_) - 1);
+namespace {
 
+/** The one Link instance, used by the C-style ESP-NOW send callback. */
+Link *g_active = nullptr;
+
+}  // namespace
+
+void Link::begin() {
+  channel_ = cfg::ESPNOW_CHANNEL;
+  g_active = this;
+
+  // ESP-NOW requires the Wi-Fi driver to be running, but the link must not
+  // involve a network. Station mode with no SSID and an explicit disconnect is
+  // what starts the driver without associating.
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
-  WiFi.setHostname(cfg::WIFI_HOSTNAME);
-  // Low latency while the pointer is in use matters more than the last few
-  // milliamps; the device is a handheld aid, not a battery logger.
+  WiFi.disconnect();
   WiFi.setSleep(false);
-  WiFi.begin(ssid_, password_);
-  lastAttemptMs_ = millis();
-  enabled_ = true;
+  if (esp_wifi_set_channel(channel_, WIFI_SECOND_CHAN_NONE) != ESP_OK) {
+    Serial.println("#link channel set failed");
+  }
+  if (initRadio()) {
+    Serial.printf("#link espnow peer=%s channel=%u\n",
+                  peerMac().c_str(), static_cast<unsigned>(channel_));
+  } else {
+    Serial.println("#link espnow not ready; retrying");
+  }
+}
+
+bool Link::initRadio() {
+  if (esp_now_init() != ESP_OK) {
+    ready_ = false;
+    return false;
+  }
+  esp_now_register_send_cb(Link::onSent);
+  ready_ = true;
+  return addPeer();
+}
+
+bool Link::addPeer() {
+  if (esp_now_is_peer_exist(cfg::ESPNOW_PEER_MAC)) {
+    peerAdded_ = true;
+    return true;
+  }
+  esp_now_peer_info_t peer{};
+  std::memcpy(peer.peer_addr, cfg::ESPNOW_PEER_MAC, 6);
+  peer.channel = channel_;
+  peer.encrypt = false;
+  const esp_err_t result = esp_now_add_peer(&peer);
+  peerAdded_ = result == ESP_OK;
+  if (!peerAdded_) {
+    Serial.printf("#link peer add failed (%d)\n", static_cast<int>(result));
+  }
+  return peerAdded_;
 }
 
 void Link::poll(uint32_t nowMs) {
-  if (!enabled_) {
+  if (nowMs - lastRetryMs_ < cfg::LINK_RETRY_MS) {
     return;
   }
-
-  const bool connected = WiFi.status() == WL_CONNECTED;
-  if (connected && !up_) {
-    up_ = true;
-    if (!udpStarted_) {
-      udpStarted_ = udp_.begin(cfg::LINK_PORT) != 0;
-    }
-    if (everConnected_) {
-      ++reconnects_;
-    }
-    everConnected_ = true;
-    Serial.print("#link up ip=");
-    Serial.print(WiFi.localIP());
-    Serial.print(" dest=");
-    Serial.print(destination());
-    Serial.printf(":%u\n", static_cast<unsigned>(cfg::LINK_PORT));
-  } else if (!connected && up_) {
-    up_ = false;
-    if (udpStarted_) {
-      udp_.stop();
-      udpStarted_ = false;
-    }
-    Serial.println("#link down");
+  if (!ready_) {
+    lastRetryMs_ = nowMs;
+    ++retries_;
+    initRadio();
+    return;
   }
-
-  if (!connected && nowMs - lastAttemptMs_ >= cfg::WIFI_RETRY_MS) {
-    lastAttemptMs_ = nowMs;
-    WiFi.reconnect();
+  if (!peerAdded_) {
+    lastRetryMs_ = nowMs;
+    ++retries_;
+    addPeer();
   }
 }
 
 bool Link::send(const char *line) {
-  if (!enabled_ || !up_) {
-    return false;
-  }
-  if (!udpStarted_) {
-    udpStarted_ = udp_.begin(cfg::LINK_PORT) != 0;
-    if (!udpStarted_) {
-      ++failed_;
-      return false;
-    }
-  }
-
-  const IPAddress dest = destination();
-  if (udp_.beginPacket(dest, cfg::LINK_PORT) == 0) {
+  if (!up() || line == nullptr) {
     ++failed_;
     return false;
   }
-
   const size_t length = std::strlen(line);
-  const size_t written =
-      udp_.write(reinterpret_cast<const uint8_t *>(line), length);
-  const int ended = udp_.endPacket();
-  if (written != length || ended == 0) {
+  if (length == 0 || length > ESP_NOW_MAX_DATA_LEN) {
     ++failed_;
     return false;
   }
-
-  ++sent_;
+  if (esp_now_send(cfg::ESPNOW_PEER_MAC,
+                   reinterpret_cast<const uint8_t *>(line), length) != ESP_OK) {
+    ++failed_;
+    return false;
+  }
   return true;
 }
 
-void Link::setUnicast(const String &destination) {
-  if (destination.isEmpty()) {
-    unicast_[0] = '\0';
-    return;
+void Link::noteSend(esp_now_send_status_t status) {
+  if (status == ESP_NOW_SEND_SUCCESS) {
+    ++sent_;
+  } else {
+    ++failed_;
   }
-  std::strncpy(unicast_, destination.c_str(), sizeof(unicast_) - 1);
-  unicast_[sizeof(unicast_) - 1] = '\0';
 }
 
-IPAddress Link::destination() const {
-  if (unicast_[0] != '\0') {
-    unsigned a = 0;
-    unsigned b = 0;
-    unsigned c = 0;
-    unsigned d = 0;
-    if (std::sscanf(unicast_, "%u.%u.%u.%u", &a, &b, &c, &d) == 4 &&
-        a <= 255 && b <= 255 && c <= 255 && d <= 255) {
-      return IPAddress(static_cast<uint8_t>(a), static_cast<uint8_t>(b),
-                       static_cast<uint8_t>(c), static_cast<uint8_t>(d));
-    }
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+void Link::onSent(const esp_now_send_info_t *info, esp_now_send_status_t status) {
+  (void)info;
+#else
+void Link::onSent(const uint8_t *mac, esp_now_send_status_t status) {
+  (void)mac;
+#endif
+  if (g_active != nullptr) {
+    g_active->noteSend(status);
   }
-
-  const IPAddress ip = WiFi.localIP();
-  const IPAddress mask = WiFi.subnetMask();
-  return IPAddress(static_cast<uint8_t>(ip[0] | ~mask[0]),
-                   static_cast<uint8_t>(ip[1] | ~mask[1]),
-                   static_cast<uint8_t>(ip[2] | ~mask[2]),
-                   static_cast<uint8_t>(ip[3] | ~mask[3]));
 }
 
-int32_t Link::rssi() const {
-  return up_ ? WiFi.RSSI() : 0;
+String Link::peerMac() const {
+  char text[18];
+  std::snprintf(text, sizeof(text), "%02X:%02X:%02X:%02X:%02X:%02X",
+                cfg::ESPNOW_PEER_MAC[0], cfg::ESPNOW_PEER_MAC[1],
+                cfg::ESPNOW_PEER_MAC[2], cfg::ESPNOW_PEER_MAC[3],
+                cfg::ESPNOW_PEER_MAC[4], cfg::ESPNOW_PEER_MAC[5]);
+  return String(text);
 }

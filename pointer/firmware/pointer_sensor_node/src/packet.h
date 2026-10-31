@@ -6,8 +6,8 @@
 #include "fusion.h"
 
 /**
- * One pointer sample as it appears on both the USB debug stream and the Wi-Fi
- * datagram.
+ * One pointer sample as it appears on both the USB debug stream and the ESP-NOW
+ * payload.
  *
  * Fields are in SI-derived units named in the header: quaternion dimensionless,
  * angles in degrees, angular rate in deg/s, acceleration in g, temperature in
@@ -37,7 +37,7 @@ constexpr uint8_t kFlagCalibrated = 0x01;
 constexpr uint8_t kFlagImuOk = 0x02;
 /** Bit 2: the ToF has a measurement inside its stale window. */
 constexpr uint8_t kFlagTofOk = 0x04;
-/** Bit 3: the Wi-Fi station is associated. */
+/** Bit 3: the ESP-NOW link is ready. */
 constexpr uint8_t kFlagLinkUp = 0x08;
 
 /**
@@ -66,7 +66,7 @@ const char *packetHeader();
  * 80-column terminal line: time in milliseconds, button, ZYX Euler angles in
  * degrees (one decimal), calibrated acceleration in g (two decimals), range in
  * mm, range status, range age in ms and the flags byte. The quaternion, gyro,
- * temperature, sequence, boot id and reset reason remain in the UDP `P1`
+ * temperature, sequence, boot id and reset reason remain in the link `P1`
  * packet and are reachable through `@STATUS`; the monitor row is a health and
  * orientation view, not the link schema.
  *

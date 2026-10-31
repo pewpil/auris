@@ -47,17 +47,6 @@ uint32_t Store::nextBootId() {
   return id;
 }
 
-String Store::unicastDestination() {
-  return prefs_.getString("dest", "");
-}
-
-bool Store::setUnicastDestination(const String &destination) {
-  if (destination.isEmpty()) {
-    return prefs_.remove("dest");
-  }
-  return prefs_.putString("dest", destination) > 0;
-}
-
 void Store::clearAll() {
   prefs_.clear();
   cal_ = Calibration{};

@@ -1,99 +1,111 @@
 #pragma once
 
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WiFiUdp.h>
+#include <esp_now.h>
 
 #include <cstdint>
 
 /**
- * Wi-Fi station and UDP sender for the compute unit link.
+ * ESP-NOW sender for the compute unit link.
  *
- * Responsibility: join the configured network without ever blocking the sensor
- * loop, keep the datagram socket alive across reconnects, resolve the
- * destination (configured unicast or the subnet's directed broadcast), and send
- * one already-formatted line per packet. Sends are fire-and-forget: a failure is
- * counted and the line is dropped, because on this link a late sample is worse
- * than a missing one. The class owns no calibration or sensor state.
+ * Responsibility: start the Wi-Fi driver without joining any network, initialise
+ * ESP-NOW, register the bridge as a peer, and send one already-formatted line per
+ * packet. Sends are fire-and-forget: a failure is counted and the line is
+ * dropped, because on this link a late sample is worse than a missing one. The
+ * class owns no calibration or sensor state.
  *
- * Invariants: `send()` returns false whenever the station is down; the sketch
- * keeps sampling and the USB record running regardless.
+ * The link involves exactly two devices: this pointer and the compute unit's
+ * bridge. No access point, router, DHCP server or IP address is in the path.
+ *
+ * Invariants: `send()` returns false whenever the radio or peer is not ready;
+ * the sketch keeps sampling and the USB record running regardless. `sent()`
+ * counts packets the radio acknowledged, not packets merely queued.
  */
 class Link {
  public:
   /**
-   * Start a non-blocking station join.
+   * Start the radio and register the bridge peer.
    *
-   * @param ssid Network name; null or empty disables the link and leaves the
-   *     firmware in USB-only mode.
-   * @param password Network password, copied into the object.
+   * Puts the Wi-Fi driver into station mode with no SSID configured, pins the
+   * ESP-NOW channel, initialises ESP-NOW, and adds the bridge's MAC as an
+   * unencrypted peer. No association is attempted or possible.
    */
-  void begin(const char *ssid, const char *password);
+  void begin();
 
   /**
-   * Advance the connection state machine.
+   * Retry the radio or the peer registration if either is not ready.
    *
-   * Call every few milliseconds. On a loss it tears the socket down; while
-   * disconnected it retries the join every `WIFI_RETRY_MS`. All transitions are
-   * announced once on the serial log, prefixed with `#`.
+   * Call every few milliseconds. The retry interval is `cfg::LINK_RETRY_MS`.
    *
    * @param nowMs Current `millis()` value.
    */
   void poll(uint32_t nowMs);
 
-  /** @return true while the station is associated and datagrams may be sent. */
-  bool up() const { return up_; }
+  /** @return true when ESP-NOW is initialised and the bridge peer is registered. */
+  bool up() const { return ready_ && peerAdded_; }
 
   /**
-   * Send one line as a single UDP datagram.
+   * Send one line as a single ESP-NOW payload.
    *
    * @param line NUL-terminated payload without a trailing newline.
-   * @return true when the datagram was handed to the network stack.
+   * @return true when the radio accepted the payload for transmission. Delivery
+   *     is reported asynchronously through `sent()`/`failed()`.
    */
   bool send(const char *line);
 
-  /**
-   * Set or clear the unicast destination override.
-   *
-   * @param destination Dotted-quad address, or empty for directed broadcast.
-   */
-  void setUnicast(const String &destination);
-
-  /** @return The current override, empty when broadcast is used. */
-  String unicast() const { return String(unicast_); }
-
-  /** @return The address datagrams are currently sent to. */
-  IPAddress destination() const;
-
-  /** @return The station address, or 0.0.0.0 before association. */
-  IPAddress localIp() const { return WiFi.localIP(); }
-
-  /** @return Datagrams accepted by the stack since boot. */
+  /** @return Payloads the radio reported as delivered since boot. */
   uint32_t sent() const { return sent_; }
 
-  /** @return Datagrams or socket starts that failed since boot. */
+  /** @return Payloads that were rejected or reported as undelivered. */
   uint32_t failed() const { return failed_; }
 
-  /** @return Re-associations after the first successful join. */
-  uint32_t reconnects() const { return reconnects_; }
+  /** @return Radio or peer retry attempts since boot. */
+  uint32_t retries() const { return retries_; }
 
-  /** @return RSSI in dBm while associated, 0 otherwise. */
-  int32_t rssi() const;
+  /** @return Always true; the link has no credentials to be missing. */
+  bool enabled() const { return true; }
 
-  /** @return true when Wi-Fi credentials were supplied. */
-  bool enabled() const { return enabled_; }
+  /** @return The bridge MAC as colon-separated hex. */
+  String peerMac() const;
+
+  /** @return The pinned ESP-NOW channel. */
+  uint8_t channel() const { return channel_; }
 
  private:
-  bool enabled_ = false;
-  bool up_ = false;
-  bool udpStarted_ = false;
-  bool everConnected_ = false;
-  char ssid_[33] = {0};
-  char password_[65] = {0};
-  char unicast_[16] = {0};
-  uint32_t lastAttemptMs_ = 0;
+  /** Initialise ESP-NOW and register the send callback. @return true on success. */
+  bool initRadio();
+
+  /** Add the bridge peer if it is not already registered. @return true when present. */
+  bool addPeer();
+
+  /**
+   * Record one asynchronous send result.
+   *
+   * @param status ESP-NOW's delivery verdict.
+   */
+  void noteSend(esp_now_send_status_t status);
+
+  /**
+   * ESP-NOW send callback.
+   *
+   * The signature follows arduino-esp32: core 3.x passes an
+   * ``esp_now_send_info_t`` pointer, core 2.x passes the destination MAC. Only
+   * the status is used.
+   *
+   * @param info Destination metadata in core 3.x, or the MAC in 2.x; unused.
+   * @param status Delivery verdict.
+   */
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  static void onSent(const esp_now_send_info_t *info, esp_now_send_status_t status);
+#else
+  static void onSent(const uint8_t *mac, esp_now_send_status_t status);
+#endif
+
+  bool ready_ = false;
+  bool peerAdded_ = false;
+  uint8_t channel_ = 1;
+  uint32_t lastRetryMs_ = 0;
   uint32_t sent_ = 0;
   uint32_t failed_ = 0;
-  uint32_t reconnects_ = 0;
-  WiFiUDP udp_{};
+  uint32_t retries_ = 0;
 };

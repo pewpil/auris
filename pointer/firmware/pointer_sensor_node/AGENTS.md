@@ -10,17 +10,17 @@ The firmware is written, compiles for the 30-pin ESP32 DevKit V1, and its pure c
 
 The sibling test sketches — [`imu_test/`](../imu_test/), [`node_test/`](../node_test/), [`tof_test_l1x/`](../tof_test_l1x/), and [`button_test/`](../button_test/) — remain the bring-up record. This directory is the deployed firmware; its circuit table below is the authoritative wiring copy.
 
-- **One binary, three power contexts.** The same `.bin` runs from a laptop USB port, a USB power bank, or a LiPo feeding a 5 V regulator. The firmware never waits for a serial host and never assumes a network is present; the USB stream and the Wi-Fi link are both optional at runtime.
-- **Deployed behaviour is the `node_test` contract plus the actual pointer job:** MPU6050 and VL53L1X on one bus, fused orientation, non-blocking ranging, button-gated UDP to the compute unit, NVS calibration, USB provisioning and debug. **The current bench build is continuous-link:** `LINK_BUTTON_GATED` is false, so packets flow at 100 Hz without a press; the gated path is retained for deployment.
+- **One binary, three power contexts.** The same `.bin` runs from a laptop USB port, a USB power bank, or a LiPo feeding a 5 V regulator. The firmware never waits for a serial host and never assumes a network is present; the USB stream and the ESP-NOW link are both optional at runtime.
+- **Deployed behaviour is the `node_test` contract plus the actual pointer job:** MPU6050 and VL53L1X on one bus, fused orientation, non-blocking ranging, button-gated ESP-NOW to the compute unit, NVS calibration, USB provisioning and debug. **The current bench build is continuous-link:** `LINK_BUTTON_GATED` is false, so packets flow at 100 Hz without a press; the gated path is retained for deployment.
 - **The "laser" is the VL53L1X's invisible IR ranging beam.** There is no separate laser output pin; the button gates the pointer's output (and therefore the rendered sound), while the ToF ranges continuously so the first pressed sample is fresh.
 
 ## What the firmware does
 
-At boot it resets the ToF through XSHUT, gates on the `0xEACC` model identity, brings up the MPU6050 from raw registers, verifies its configuration, loads calibration from NVS, seeds a Mahony quaternion filter, starts a non-blocking Wi-Fi join, and reports every step on USB. It then samples the IMU at 200 Hz, fuses every sample, polls the ToF at 50 Hz for its ~20 Hz measurements, and debounces the button. The deployed configuration sends a versioned packet to the compute unit at 100 Hz over UDP **only while the button is held**, with one final `btn=0` packet on release; the compute unit also times out so a lost release cannot leave sound running. The current bench build sets `LINK_BUTTON_GATED` to false, so the same packets leave **continuously whenever the link is up**; the `btn` field still reports the live input but gates nothing. Flipping that one constant restores the deployed behaviour.
+At boot it resets the ToF through XSHUT, gates on the `0xEACC` model identity, brings up the MPU6050 from raw registers, verifies its configuration, loads calibration from NVS, seeds a Mahony quaternion filter, starts the ESP-NOW radio without joining a network, and reports every step on USB. It then samples the IMU at 200 Hz, fuses every sample, polls the ToF at 50 Hz for its ~20 Hz measurements, and debounces the button. The deployed configuration sends a versioned packet to the compute unit at 100 Hz over ESP-NOW **only while the button is held**, with one final `btn=0` packet on release; the compute unit also times out so a lost release cannot leave sound running. The current bench build sets `LINK_BUTTON_GATED` to false, so the same packets leave **continuously whenever the link is up**; the `btn` field still reports the live input but gates nothing. Flipping that one constant restores the deployed behaviour.
 
-The USB stream is always on at 25 Hz as a compact fixed-width table of orientation, acceleration, range and health, narrow enough for one 80-column line, so the same binary works on a bench laptop with `arduino-cli monitor`. A small `@` console over the same USB port provides `@CAL`, `@STATUS`, `@DEST`, `@DEFAULTS` and `@REBOOT`. Calibration, the boot counter and the unicast override live in NVS and survive a reflash (but not a full `erase_flash`).
+The USB stream is always on at 25 Hz as a compact fixed-width table of orientation, acceleration, range and health, narrow enough for one 80-column line, so the same binary works on a bench laptop with `arduino-cli monitor`. A small `@` console over the same USB port provides `@CAL`, `@STATUS`, `@DEFAULTS` and `@REBOOT`. Calibration and the boot counter live in NVS and survive a reflash (but not a full `erase_flash`).
 
-Fault recovery is automatic: an all-zero MPU burst rewrites the configuration registers; a ToF missing for 600 ms is hard-reset through XSHUT and re-initialised; a dropped Wi-Fi association is retried every 5 s. Sampling and fusion continue through every link outage.
+Fault recovery is automatic: an all-zero MPU burst rewrites the configuration registers; a ToF missing for 600 ms is hard-reset through XSHUT and re-initialised; a radio or peer registration failure is retried every second. Sampling and fusion continue through every link outage.
 
 ## Parts
 
@@ -32,7 +32,7 @@ Fault recovery is automatic: an all-zero MPU burst rewrites the configuration re
 | Tactile push button, 4-leg             | The pointer's only control                                     | `INPUT_PULLUP`; idle HIGH (`btn=0`), pressed LOW (`btn=1`)                                                                            |
 | 2 × 4.7 kΩ                             | I²C pull-ups to 3V3                                            | The GY-521 carries its own onboard pair in parallel, giving ≈2.3 kΩ per line                                                          |
 | 2 × 100 nF ceramic                     | Decoupling, one at each sensor module                          | Specified for both; the current bench has the ToF one fitted, and the IMU position should be added for the final build                |
-| 100 µF, 50 V electrolytic *(optional)* | Bulk decoupling for the sensor rail                            | Recommended now that Wi-Fi is enabled; across the `+`/`−` rails or at the GY-521                                                      |
+| 100 µF, 50 V electrolytic *(optional)* | Bulk decoupling for the sensor rail                            | Recommended now that the radio is enabled; across the `+`/`−` rails or at the GY-521                                                      |
 | No laser diode                         | The "laser" is the VL53L1X IR beam                             | The parent's §1.5 calls it imaginary/invisible; there is no GPIO for it                                                               |
 
 ## Connections
@@ -84,7 +84,7 @@ The firmware is power-source agnostic; the board sees 5 V at its USB input or 5 
 
 **Both external pull-ups stay fitted.** The GY-521's onboard pair adds in parallel; ≈2.3 kΩ per line is the parent's explicitly allowed case at 400 kHz.
 
-**Decouple at the modules.** One 100 nF belongs across each module's own VCC/GND, not stretched across the board. The 100 µF is optional but recommended with Wi-Fi enabled; the radio's current spikes are the only pulsed load on the rail.
+**Decouple at the modules.** One 100 nF belongs across each module's own VCC/GND, not stretched across the board. The 100 µF is optional but recommended with the radio enabled; the radio's current spikes are the only pulsed load on the rail.
 
 **The sensor supply is the board's 3.3 V rail.** The CJMCU-531 regulates its own core supply from that rail; the GY-521 has its own LDO. Do not feed either module's VCC from 5 V.
 
@@ -104,7 +104,7 @@ The firmware is power-source agnostic; the board sees 5 V at its USB input or 5 
 
 ## How it runs
 
-**Boot.** Bus at 400 kHz; the button is configured `INPUT_PULLUP` before the first read (without this the pin floats and falsely reads pressed); NVS opened; boot id incremented and reset reason captured; Wi-Fi join started without blocking; sensors brought up with per-device retries (the only intentionally blocking loop, and it runs before the device is usable); ToF long mode with a 50 ms budget and period; MPU6050 woken and configured for ±500 deg/s, ±4 g and a ~94 Hz DLPF; calibration loaded; first good IMU sample seeds the fusion; the USB header, `#status` and `#ready` lines are printed.
+**Boot.** Bus at 400 kHz; the button is configured `INPUT_PULLUP` before the first read (without this the pin floats and falsely reads pressed); NVS opened; boot id incremented and reset reason captured; ESP-NOW radio started without joining a network; sensors brought up with per-device retries (the only intentionally blocking loop, and it runs before the device is usable); ToF long mode with a 50 ms budget and period; MPU6050 woken and configured for ±500 deg/s, ±4 g and a ~94 Hz DLPF; calibration loaded; first good IMU sample seeds the fusion; the USB header, `#status` and `#ready` lines are printed.
 
 **Sampling and fusion.** The MPU6050 is read at 200 Hz (14-byte burst from `0x3B`) and a Mahony filter integrates bias-corrected body rates while pulling roll and pitch toward gravity. The quaternion is **body-to-world**; Euler angles are intrinsic ZYX in degrees. There is no magnetometer, so yaw is relative and drifts with whatever gyro bias remains after calibration. The ToF is polled through `dataReady()` and never blocks the IMU loop; a measurement is 50 ms budget / 50 ms period, so ~20 Hz.
 
@@ -114,11 +114,11 @@ The firmware is power-source agnostic; the board sees 5 V at its USB input or 5 
 
 **Flags byte.** Bit 0 calibration valid, bit 1 IMU fresh, bit 2 ToF fresh, bit 3 link up. `range_mm = -1`, `range_status = 255`, `range_age_ms = -1` mean no measurement yet; they are never a plausible zero.
 
-**Recovery.** All-zero IMU bursts are the signature of a part that has reset into sleep; the firmware rewrites the four configuration registers after 20 of them and counts the event. A ToF missing for 600 ms gets the full XSHUT reset and re-initialisation, with the reinit count exposed. A dropped Wi-Fi association is retried every 5 s; sends fail over to nothing and resume when the link returns. The boot/reset reason, boot id and counters make these events visible in the stream and in `@STATUS`.
+**Recovery.** All-zero IMU bursts are the signature of a part that has reset into sleep; the firmware rewrites the four configuration registers after 20 of them and counts the event. A ToF missing for 600 ms gets the full XSHUT reset and re-initialisation, with the reinit count exposed. A failed ESP-NOW initialisation or peer registration is retried every second; sends fail over to nothing and resume when the link returns. The boot/reset reason, boot id and counters make these events visible in the stream and in `@STATUS`.
 
 **Power behaviour.** No sleep mode is enabled: the station stays associated and the radio awake so the first press is answered without wake latency. The USB stream is harmless when no host is connected; it is written at 25 Hz and drains through the CP2102/UART whether or not anything reads it.
 
-**Desktop interoperability.** The same `.bin` runs tethered or untethered. Plugged into a laptop, it prints the 25 Hz compact table over USB and accepts the `@` console; on the same LAN, the laptop can run the compute unit's receiver and get the `P1` rows over UDP. Nothing is recompiled or reconfigured between the bench and the field.
+**Desktop interoperability.** The same `.bin` runs tethered or untethered. Plugged into a laptop, it prints the 25 Hz compact table over USB and accepts the `@` console; with the compute unit's ESP-NOW bridge in range, the receiver gets the `P1` rows over the radio link. Nothing is recompiled or reconfigured between the bench and the field.
 
 ## Calibration
 
@@ -130,7 +130,7 @@ The flat reference is the **sensor's** +Z axis, not the eventual enclosure's; th
 
 ## Packet and USB schemas
 
-The UDP datagram is the versioned `P1` CSV line; the USB stream is a compact fixed-width table for a human monitor. They are deliberately different formats: the link wants a stable machine schema, the monitor wants a line that fits one terminal row. The table omits the quaternion, gyro, temperature, sequence, boot id and reset reason to stay under 80 columns; those remain in the `P1` packet and are reachable through `@STATUS`.
+The ESP-NOW payload is the versioned `P1` CSV line; the USB stream is a compact fixed-width table for a human monitor. They are deliberately different formats: the link wants a stable machine schema, the monitor wants a line that fits one terminal row. The table omits the quaternion, gyro, temperature, sequence, boot id and reset reason to stay under 80 columns; those remain in the `P1` packet and are reachable through `@STATUS`.
 
 ```
 P1,seq,t_us,boot,btn,qw,qx,qy,qz,roll_deg,pitch_deg,yaw_deg,gx_dps,gy_dps,gz_dps,ax_g,ay_g,az_g,temp_C,range_mm,range_status,range_age_ms,flags,reset
@@ -138,7 +138,7 @@ P1,seq,t_us,boot,btn,qw,qx,qy,qz,roll_deg,pitch_deg,yaw_deg,gx_dps,gy_dps,gz_dps
 
 | Field | Unit / meaning |
 |---|---|
-| `seq` | UDP datagram sequence, increments only on a send; a gap is a lost datagram |
+| `seq` | Link packet sequence, increments only on a send; a gap is a lost packet |
 | `t_us` | microseconds since boot, extended across the 32-bit wrap |
 | `boot` | boot counter from NVS |
 | `btn` | 1 while held, 0 otherwise |
@@ -157,14 +157,12 @@ The USB table has these columns, in order: `t_ms btn roll pitch yaw ax ay az ran
 
 ## USB console
 
-Commands are sent as a line beginning `@`; replies begin `#`. The console and the 25 Hz table share the port, so a parser must ignore non-data lines; the `P1` CSV schema is the UDP link only.
+Commands are sent as a line beginning `@`; replies begin `#`. The console and the 25 Hz table share the port, so a parser must ignore non-data lines; the `P1` CSV schema is the ESP-NOW link only.
 
 | Command | Effect |
 |---|---|
 | `@CAL` | Flat/Z-up/still calibration, saved to NVS |
 | `@STATUS` | Boot id, reset reason, calibration, sensor/link flags, counters, IP/destination/RSSI |
-| `@DEST <ip>` | Store a unicast destination and switch to it |
-| `@DEST broadcast` | Clear the override and use the subnet's directed broadcast |
 | `@DEFAULTS` | Erase calibration and destination from NVS |
 | `@REBOOT` | Restart the ESP32 |
 
@@ -181,11 +179,11 @@ arduino-cli monitor --port /dev/ttyUSB0 --config baudrate=115200
 
 The profile **`pointer-sensor-node`** is the one the parent [`pointer/AGENTS.md`](../../AGENTS.md#build-flash-monitor) already documents; the sketch now targets the pointer board, **`esp32:esp32:esp32doit-devkit-v1`** (30-pin DevKit V1), not the 38-pin NodeMCU-32S. The VL53L1X driver is pinned in `sketch.yaml`; a machine that has never installed it needs `arduino-cli lib install VL53L1X` once.
 
-`wifi_secrets.h` is untracked and ignored by `pointer/firmware/.gitignore`; copy it from `../imu_test/`. Without it the sketch builds and runs USB-only, saying so at boot. The build produces `dist/pointer_sensor_node.ino.bin` plus the bootloader/partition companions; `arduino-cli upload` writes all of them for a fresh board. A production line that flashes bare modules can merge them with `esptool.py` (bootloader `0x1000`, partitions `0x8000`, app `0x10000` for this board definition).
+**No credentials.** The link is ESP-NOW, so the sketch has no SSID, password or `wifi_secrets.h`. It starts the Wi-Fi driver in station mode, disconnects, and pins channel 1; it never associates. The build produces `dist/pointer_sensor_node.ino.bin` plus the bootloader/partition companions; `arduino-cli upload` writes all of them for a fresh board. A production line that flashes bare modules can merge them with `esptool.py` (bootloader `0x1000`, partitions `0x8000`, app `0x10000` for this board definition).
 
-**Link status:** the current firmware still uses the Wi-Fi UDP transport and its untracked `wifi_secrets.h`; the parent's contract now requires **ESP-NOW** with the 38-pin board as the Pi-side bridge, and that transport swap is outstanding.
+**Link status:** the firmware now uses ESP-NOW and compiles at 931,236 bytes of program storage (71%) and 47,560 bytes of static RAM (14%). It has **not been flashed** since the swap, because the pointer board was not connected to the build machine. The bridge firmware at 460800 is also compiled but the board on the Pi still runs the previous 115200 image. Until both are flashed, the link is code-complete but not exercised.
 
-Provisioning before deployment: flash the board, connect USB, run `@CAL` on a flat, still surface, optionally set `@DEST`, then disconnect and power from the chosen source. NVS keeps the calibration; a full `erase_flash` would not.
+Provisioning before deployment: flash the board, connect USB, run `@CAL` on a flat, still surface, then disconnect and power from the chosen source. NVS keeps the calibration; a full `erase_flash` would not.
 
 ## Verification status
 
@@ -195,26 +193,26 @@ Provisioning before deployment: flash the board, connect USB, run `@CAL` on a fl
 g++ -std=c++17 -Wall -Wextra -O2 test/test_fusion.cpp src/fusion.cpp src/packet.cpp -o /tmp/pointer_host_test && /tmp/pointer_host_test
 ```
 
-**`[BUD]` — build size.** 955,060 bytes of program storage (72% of 1,310,720), 49,264 bytes of static RAM (15%), from arduino-cli 3.3.12 for `esp32:esp32:esp32doit-devkit-v1` (30-pin pointer board). The button test builds to 273,376 bytes (20%).
+**`[BUD]` — build size.** 931,236 bytes of program storage (71% of 1,310,720), 47,560 bytes of static RAM (14%), from arduino-cli 3.3.12 for `esp32:esp32:esp32doit-devkit-v1` (30-pin pointer board). The button test builds to 272,780 bytes (20%).
 
 **Bench development observation (previous 38-pin NodeMCU-32S, before the 30-pin pointer board).** The same firmware code streamed 623 well-formed USB rows at 25 Hz with valid ToF ranges (33–42 mm, status 0), live IMU flags, and the Wi-Fi station joined at `192.168.1.5`; that build's USB row was the `P1` CSV, before the tabular USB output was introduced. `@STATUS` and `@REBOOT` worked; the gate counters recorded `link_sent=5237`, `link_fail=0` while the old button input was held. That run also had `cal=0` (yaw drifting at the uncalibrated gyro bias) and printed the boot `#status` before the first IMU sample and before association, so its `imu=0 link=0` fields are a reporting-order artefact, not a fault.
 
-**Later 45 s run on the capacitor-updated 38-pin bench board.** 1,124 of 1,124 ToF measurements were valid at 1.50–1.53 m with zero status-5 sentinels and zero stale ages, the IMU was live throughout, and the stream held 25 Hz; the two 100 nF capacitors and the 100 µF were fitted for this run. The button read held for the whole capture (`presses=1`, `releases=0`), so idle/pressed verification is still outstanding. The send-side counters reached `link_sent=7071`, `link_fail=0`; a unicast test to this laptop delivered no datagrams, so receive-side network isolation still has to be checked at the compute unit. The USB table was verified separately: 500 rows, every row 12 fixed-width fields, header repeated; the earlier 23-column version was replaced because it wrapped in the monitor.
+**Later 45 s run on the capacitor-updated 38-pin bench board.** 1,124 of 1,124 ToF measurements were valid at 1.50–1.53 m with zero status-5 sentinels and zero stale ages, the IMU was live throughout, and the stream held 25 Hz; the two 100 nF capacitors and the 100 µF were fitted for this run. The button read held for the whole capture (`presses=1`, `releases=0`), so idle/pressed verification is still outstanding. The send-side counters reached `link_sent=7071`, `link_fail=0`; that build used the Wi-Fi UDP transport; its receive side was never verified at the compute unit, and the ESP-NOW replacement has not been flashed yet. The USB table was verified separately: 500 rows, every row 12 fixed-width fields, header repeated; the earlier 23-column version was replaced because it wrapped in the monitor.
 
 **Continuous bench mode on the 38-pin board (28 Oct).** With `LINK_BUTTON_GATED` false and the GND–GPIO18 short still fitted (`btn=1`, `presses=1`, `releases=0`), `link_sent` climbed 718 → 1215 over five seconds (~99 Hz) with `link_fail=0`, confirming the stream is independent of the button. This was a send-side observation; reception at the compute unit is still unverified.
 
-**Not yet verified.** The final pointer wiring, `@CAL` on the final mount, UDP reception at the compute unit (send-side counters are not proof of arrival), runtime on a power bank and on a LiPo regulator, and the sensor-frame-to-mechanical-frame mounting rotation. These are development checks, not §4 evidence.
+**Not yet verified.** The final pointer wiring, `@CAL` on the final mount, ESP-NOW reception at the compute unit (send-side counters are not proof of arrival), runtime on a power bank and on a LiPo regulator, and the sensor-frame-to-mechanical-frame mounting rotation. These are development checks, not §4 evidence.
 
 ## Known limitations
 
 - **Yaw is unobservable.** No magnetometer; yaw integrates residual gyro bias and its *difference* between pointer and head drifts too. The study design has to live with this or add an absolute reference; the firmware reports the quaternion it can defend and does not pretend otherwise.
 - **The GY-521 clone needs calibration.** Its raw accelerometer offset is far outside the MPU6050 datasheet; without `@CAL`, tilt and gravity magnitude are wrong. The offset is per-device, so it belongs in NVS, not in code.
 - **The ToF has shown intermittent resets on the bench.** Status-5 rows with `0xFFFF` sentinel values and runs where measurements stopped until a reset were observed in `node_test/`; the firmware's XSHUT recovery is a mitigation, not a cure. Reseat XSHUT and the module supply, and fit the optional 100 µF, before trusting the link.
-- **The UDP link is fire-and-forget.** No retransmission, acknowledgement, or clock synchronisation; a lost datagram is a lost sample (sequence gaps expose it). Broadcast may be filtered by AP isolation; `@DEST` is the escape hatch. The ESP32 radio is 2.4 GHz only.
+- **The ESP-NOW link is fire-and-forget.** No retransmission, acknowledgement, or clock synchronisation; a lost packet is a lost sample (sequence gaps expose it). The peer MAC and channel are compile-time constants shared with the bridge. The ESP32 radio is 2.4 GHz only.
 - **The current bench mode streams continuously.** With `LINK_BUTTON_GATED` false the radio transmits at 100 Hz for as long as the pointer is powered, which costs more battery than the gated deployment and makes the link independent of the button. Set the flag true for the real device.
 - **The button is a gate, not a laser.** There is no separate emitter; the pointer's "laser" is the ToF IR beam. The button is debounced in firmware but is still a raw electromechanical input.
 - **Calibration requires a flat, still placement.** There is no self-calibration in the field; provisioning needs USB and a level surface. This is deliberate for VI users, who should never enter a setup mode by gripping the device at power-on.
-- **The boot `#status` line is taken before the first IMU sample and before Wi-Fi association**, so `imu=0 link=0` there is normal; use `@STATUS` or the stream for live state.
+- **The boot `#status` line is taken before the first IMU sample and before the radio link is ready**, so `imu=0 link=0` there is normal; use `@STATUS` or the stream for live state.
 - **No battery monitoring.** The firmware does not measure the supply; a brownout appears as reset reason 9. The final power budget and runtime are open items.
 - **The stream is development telemetry.** It carries sequence, timestamps, button and reset reasons, but it is not the full §4.2 event stream (render timings and tracking tiers belong to the compute unit).
 
@@ -234,5 +232,5 @@ g++ -std=c++17 -Wall -Wextra -O2 test/test_fusion.cpp src/fusion.cpp src/packet.
 
 - Final pointer wiring and enclosure are not assembled; the circuit above is the target, and the bench record is from the old harness.
 - `@CAL` and the sensor-frame-to-mechanical-frame mounting rotation are still to be done on the final build.
-- UDP reception at the compute unit and the runtime on a power bank and on a LiPo regulator are unverified.
+- ESP-NOW reception at the compute unit and the runtime on a power bank and on a LiPo regulator are unverified.
 - The parent [`pointer/AGENTS.md`](../../AGENTS.md) still needs its part name (VL53L0X → VL53L1X) and current-state paragraphs brought in line with this directory.
