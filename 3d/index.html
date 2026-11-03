@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auris · head-frame placement</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #0b0f14; color: #cfd8e3;
+    font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  #view {
+    position: fixed; inset: 0; display: block;
+    width: 100%; height: 100%; touch-action: none;
+  }
+
+  .panel {
+    position: fixed; padding: 10px 12px; border-radius: 8px;
+    background: rgba(9, 14, 20, 0.86); border: 1px solid #1d2a38;
+    backdrop-filter: blur(6px);
+  }
+
+  #hud { top: 12px; left: 12px; min-width: 300px; pointer-events: none; }
+  #hud h1 {
+    margin: 0 0 7px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase; color: #7fa6c8;
+  }
+  .row { display: flex; justify-content: space-between; gap: 18px; }
+  .k { color: #6b7f95; }
+  .v { color: #dfe8f2; }
+
+  #link { bottom: 12px; left: 12px; display: flex; align-items: center; gap: 9px; }
+  #dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #f87171; box-shadow: 0 0 6px currentColor;
+  }
+  #dot.ok { background: #4ade80; }
+  #dot.demo { background: #60a5fa; }
+  #st-conn { min-width: 62px; color: #9fb3c8; }
+  #url {
+    width: 250px; padding: 3px 7px; border-radius: 5px;
+    border: 1px solid #243546; background: #0d1620; color: #cfd8e3;
+    font: inherit;
+  }
+
+  #legend { bottom: 12px; right: 12px; text-align: right; pointer-events: none; }
+  .sw {
+    display: inline-block; width: 18px; height: 3px;
+    margin-right: 7px; border-radius: 2px; vertical-align: middle;
+  }
+  .dim { margin-top: 5px; color: #5b6d80; }
+
+  .good { color: #4ade80; }
+  .warn { color: #fbbf24; }
+  .bad { color: #f87171; }
+  .info { color: #60a5fa; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="hud" class="panel">
+  <h1>Auris · head frame · metres</h1>
+  <div class="row"><span class="k">head r/p/y</span><span class="v" id="st-head">—</span></div>
+  <div class="row"><span class="k">tof range</span><span class="v" id="st-range">—</span></div>
+  <div class="row"><span class="k">beam az/el</span><span class="v" id="st-beam">—</span></div>
+  <div class="row"><span class="k">head → hit</span><span class="v" id="st-dist">—</span></div>
+  <div class="row"><span class="k">gain</span><span class="v" id="st-gain">—</span></div>
+  <div class="row"><span class="k">pan</span><span class="v" id="st-pan">—</span></div>
+  <div class="row"><span class="k">baseline</span><span class="v" id="st-base">—</span></div>
+  <div class="row"><span class="k">marker</span><span class="v" id="st-cam">—</span></div>
+  <div class="row"><span class="k">button</span><span class="v" id="st-btn">—</span></div>
+  <div class="row"><span class="k">tracked</span><span class="v" id="st-track">—</span></div>
+  <div class="row"><span class="k">audio</span><span class="v" id="st-audio">—</span></div>
+</div>
+
+<div id="link" class="panel">
+  <span id="dot"></span>
+  <span id="st-conn">connecting</span>
+  <input id="url" spellcheck="false" title="Snapshot server URL, e.g. http://192.168.77.2:8081">
+</div>
+
+<div id="legend" class="panel">
+  <div><span class="sw" style="background:#38d6ff"></span>ToF beam, pointer → hit</div>
+  <div><span class="sw" style="background:#dfe8f2;opacity:.55"></span>head → hit, the sound direction</div>
+  <div><span class="sw" style="background:#7089a3"></span>head → pointer, inertially tracked from both IMUs</div>
+  <div><span class="sw" style="background:#ff9f43"></span>pointer body, +X aims the beam</div>
+  <div class="dim">+X forward · +Y left · +Z up · head is the anchor</div>
+  <div class="dim">drag to orbit · wheel to zoom · f to fit</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+<script type="module" src="./viz.js"></script>
+</body>
+</html>

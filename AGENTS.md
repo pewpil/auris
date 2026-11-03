@@ -187,6 +187,7 @@ Auris spreads across the superproject and its submodules. Check this before assu
 | Path | Kind | Holds |
 |---|---|---|
 | `cu/` | **git submodule** → `ssh://git@github.com/pewpil/auris-cu.git` | **The compute unit's source code — everything that runs on the Raspberry Pi.** |
+| `3d/` | ordinary directory, in-repo | The three.js debug view of the head-frame placement, served by the compute unit's `--viz` option. |
 | `pointer/` | ordinary directory, in-repo | The pointer's firmware (`pointer/firmware/`, PlatformIO/Arduino sketch for the pointer sensor node). |
 | `thesis/` | git submodule → `ssh://git@github.com/pewpil/auris-thesis.git` | The thesis. Conventions live in [`thesis/AGENTS.md`](thesis/AGENTS.md). |
 
@@ -200,7 +201,7 @@ This is a **submodule with its own remote and its own history**, not a directory
 - **`cu/` is a gitlink, not tracked content.** From the superproject, `git status` reports only whether the submodule's *commit* moved, never what changed inside it. Use `git -C cu/ <command>` to see anything about the compute unit's actual source.
 - **It currently holds a placeholder only** — a `README.md` that read "Hello from raspi", now removed, and nothing else but an empty `AGENTS.md` awaiting content. There is no compute-unit code yet, so the directory's emptiness is the starting state rather than a checkout problem; do not go looking for lost files or try to restore anything.
 
-The superproject keeps the concepts (§1), the pointer firmware, and this file; `cu/` keeps the code that runs on the Pi.
+The superproject keeps the concepts (§1), the pointer firmware, the 3D debug view, and this file; `cu/` keeps the code that runs on the Pi.
 
 ### 7.2 Identifying the device — the MAC is stable, the IP is not
 
