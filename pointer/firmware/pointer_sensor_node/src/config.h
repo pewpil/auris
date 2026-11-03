@@ -22,7 +22,7 @@ namespace cfg {
 constexpr uint8_t PIN_I2C_SDA = 21;
 /** Pointer I2C SCL: bottom-row label D22 (between TX0 and D23), shared by both sensors. */
 constexpr uint8_t PIN_I2C_SCL = 22;
-/** ToF enable (XSHUT): top-row label D27 (between D12 and D26); driven low for reset, high for the run. */
+/** ToF enable (XSHUT): top-row label D27 (between D14 and D26); driven low for reset, high for the run. */
 constexpr uint8_t PIN_TOF_XSHUT = 27;
 /** Laser-trigger button: bottom-row label D18 (between D5 and D19); INPUT_PULLUP, idle high, pressed low. */
 constexpr uint8_t PIN_BUTTON = 18;
@@ -141,8 +141,10 @@ constexpr float CAL_ACCEL_MAX_SPREAD_G = 0.35f;
 /** ESP-NOW channel shared with the compute unit's bridge. A mismatch receives
  *  nothing while looking perfectly healthy. */
 constexpr uint8_t ESPNOW_CHANNEL = 1;
-/** Bridge station MAC: the 38-pin NodeMCU-32S on the compute unit. */
-constexpr uint8_t ESPNOW_PEER_MAC[6] = {0xB0, 0xCB, 0xD8, 0xCF, 0x70, 0x1C};
+/** Bridge station MAC: the ESP32 on the compute unit, read from the board with
+ *  `esptool read_mac` on 31 Oct 2026. The pointer's own MAC is B0:CB:D8:CF:70:1C;
+ *  sending to that address would target the pointer itself. */
+constexpr uint8_t ESPNOW_PEER_MAC[6] = {0x28, 0x05, 0xA5, 0xE2, 0xF2, 0x78};
 /** Interval between radio or peer retry attempts, in milliseconds. */
 constexpr uint32_t LINK_RETRY_MS = 1000;
 

@@ -28,13 +28,13 @@ The pointer is the handheld device of [§1.5](../AGENTS.md): it carries a laser 
 
 This is the wiring. Build it exactly as written, one row at a time, with the USB cable **disconnected** until the last row.
 
-The pointer's board prints its pin names on the silkscreen, so the labels are the authority; the 38-pin bridge's row/column numbering does not apply here. The bottom row runs `3V3, GND, D15, D2, D4, RX2, TX2, D5, D18, D19, D21, RX0, TX0, D22, D23`; the top row is `VN, GND, D13, D12, D27, D26, D25, D33, D32, D35, D34, VN, VP, EN` as printed. The used pins and their neighbours are in [the pointer pin map](#pointer-board-pin-map-30-pin-devkit-v1).
+The pointer's board prints its pin names on the silkscreen, so the labels are the authority; the 38-pin bridge's row/column numbering does not apply here. The bottom row runs `3V3, GND, D15, D2, D4, RX2, TX2, D5, D18, D19, D21, RX0, TX0, D22, D23`; the top row is `VN, GND, D13, D12, D14, D27, D26, D25, D33, D32, D35, D34, VN, VP, EN` as printed. The used pins and their neighbours are in [the pointer pin map](#pointer-board-pin-map-30-pin-devkit-v1).
 
 | From | To | Function |
 |---|---|---|
 | `D21` — **GPIO21** (bottom, between `D19` and `RX0`) | `MPU6050.SDA` and `VL53L1X.SDA` | I²C data — shared by both sensors |
 | `D22` — **GPIO22** (bottom, between `TX0` and `D23`) | `MPU6050.SCL` and `VL53L1X.SCL` | I²C clock — shared by both sensors |
-| `D27` — **GPIO27** (top, between `D12` and `D26`) | `VL53L1X.XSHUT` | ToF enable, actively driven — **not left floating** |
+| `D27` — **GPIO27** (top, between `D14` and `D26`) | `VL53L1X.XSHUT` | ToF enable, actively driven — **not left floating** |
 | `D18` — **GPIO18** (bottom, between `D5` and `D19`) | `Button.leg A` | Button input, internal pull-up |
 | `3V3` (bottom, next to `GND`) | breadboard **+** rail, and from there both `VCC` pins | 3.3 V power |
 | `GND` (bottom, next to `3V3`; top row also has `GND`) | breadboard **−** rail | Common ground |
@@ -83,16 +83,16 @@ The pointer uses the **30-pin ESP32 DevKit V1**. Its pins are labelled on the si
 
 | Row | Labels, left to right |
 |---|---|
-| Top | `VN`, `GND`, `D13`, `D12`, `D27`, `D26`, `D25`, `D33`, `D32`, `D35`, `D34`, `VN`, `VP`, `EN` |
+| Top | `VN`, `GND`, `D13`, `D12`, `D14`, `D27`, `D26`, `D25`, `D33`, `D32`, `D35`, `D34`, `VN`, `VP`, `EN` |
 | Bottom | `3V3`, `GND`, `D15`, `D2`, `D4`, `RX2`, `TX2`, `D5`, `D18`, `D19`, `D21`, `RX0`, `TX0`, `D22`, `D23` |
 
-The top row as reported has 14 labels and two `VN`s; a standard 30-pin DevKit V1 has 15 per side, usually with `VIN` at one end and `D14` between `D12` and `D27`. Confirm the printed labels before relying on the full row; the signals this build uses are unambiguous: `D27` sits between `D12` and `D26`, and `D18`, `D21`, `D22`, `3V3` and `GND` are on the bottom row as listed.
+The top row has 15 labels and two `VN`s; `D14` sits between `D12` and `D27`, and `D27` sits between `D14` and `D26`. The printed labels are the authority; the signals this build uses are unambiguous: `D27` is the ToF enable, and `D18`, `D21`, `D22`, `3V3` and `GND` are on the bottom row as listed.
 
 | Signal | Pin | Neighbours / note |
 |---|---|---|
 | I²C SDA | `D21` (GPIO21) | bottom row, between `D19` and `RX0` |
 | I²C SCL | `D22` (GPIO22) | bottom row, between `TX0` and `D23` |
-| ToF XSHUT | `D27` (GPIO27) | top row, between `D12` and `D26`; driven, never floated |
+| ToF XSHUT | `D27` (GPIO27) | top row, between `D14` and `D26`; driven, never floated |
 | Button | `D18` (GPIO18) | bottom row, between `D5` and `D19`; `INPUT_PULLUP`, pressed LOW |
 | Onboard LED | `D2` (GPIO2) | bottom row, between `D15` and `D4`; no external wire |
 | 3V3 rail | `3V3` | bottom row, next to `GND` |
@@ -203,9 +203,9 @@ pointer ESP32  --ESP-NOW-->  bridge ESP32  --USB serial-->  Raspberry Pi
 | Flash | 4 MB (manufacturer `0x68`, device `0x4016`) |
 | Crystal | 40 MHz |
 | USB-UART bridge | CP2102 (`10c4:ea60`), presents as `/dev/ttyUSB0` |
-| **MAC (station)** | **`B0:CB:D8:CF:70:1C`** |
+| **MAC (station)** | **`28:05:A5:E2:F2:78`** |
 
-That MAC is confirmed two independent ways: `esptool` reads it from eFuse, and the bridge firmware prints it at boot. They agree. This matters because reading the MAC before the Wi-Fi driver starts returns an unset value that looks entirely plausible — an early build of the bridge reported `CC:09:FC:3F:03:00` — so a board identified that way could have been mistaken for the pointer.
+That MAC is confirmed two independent ways: `esptool` reads it from eFuse, and the bridge firmware prints it at boot. It was re-read on 31 Oct 2026 after the boards were reassigned: the pointer on the laptop is `B0:CB:D8:CF:70:1C`, and the bridge on the Pi is `28:05:A5:E2:F2:78`. The MAC, not the board appearance, is the identity. They agree. This matters because reading the MAC before the Wi-Fi driver starts returns an unset value that looks entirely plausible — an early build of the bridge reported `CC:09:FC:3F:03:00` — so a board identified that way could have been mistaken for the pointer.
 
 These link facts were established on that hardware, so the pointer-side swap can be written against them:
 

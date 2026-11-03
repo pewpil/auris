@@ -37,7 +37,7 @@ Fault recovery is automatic: an all-zero MPU burst rewrites the configuration re
 
 ## Connections
 
-**This table is the authoritative wiring copy for the deployed pointer.** The `.ino` header deliberately defers to it rather than repeating a second copy that can drift. The sibling test sketches have their own copies for their own benches. The pointer board prints its pin names on the silkscreen, so the labels are the authority; there is no row/column numbering to translate. The bottom row runs `3V3, GND, D15, D2, D4, RX2, TX2, D5, D18, D19, D21, RX0, TX0, D22, D23`; the top row is `VN, GND, D13, D12, D27, D26, D25, D33, D32, D35, D34, VN, VP, EN` as printed. The used pins and their neighbours are called out in the table.
+**This table is the authoritative wiring copy for the deployed pointer.** The `.ino` header deliberately defers to it rather than repeating a second copy that can drift. The sibling test sketches have their own copies for their own benches. The pointer board prints its pin names on the silkscreen, so the labels are the authority; there is no row/column numbering to translate. The bottom row runs `3V3, GND, D15, D2, D4, RX2, TX2, D5, D18, D19, D21, RX0, TX0, D22, D23`; the top row is `VN, GND, D13, D12, D14, D27, D26, D25, D33, D32, D35, D34, VN, VP, EN` as printed. The used pins and their neighbours are called out in the table.
 
 In words: the 3V3 rail feeds both sensor modules' `VCC` and both pull-up resistors; the ground rail returns both modules, the button's second leg, and the ESP32's ground. SDA and SCL run from D21 (GPIO21) and D22 (GPIO22) to both modules, with one 4.7 kΩ pull-up on each line to 3V3. The ToF's enable comes from D27 (GPIO27), the button from D18 (GPIO18), and the IMU's address select `AD0` is tied to ground. Each module gets its own 100 nF across `VCC`/`GND`, and the optional 100 µF spans the rails for the radio's current spikes. There is no other connection between the two sensors and no laser output.
 
@@ -47,7 +47,7 @@ In words: the 3V3 rail feeds both sensor modules' `VCC` and both pull-up resisto
 | `GND` (bottom row, next to `3V3`)             | breadboard **−** rail, then CJMCU-531 `GND`, GY-521 `GND`, button leg B | Common ground; the top row also exposes a `GND`                          |
 | `D21` — **GPIO21** (between `D19` and `RX0`)  | CJMCU-531 `SDA` and GY-521 `SDA`                                        | I²C data, shared by both sensors                                          |
 | `D22` — **GPIO22** (between `TX0` and `D23`)  | CJMCU-531 `SCL` and GY-521 `SCL`                                        | I²C clock, shared by both sensors                                         |
-| `D27` — **GPIO27** (top, between `D12`/`D26`) | CJMCU-531 `XSHUT`                                                       | ToF enable; driven LOW for a reset and HIGH for the run, never floated    |
+| `D27` — **GPIO27** (top, between `D14`/`D26`) | CJMCU-531 `XSHUT`                                                       | ToF enable; driven LOW for a reset and HIGH for the run, never floated    |
 | `D18` — **GPIO18** (between `D5` and `D19`)   | button leg A                                                            | Input with the internal pull-up; idle HIGH, pressed LOW                   |
 | GY-521 `AD0`                                  | the **−** rail                                                          | Ties the IMU to `0x68`; floating moves it to `0x69`, which nothing probes |
 | CJMCU-531 `GPIO1`, GY-521 `XDA`, `XCL`, `INT` | *no connection*                                                         | Interrupt and auxiliary pins, unused                                      |
@@ -96,7 +96,7 @@ The firmware is power-source agnostic; the board sees 5 V at its USB input or 5 
 |---|---|---|---|
 | I²C SDA | `D21` / 21, bottom row between `D19` and `RX0` | `PIN_I2C_SDA` | shared |
 | I²C SCL | `D22` / 22, bottom row between `TX0` and `D23` | `PIN_I2C_SCL` | 400 kHz |
-| ToF XSHUT | `D27` / 27, top row between `D12` and `D26` | `PIN_TOF_XSHUT` | active-high enable |
+| ToF XSHUT | `D27` / 27, top row between `D14` and `D26` | `PIN_TOF_XSHUT` | active-high enable |
 | Button | `D18` / 18, bottom row between `D5` and `D19` | `PIN_BUTTON` | `INPUT_PULLUP` |
 | Onboard LED | `D2` / 2, bottom row between `D15` and `D4` | `PIN_LED` | no external wire |
 | MPU6050 | — | `ADDR_MPU6050` | `0x68`, `AD0` grounded |
