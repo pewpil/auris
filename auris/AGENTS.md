@@ -1,0 +1,219 @@
+# AGENTS.md — Auris
+
+Standing instructions for this repository. Applies to every session.
+
+> **Scope:** §1–§6 are repository-wide and apply everywhere in Auris, including inside the submodules. Thesis-writing conventions live separately in [`thesis/AGENTS.md`](thesis/AGENTS.md) and apply when working inside `thesis/`. Where code lives — in the main repo or in the `cu/` submodule — is recorded in [§7](#7-repository-layout--where-the-code-lives).
+
+---
+
+## 1. Concept
+
+**Auris** is a head-mounted, audio-only navigation aid driven by a laser pointer, for visually impaired users. This section is the canonical concept statement until a development-plan `README.md` is written; at that point the plan becomes canonical for planning content and this section remains the short concept reference.
+
+### 1.1 User
+
+The user is visually impaired, or a blindfolded sighted person replicating a visually impaired person.
+
+### 1.2 Environment
+
+A room containing obstacles — tables, walls, and similar.
+
+### 1.3 User goal
+
+The user is tasked with going from any point in the room to another point in the room.
+
+### 1.4 Navigation aid
+
+The user is equipped with a head-mounted wearable and a pointer, together with a compute unit that processes data from both. Sound reaches the user's ears through stereo headphones, which the user wears. They then use that sound to aid navigation.
+
+### 1.5 User equipment
+
+Three devices: two are 3D-printed around their components, and all three are Auris's own.
+
+**Head-mounted wearable** — worn by the user. Carries no compute board and no audio apparatus; it only senses. Both its outputs travel to the compute unit over the wired link.
+
+1. *Head orientation* — the wearable carries an IMU that establishes which way the user's head faces and supplies the head frame for sound placement. The head IMU also carries the orientation estimate through intervals when the pointer cube's tags leave camera view; a camera reacquisition corrects the inertial estimate.
+2. *Camera* — the wearable carries the camera whose live feed the compute unit runs AprilTag/ArUco tracking on. The camera is the positional origin of the head frame. The four-face pointer cube gives an absolute camera-relative raygun pose while any configured tag is visible; the camera-to-head mount transform expresses that pose in the published head frame.
+
+**Pointer** — handheld.
+
+1. *Laser* — the pointer shoots an imaginary/invisible laser toward obstacles.
+2. *Button* — the laser fires only while the button is pushed, and stops the moment the button is released.
+3. *Inertial measurement and ranging* — the pointer carries its own IMU for high-rate orientation and motion between camera frames, plus a time-of-flight sensor for distance along the raygun's aim direction. Visual cube poses re-anchor the inertial estimate at each camera frame; the IMU carries the pose through short gaps and tag occlusions.
+
+**Compute unit** — the third device. Holds the MCU, receives data from the wearable and the pointer, does all the processing, and renders the audio. Wired to the wearable (§1.7). A USB audio dongle is attached to it, whose only role is to present a stereo male port for the user's headphones; the dongle is part of the compute unit, not a separate device.
+
+**Stereo headphones** — worn by the user. They are the system's only sound output, and being worn is what makes the head-locked placement in [§1.6](#16-system-goal) physically possible.
+
+### 1.6 System goal
+
+The projected sound corresponds to where the laser shot landed **relative to the user's head** — not to the room, and not to the user's body. It varies with two things: **where the laser shot lands (a)** and **where the user is facing (b)**.
+
+Worked example: if (a) is far and to the user's left, the sound is projected faintly on the left (presumably the user is looking straight ahead); otherwise if (a) is not far, it is louder. But if (b) is right, the sound is heard as though it were at the user's back, because the landing point ends up behind them.
+
+The sound is also placed **vertically**: whether the shot lands above, at, or below the user's head level is conveyed (e.g. aiming down a staircase versus at a wall sign at eye height). The pointer is not fixed at chest height — it may be aimed up or down freely, and the placement follows the hit in 3-D.
+
+Orientation is full 3-D — **yaw, pitch, and roll** — for both the head and the pointer. The projected sound must replicate how the laser hit would actually be heard in real life.
+
+The placement uses the camera-observed pointer-cube pose as the absolute raygun position and orientation relative to the head-mounted camera, the pointer IMU for high-rate pose propagation between camera frames, the head IMU for the head frame and inertial fallback during tag occlusion, and the ToF range to extend the raygun's aim ray to the obstacle. A fresh cube observation re-anchors the inertial estimate; when tags disappear, the IMUs carry it until vision reacquires the cube and removes accumulated drift. The camera optical centre defines the positional origin, with the fixed camera-to-head transform defining the head axes.
+
+### 1.7 Hardware — the compute unit's board is pinned
+
+**Auris has three devices: the head-mounted wearable, the pointer, and the compute unit.** The wearable carries no compute board of its own. All processing happens on the compute unit, which holds the project's single MCU:
+
+| Device | MCU |
+|---|---|
+| **Compute unit** | **Raspberry Pi 5, 8 GB** |
+
+**The compute unit receives data from both other devices and does all the processing.** It runs the ArUco tracking on the camera's live feed, fuses the camera pose with the pointer and head IMU estimates, uses ToF range to locate the hit along the aim ray, and renders the binaural audio in software. The audio leaves it through an attached USB audio dongle, which exists only to present a stereo male port for the user's headphones.
+
+**The wearable is connected to the compute unit by a wired interface, deliberately.** The camera produces a live video feed that the compute unit runs ArUco tracking on, and the wired link is what keeps the delay between a marker being seen and the corresponding sound being rendered low. That latency is on the critical path of the whole interaction: the value of the aid is that the sound corresponds to what the user is aiming at *now*, and a wireless link would put delay between the aim and the answer. The specific wired standard is not pinned; what is pinned is that the link is wired.
+
+**The headphones must be worn for the placement to be physically true.** The rendering places a virtual source in the head frame, which only produces head-locked sound when the transducer sits at the listener's ear. A speaker not worn with the head would hold its position in the room, so turning the head would move the listener away from it and the apparent source would not follow — the opposite of what [§1.6](#16-system-goal) requires.
+
+**The pointer's MCU is deliberately not pinned.** No part is fixed for it here — that selection stays open. What is fixed is the shape of the answer, and the asymmetry is deliberate. The compute unit must be a Linux single-board computer because it renders audio while running computer vision on the video feed, and the pointer must be a compact battery-powered microcontroller doing onboard orientation fusion and time-of-flight ranging, because it is hand-held, runs off its own cell, and sends only data onward. Those differing requirements are what make the classes differ; no part was chosen in advance of them.
+
+Taking the compute off the wearable is what makes the wired link possible, and that in turn is what makes the tracking latency acceptable: the camera data that has to travel somewhere does not have to cross a radio.
+
+---
+
+## 2. Documentation standard — every function and class is documented
+
+Every function, method, and class written in this repository must carry a documentation comment at its point of definition. This is explicitly requested by the researcher, so it overrides the default minimal-comment style **for definitions only** — incidental inline comments elsewhere stay rare and purposeful.
+
+**Form per language:**
+
+| Language | Form |
+|---|---|
+| Python | PEP 257 docstring (`""" ... """`) on every module-level function, method, class, and dataclass |
+| TypeScript / TSX | JSDoc block (`/** ... */`) on every function, class, component, and non-obvious type |
+| Bash / scripts | Header comment block stating purpose, inputs, outputs |
+
+**Content requirements:**
+
+- **Summary** — one clear line in imperative mood ("Compute the filter cutoff for the active band."), never "This function computes ...".
+- **Parameters & returns** — meaning, **units**, and **coordinate frame** whenever numeric (e.g. degrees vs radians, meters, which frame a pose is expressed in, expected value ranges).
+- **Errors** — what the function raises/throws and under which conditions.
+- **Classes & components** — responsibility, ownership/lifecycle of state, and any invariants callers may rely on.
+- Write for the next reader; do not restate the signature or narrate obvious lines.
+
+**When editing existing code:** newly written or substantially rewritten functions/classes follow the same rule. Do not expand the diff by retro-documenting unrelated untouched code unless the researcher asks.
+
+---
+
+## 3. Git — the AI never commits by itself
+
+Do **not** run `git commit`, `git merge`, `git rebase`, `git tag`, or any other history-writing command in this repository — in the main repo, in the `cu/` submodule, or in the `thesis/` submodule. Commits are made by the researcher; the AI's job stops at producing a clean working tree.
+
+Each submodule has its **own remote and its own history**, so a commit made inside one is invisible to the superproject and vice versa. Check out the right one before inspecting history, and say which repository a `git log` came from.
+
+- **Allowed:** `git status`, `git diff`, `git log`, `git show`, `git stash list` — inspection only. Temporary, message- or checkout-only rewrites are permitted **only when the researcher explicitly orders them in the current session**, and only on unpushed history.
+- **After finishing work:** leave edits staged or unstaged as they are, summarize what changed, and let the researcher commit. Never volunteer a commit, never end a task with "shall I commit this?" — just stop.
+- **No unrequested pushes, force-flags, branch deletions, or reflog surgery** — and rebase/reword requests must be verified unpushed first.
+
+---
+
+## 4. Verification policy — no hardware bench phase
+
+**There is no hardware bench phase.** No component is assembled on a breadboard for testing, and no breadboard test matrix is executed. Verification of every engineering claim is by **software simulation or component datasheet**, falling back in a fixed order.
+
+### 4.1 Evidence classes
+
+Every verification claim carries an evidence class, taken in this order — take the strongest one available:
+
+| Tag | Meaning |
+|---|---|
+| **`[SIM]`** | Simulated — the real code (geometry, renderer, tiering, fusion) run on a desktop machine against synthetic inputs, or a circuit simulated in SPICE. |
+| **`[BUD]`** | Budgeted — instruction/cycle counts of the compiled code, scaled to the target silicon against vendor cycle tables. |
+| **`[PROP]`** | Propagated — the selected parts' datasheet noise, bias, and accuracy figures seeded through the design's error math into distributions (Monte Carlo). |
+| **`[CITE]`** | Cited — datasheet or literature carry, used **only where no simulation or budget method exists**. |
+
+**The fallback rule:** where no software method exists for a claim, **the component datasheet is the evidence** — and the claim is labelled as citation-class. Nothing is quietly upgraded from cited to measured.
+
+**The labelling rule:** no quality claim is presented as measured unless it was. A claim ending at `[CITE]` is visibly weaker than one reaching `[SIM]`, and that difference is reported rather than hidden. Thresholds themselves never move; only their provenance is labelled.
+
+### 4.2 In-study measurement
+
+What no simulation can produce is obtained from the **device measuring itself in use**: instrumentation for this stays in the firmware (structured event stream — sensor frames, render timings from the device's monotonic timer, link sequence and tx/rx timestamps, button state, reset reasons — plus a per-update active-source record for the tracking tiers). This yields real latency and tracking-tier numbers on the evaluated hardware during calibration and the user study, rather than on a bench.
+
+### 4.3 Known residual
+
+The tracking tier's **hand-off frequency and non-line-of-sight error distribution cannot be simulated or budgeted.** Only the tier *logic* (switch continuity, clamping policy, fallback ordering) is verifiable ahead of the build; the *behaviour* rests on in-use telemetry. This is the project's largest evidence gap and is to be stated as a named limitation, not left implicit.
+
+---
+
+## 5. Markdown documents — never artificially wrap lines
+
+Write every prose paragraph as **one single unwrapped line**. Do not hard-wrap prose at a column width, and do not insert line breaks inside a paragraph — neither soft returns nor trailing-space hard breaks — to control how the source looks.
+
+Separate blocks with blank lines, and let each block own its line structure:
+
+- **Paragraphs** — one line each, separated by a blank line. No mid-paragraph returns.
+- **Lists** — one item per line; continuation lines run long rather than aligning under the marker.
+- **Tables** — one row per line; long cells stay on their row.
+- **Headings, block quotes, fenced code** — keep their own structure. This is document structure, not wrapping, and is expected.
+
+The reason is how these files are read: they are consumed in Obsidian, where soft-wrapped source lines are noise and every paragraph renders as a single block regardless. A wrapped paragraph is strictly worse to read in the editor than an unwrapped one, and no line-length convention is worth that cost here.
+
+---
+
+## 6. Side notes in markdown comments
+
+The researcher leaves side notes for the AI inside markdown documents as HTML comments — the syntax is deliberately *not* written out literally here, so that this section cannot itself be mistaken for a pending note. They are invisible in Obsidian's reading view, which is how the researcher reads these files, so a pending note costs nothing to leave sitting in the source.
+
+- **Every HTML comment in a markdown file in this repository is an instruction to carry out, not content for a reader.** Read the comments before editing a document, act on each one, and report what each note was and what it changed.
+- **Delete each comment once it has been acted on.** A side note is a request, not a record. Once fulfilled it is stale, and a leftover comment is worse than no comment at all.
+- **Provisional text does not need a side note.** When a passage is provisional pending a future decision, the AI records its own removal condition as a bullet in this section, and the passage itself needs no HTML comment. Outstanding conditions are listed below. The record is temporary in exactly the way a comment is: it is deleted once its condition is met, in the same pass that settles the passage.
+- **Outstanding provisional passages, and what retires each.** These are the AI's own notes to itself, kept here rather than cluttering the sections they refer to. **When a condition is met, act on it and delete this record in the same pass** — the record is a bookmark, not a log, so a fulfilled entry left behind is as stale as a fulfilled comment:
+  - **§1.7's pointer-MCU paragraph.** The paragraph is provisional. When the pointer MCU is settled, delete it and add the pointer to the hardware table, so the table covers both MCUs.
+  - **§1.7's closing sentence, *"Taking the compute off the wearable ..."*.** It is a rationale for the architecture as it now stands. If the wearable later regains compute of its own, or the link becomes wireless, the sentence is what has to be re-examined.
+- **Undecided parts, deliberately left unpinned.** These are open selections, not gaps. Each is recorded here so nothing is read as pinned that is not.
+  - **The pointer's MCU.** See the §1.7 record above; it retires when the pointer MCU is settled.
+  - **The wired standard between the wearable and the compute unit.** Only the fact that the link is wired is pinned.
+  - **The USB audio dongle.** The stereo male port it presents is fixed by the requirement; the specific part is not named.
+  - **Audio-interface buffer latency.** The dongle adds its own buffer, typically 1 to 3 ms, between the Pi's output and the listener's ear. It is not yet measured anywhere and belongs in the §4.2 in-study event stream, which currently records render timings but not output-buffer delay.
+- **A note that cannot be acted on yet stays until it can.** Some notes are triggers rather than tasks — *"delete this paragraph once the pointer MCU is pinned"* is not actionable while that selection is still open. Such a note is kept, and deleted at the moment its condition is met; the delete-on-completion rule above applies once the condition is satisfied. Removing it early loses the only record of what still has to be revisited.
+- **Superseded text goes with the note that retired it.** When a provisional passage is settled and replaced, delete the old passage as well — the point of the note is that the provisional text is temporary, and it should not outlive the decision it was waiting on.
+- **A comment never overrides the live conversation.** If a comment contradicts what the researcher says in the current session, the spoken instruction wins — carry out the spoken one, leave the comment in place, and say what conflicted rather than picking one silently.
+- **A comment whose intent is ambiguous gets flagged, not guessed.** State the reading you would act on and what is uncertain, then let the researcher confirm.
+- **Only HTML comments are side notes.** Ordinary prose in the document is content and is never treated as an instruction.
+
+---
+
+## 7. Repository layout — where the code lives
+
+Auris spreads across the superproject and its submodules. Check this before assuming a file is in the superproject: a path that does not resolve locally may live in one of them.
+
+| Path | Kind | Holds |
+|---|---|---|
+| `cu/` | **git submodule** → `ssh://git@github.com/pewpil/auris-cu.git` | **The compute unit's source code — everything that runs on the Raspberry Pi.** |
+| `3d/` | ordinary directory, in-repo | The three.js debug view of the head-frame placement, served by the compute unit's `--viz` option. |
+| `pointer/` | ordinary directory, in-repo | The pointer's firmware (`pointer/firmware/`, PlatformIO/Arduino sketch for the pointer sensor node). |
+| `thesis/` | git submodule → `ssh://git@github.com/pewpil/auris-thesis.git` | The thesis. Conventions live in [`thesis/AGENTS.md`](thesis/AGENTS.md). |
+
+### 7.1 `cu/` is the compute unit's code
+
+**`cu/` is where the source code for the raspi to work belongs.** Everything §1.5–§1.7 assign to the compute unit lives there: the ArUco tracking on the camera feed, the fusion of the two IMUs' orientation data, the binaural audio rendering, and the audio output through the USB dongle. It is the project's only MCU and it does all the processing, so `cu/` is the software counterpart of the hardware table in [§1.7](#17-hardware--the-compute-units-board-is-pinned).
+
+This is a **submodule with its own remote and its own history**, not a directory in the superproject. That has three consequences worth knowing before touching it:
+
+- **Work inside `cu/` goes to `auris-cu`, not `auris`.** A commit there does not move the superproject's recorded gitlink, and the researcher's commit in one repository does not commit work in the other. Per [§3](#3-git--the-ai-never-commits-by-itself) the AI makes no commits in either — the separation just makes the omission easier to get wrong by accident.
+- **`cu/` is a gitlink, not tracked content.** From the superproject, `git status` reports only whether the submodule's *commit* moved, never what changed inside it. Use `git -C cu/ <command>` to see anything about the compute unit's actual source.
+- **It currently holds a placeholder only** — a `README.md` that read "Hello from raspi", now removed, and nothing else but an empty `AGENTS.md` awaiting content. There is no compute-unit code yet, so the directory's emptiness is the starting state rather than a checkout problem; do not go looking for lost files or try to restore anything.
+
+The superproject keeps the concepts (§1), the pointer firmware, the 3D debug view, and this file; `cu/` keeps the code that runs on the Pi.
+
+### 7.2 Identifying the device — the MAC is stable, the IP is not
+
+The compute unit is the Pi the researcher has SSH access to, and finding it again does not require re-deriving it from scratch.
+
+| | Value |
+|---|---|
+| Hardware MAC | `d8:3a:dd:d1:31:a4` — OUI `D83ADD`, registered to **Raspberry Pi Trading** |
+| Hostname | `capstone` |
+
+**Identify it by MAC, not by IP.** The DHCP lease moves: this same MAC was seen at `192.168.1.114` on one network and at `192.168.60.154` on another, the same physical device both times. A hostname lookup is not dependable either — the Pi does not answer `capstone.local` over mDNS, and its IP has no reverse-DNS record, so both have to come from the researcher. OpenSSH has **no directive that matches on MAC**, so an IP-based `Host capstone` entry in `~/.ssh/config` is the best available, and it goes stale the moment the lease changes. Two things keep that cheap: give the MAC a **DHCP reservation on the router** so the lease is fixed, and set `HostKeyAlias capstone` alongside `HostName` so `known_hosts` survives an IP change instead of demanding the key be accepted again under a new address.
+
+### 7.3 The repo-wide sections still apply inside `cu/`
+
+**§1–§6 apply to code written in `cu/` exactly as they do in the superproject.** §2's documentation standard governs every function and class there without exception — `cu/` holds Python for the ArUco tracking, the fusion, and the renderer, and those carry the same PEP 257 docstring requirement as anything else in Auris. §4's verification policy is likewise unchanged. Note that the two halves of the compute unit's work land differently under it: the geometry, renderer, tiering, and fusion are all named in §4.1 as `[SIM]`-able against synthetic inputs on a desktop, whereas the tracking tier's hand-off behaviour is §4.3's named residual and stays unverifiable until the device instruments itself in use. Keep those apart rather than letting a simulated renderer imply a measured tracker.

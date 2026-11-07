@@ -1,0 +1,9 @@
+# arduino-cli sketch project for the Auris pointer IMU bring-up test.
+# No third-party libraries: the MPU6050 is read directly over Wire.
+default_fqbn: esp32:esp32:nodemcu-32s
+
+profiles:
+  imu-test:
+    fqbn: esp32:esp32:nodemcu-32s
+    platforms:
+      - platform: esp32:esp32 (3.3.12)

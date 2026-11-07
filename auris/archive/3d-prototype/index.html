@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#091019">
+<title>Auris · live system view</title>
+<style>
+  :root { color-scheme: dark; --bg: #091019; --panel: rgba(12, 20, 30, .94); --line: #223244; --muted: #8192a5; --text: #e4edf6; --cyan: #42d7ff; --green: #57e39b; --amber: #ffca72; --red: #ff737c; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 13px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  button, input { font: inherit; }
+  button { color: var(--text); border: 1px solid #30465c; background: #152333; border-radius: 7px; padding: 8px 11px; cursor: pointer; }
+  button:hover { background: #20364a; border-color: #4b7897; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  #view { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+  .topbar, .panel { position: fixed; z-index: 2; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(12px); box-shadow: 0 12px 40px rgba(0,0,0,.24); }
+  .topbar { top: 14px; left: 14px; right: 14px; min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 9px 13px; border-radius: 10px; }
+  .brand { display: flex; align-items: center; gap: 11px; min-width: 185px; }
+  .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #39708b; border-radius: 8px; color: var(--cyan); font-weight: 800; }
+  .brand-name { font-size: 14px; font-weight: 700; letter-spacing: .12em; }
+  .brand-sub { color: var(--muted); font-size: 11px; }
+  .connection { display: flex; align-items: center; gap: 9px; flex: 1; max-width: 690px; }
+  #dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 9px currentColor; }
+  #dot.ok { background: var(--green); } #dot.demo { background: var(--cyan); } #dot.partial { background: var(--amber); }
+  #st-conn { min-width: 68px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  #url { min-width: 0; flex: 1; padding: 8px 10px; border: 1px solid #26394c; border-radius: 7px; background: #0a131d; color: var(--text); }
+  #connect { white-space: nowrap; }
+  #sidebar { top: 82px; left: 14px; bottom: 76px; width: 330px; padding: 14px; border-radius: 10px; overflow: auto; }
+  #camera-card { position: fixed; z-index: 1; top: 82px; right: 14px; width: min(360px, calc(100vw - 390px)); padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 12px 40px rgba(0,0,0,.24); }
+  .camera-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 1px 7px; color: #a9bfd3; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .camera-expand { display: inline-grid; flex: 0 0 30px; place-items: center; width: 30px; height: 30px; min-height: 30px; padding: 5px; border-radius: 7px; }
+  .camera-collapse-icon { display: none; }
+  #camera-card.expanded { z-index: 5; top: 82px; right: auto; left: 50%; width: min(860px, calc(100vw - 28px)); max-height: calc(100dvh - 96px); overflow: auto; transform: translateX(-50%); }
+  #camera-card.expanded #camera-feed { max-height: calc(100dvh - 190px); }
+  #camera-card.expanded .camera-expand .camera-expand-icon { display: none; }
+  #camera-card.expanded .camera-expand .camera-collapse-icon { display: block; }
+  #camera-feed-state[data-level="good"] { color: #80e6b3; }
+  #camera-feed-state[data-level="warn"] { color: #ffbd66; }
+  #camera-feed-state[data-level="bad"] { color: #ff8585; }
+  #camera-feed { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; background: #03070b; object-fit: contain; }
+  #camera-feed-status { margin: 6px 1px 0; color: var(--muted); font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  #camera-feed-quality { margin: 3px 1px 0; color: var(--muted); font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  #camera-feed-quality[data-level="dark"] { color: #ffbd66; }
+  #camera-feed-quality[data-level="normal"] { color: #80e6b3; }
+  #camera-luma-meter { height: 4px; margin: 4px 1px 0; overflow: hidden; border-radius: 99px; background: #22303c; }
+  #camera-luma-meter span { display: block; width: 0%; height: 100%; border-radius: inherit; background: #ffbd66; transition: width 160ms linear, background-color 160ms linear; }
+  #camera-luma-meter[data-level="normal"] span { background: #80e6b3; }
+  #camera-feed-hint { margin: 3px 1px 0; color: #ffbd66; font-size: 9px; line-height: 1.25; }
+  #camera-tag-hint { margin: 3px 1px 0; color: #ffbd66; font-size: 9px; line-height: 1.25; }
+  .section + .section { margin-top: 16px; padding-top: 14px; border-top: 1px solid #1c2b3a; }
+  .section-title { margin: 0 0 10px; color: #8fb2cc; font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .metric { min-height: 64px; padding: 9px 10px; border: 1px solid #1a2a39; border-radius: 8px; background: rgba(6, 13, 20, .68); }
+  .metric.wide { grid-column: 1 / -1; }
+  .metric.metric-meter { min-height: 84px; }
+  .metric-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+  .metric-value { display: block; overflow: hidden; color: var(--text); font: 600 14px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+  .metric-value.wrap { overflow-wrap: anywhere; white-space: normal; }
+  .metric.diagnosis { min-height: auto; }
+  .range-meter { height: 9px; margin-top: 9px; overflow: hidden; border: 1px solid #39485a; border-radius: 99px; background: #263446; }
+  .range-meter-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: #eef4fb; transition: width 100ms linear; }
+  .meter-scale { display: flex; justify-content: space-between; margin-top: 3px; color: #788a9d; font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .pan-meter { position: relative; height: 9px; margin-top: 9px; overflow: hidden; border: 1px solid #39485a; border-radius: 99px; background: #263446; }
+  .pan-meter::before { position: absolute; z-index: 1; top: 0; bottom: 0; left: 50%; width: 1px; background: #9aabba; content: ""; }
+  .pan-meter-fill { position: absolute; top: 0; left: 50%; width: 0; height: 100%; border-radius: 99px; background: #eef4fb; transition: left 100ms linear, width 100ms linear; }
+  .pan-scale { display: flex; justify-content: space-between; margin-top: 3px; color: #788a9d; font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .metric-value.good { color: var(--green); } .metric-value.warn { color: var(--amber); } .metric-value.bad { color: var(--red); }
+  .controls { display: flex; flex-wrap: wrap; gap: 7px; }
+  .control-note { margin: 9px 0 0; color: var(--muted); font-size: 11px; }
+  #toolbar { position: fixed; z-index: 2; left: 14px; bottom: 14px; display: flex; gap: 7px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); backdrop-filter: blur(12px); }
+  #legend { right: 14px; bottom: 14px; max-width: 330px; padding: 11px 13px; border-radius: 9px; color: #b6c5d4; font-size: 11px; pointer-events: none; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .sw { width: 16px; height: 3px; flex: 0 0 16px; border-radius: 2px; }
+  .dim { margin-top: 7px; color: #718397; }
+  .good { color: var(--green); } .warn { color: var(--amber); } .bad { color: var(--red); } .info { color: var(--cyan); }
+  .icon { width: 18px; height: 18px; display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; }
+  .button-label { display: inline; }
+  .sheet-toggle { display: none; }
+  #connection-toggle { display: none; }
+  @media (max-width: 760px) {
+    .topbar { left: 10px; right: 10px; top: max(10px, env(safe-area-inset-top)); min-height: 54px; padding: 8px 10px; gap: 8px; border-radius: 15px; }
+    .brand { min-width: 0; gap: 9px; } .brand-mark { width: 30px; height: 30px; } .brand-sub { font-size: 10px; }
+    .connection { position: relative; flex: 0 0 auto; width: auto; max-width: none; gap: 7px; }
+    #st-conn { min-width: 0; font-size: 9px; }
+    #connection-toggle { display: inline-flex; width: 40px; height: 40px; padding: 9px; }
+    .connection:not(.address-open) #url, .connection:not(.address-open) #connect { display: none; }
+    .connection.address-open { position: absolute; top: calc(100% + 8px); right: 0; left: 0; z-index: 3; padding: 9px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+    .connection.address-open #url { display: block; width: 1px; }
+    #camera-card { top: 78px; right: 9px; width: min(42vw, 210px); padding: 6px; }
+    #camera-card.expanded { top: calc(78px + env(safe-area-inset-top)); right: 8px; left: 8px; width: auto; max-height: calc(100dvh - 92px); padding: 8px; transform: none; }
+    #camera-card.expanded #camera-feed { max-height: calc(100dvh - 190px); }
+    .camera-card-head { font-size: 9px; margin-bottom: 4px; }
+    #camera-feed-status, #camera-feed-quality { font-size: 9px; }
+    #sidebar { top: auto; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; width: auto; max-height: min(82dvh, 720px); padding: 0 14px calc(12px + env(safe-area-inset-bottom)); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 22px 22px 0 0; overflow: hidden; transform: translateY(calc(100% - 76px)); transition: transform 240ms cubic-bezier(.2,.8,.2,1); touch-action: pan-y; }
+    #sidebar.expanded { transform: translateY(0); }
+    .sheet-toggle { position: relative; display: grid; flex: 0 0 76px; grid-template-columns: 1fr auto; align-items: center; width: 100%; min-height: 76px; padding: 8px 3px 5px; border: 0; border-radius: 0; background: transparent; text-align: left; touch-action: none; }
+    .sheet-toggle:hover { background: transparent; border-color: transparent; }
+    .sheet-grab { position: absolute; top: 8px; left: 50%; width: 38px; height: 4px; border-radius: 99px; background: #53687b; transform: translateX(-50%); }
+    .sheet-heading { align-self: end; padding-bottom: 9px; font-size: 14px; font-weight: 700; }
+    #sheet-summary { align-self: end; padding: 0 8px 10px 0; color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #sheet-chevron { align-self: end; margin-bottom: 8px; transition: transform 180ms ease; }
+    #sidebar.expanded #sheet-chevron { transform: rotate(180deg); }
+    #sidebar-content { min-height: 0; flex: 1; overflow: auto; overscroll-behavior: contain; padding-bottom: 10px; }
+    #sidebar-content[aria-hidden="true"] { visibility: hidden; }
+    .section + .section { margin-top: 12px; padding-top: 12px; }
+    .metric { min-height: 58px; padding: 8px 9px; }
+    .metric-value { font-size: 13px; }
+    .controls .icon-button { width: 44px; height: 44px; padding: 12px; }
+    .controls .button-label { display: none; }
+    #toolbar { right: 12px; bottom: calc(86px + env(safe-area-inset-bottom)); left: auto; gap: 6px; padding: 6px; border-radius: 14px; }
+    #toolbar .icon-button { width: 44px; height: 44px; padding: 11px; border-radius: 12px; }
+    #toolbar .button-label, .mobile-icon-label { display: none; }
+    #legend { display: none; }
+  }
+  @media (max-width: 380px) { .brand-sub { display: none; } .metric { min-height: 54px; } }
+  @media (prefers-reduced-motion: reduce) { #sidebar, #sheet-chevron { transition: none; } }
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="Interactive 3D view of the head, pointer, and ToF hit; pointer-local fallback is unregistered"></canvas>
+
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">A</span><div><div class="brand-name">AURIS</div><div class="brand-sub">live sensor console</div></div></div>
+  <form class="connection" id="connection-form">
+    <span id="dot" aria-hidden="true"></span>
+    <span id="st-conn" role="status">connecting</span>
+    <button id="connection-toggle" type="button" class="icon-button" aria-label="Edit server address" title="Edit server address" aria-expanded="false">
+      <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 21.1l1.7-1.7"/></svg>
+    </button>
+    <input id="url" spellcheck="false" aria-label="Compute unit address" placeholder="Pi address, for example http://192.168.1.20:8081">
+    <button id="connect" type="submit" aria-label="Connect to server">Connect</button>
+  </form>
+</header>
+
+<section id="camera-card" aria-label="Live camera with marker detection">
+  <div class="camera-card-head"><span>Head camera</span><span id="camera-feed-state">connecting</span><button id="camera-expand" class="camera-expand" type="button" title="Expand camera preview" aria-label="Expand camera preview" aria-expanded="false"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path class="camera-expand-icon" d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m11-5v3a2 2 0 0 1-2 2h-3"/><path class="camera-collapse-icon" d="M9 3v6H3m18 0h-6V3M3 15h6v6m6 0v-6h6"/></svg></button></div>
+  <img id="camera-feed" alt="Live head camera with detected marker annotations" />
+  <div id="camera-feed-status">Waiting for camera frames</div>
+  <div id="camera-tag-hint" hidden></div>
+  <div id="camera-feed-quality" aria-live="polite" data-level="unavailable">Image brightness waiting</div>
+  <div id="camera-luma-meter" role="meter" aria-label="Approximate camera image brightness" aria-valuemin="0" aria-valuemax="255" aria-valuenow="0" data-level="unavailable"><span></span></div>
+  <div id="camera-feed-hint" hidden>Dark image: uncover the camera, add light, then aim at a close 30 mm tag (ID 11, 10, 8, or 7).</div>
+</section>
+
+<aside id="sidebar" class="panel" aria-label="Live sensor data">
+  <button id="sheet-toggle" class="sheet-toggle" type="button" aria-expanded="false" aria-controls="sidebar-content">
+    <span class="sheet-grab" aria-hidden="true"></span>
+    <span class="sheet-heading">Sensor data</span>
+    <span id="sheet-summary">ToF — · Fetch —</span>
+    <svg id="sheet-chevron" class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+  <div id="sidebar-content">
+  <section class="section">
+    <h1 class="section-title">Head orientation</h1>
+    <div class="metrics">
+      <div class="metric"><span class="metric-label">Roll</span><span class="metric-value" id="st-roll">—</span></div>
+      <div class="metric"><span class="metric-label">Pitch</span><span class="metric-value" id="st-pitch">—</span></div>
+      <div class="metric"><span class="metric-label">Yaw</span><span class="metric-value" id="st-yaw">—</span></div>
+      <div class="metric"><span class="metric-label">Head IMU stream</span><span class="metric-value" id="st-head-health">—</span></div>
+      <div class="metric wide diagnosis"><span class="metric-label">Head input diagnosis</span><span class="metric-value wrap" id="st-head-diagnosis">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Pointer and range</h2>
+    <div class="metrics">
+      <div class="metric"><span class="metric-label">Pointer roll</span><span class="metric-value" id="st-pointer-roll">—</span></div>
+      <div class="metric"><span class="metric-label">Pointer pitch</span><span class="metric-value" id="st-pointer-pitch">—</span></div>
+      <div class="metric"><span class="metric-label">Pointer yaw</span><span class="metric-value" id="st-pointer-yaw">—</span></div>
+      <div class="metric"><span class="metric-label">Yaw change · up to 60 s</span><span class="metric-value" id="st-yaw-trend">—</span></div>
+      <div class="metric"><span class="metric-label">Orientation source</span><span class="metric-value" id="st-orientation-source">—</span></div>
+      <div class="metric wide"><span class="metric-label">Pointer stream / freshness</span><span class="metric-value" id="st-pointer-stream">—</span></div>
+      <div class="metric"><span class="metric-label">Pointer IMU calibration</span><span class="metric-value" id="st-pointer-cal">—</span></div>
+      <div class="metric wide"><span class="metric-label">Accelerometer · pointer body (g)</span><span class="metric-value" id="st-accel">—</span></div>
+      <div class="metric wide"><span class="metric-label">Gyroscope · pointer body (°/s)</span><span class="metric-value" id="st-gyro">—</span></div>
+      <div class="metric"><span class="metric-label">ToF status / measurement age</span><span class="metric-value" id="st-tof-quality">—</span></div>
+      <div class="metric"><span class="metric-label">Pointer IMU die temperature</span><span class="metric-value" id="st-imu-temp">—</span></div>
+      <div class="metric metric-meter"><span class="metric-label">ToF distance</span><span class="metric-value" id="st-range">—</span><div class="range-meter" id="tof-meter" role="meter" aria-label="ToF distance" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"><span class="range-meter-fill"></span></div><div class="meter-scale"><span>0 m</span><span id="tof-meter-max">4 m max</span></div></div>
+      <div class="metric"><span class="metric-label">Trigger button</span><span class="metric-value" id="st-btn">—</span></div>
+      <div class="metric"><span class="metric-label">Pointer baseline</span><span class="metric-value" id="st-base">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Camera and placement</h2>
+    <div class="metrics">
+      <div class="metric wide"><span class="metric-label">Cube centre from camera · head frame (X, Y, Z)</span><span class="metric-value" id="st-cam">—</span></div>
+      <div class="metric"><span class="metric-label">Camera frames / detections</span><span class="metric-value" id="st-camera-frames">—</span></div>
+      <div class="metric"><span class="metric-label">Pose age / reprojection</span><span class="metric-value" id="st-camera-quality">—</span></div>
+      <div class="metric"><span class="metric-label">Capture / detect time</span><span class="metric-value" id="st-camera-time">—</span></div>
+      <div class="metric wide"><span class="metric-label">Configured marker dictionary / IDs / geometry</span><span class="metric-value" id="st-marker-config">—</span></div>
+      <div class="metric wide"><span class="metric-label">Calibration / failed frames</span><span class="metric-value" id="st-camera-calibration">—</span></div>
+      <div class="metric metric-meter"><span class="metric-label">Head to hit</span><span class="metric-value" id="st-dist">—</span><div class="range-meter" id="hit-meter" role="meter" aria-label="Head to hit distance" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"><span class="range-meter-fill"></span></div><div class="meter-scale"><span>0 m</span><span id="hit-meter-max">4 m max</span></div></div>
+      <div class="metric"><span class="metric-label">Beam azimuth / elevation</span><span class="metric-value" id="st-beam">—</span></div>
+      <div class="metric"><span class="metric-label">Camera baseline</span><span class="metric-value" id="st-baseline-health">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Audio cue</h2>
+    <div class="metrics">
+      <div class="metric"><span class="metric-label">Gain</span><span class="metric-value" id="st-gain">—</span></div>
+      <div class="metric metric-meter"><span class="metric-label">Stereo pan · L / R</span><span class="metric-value" id="st-pan">—</span><div class="pan-meter" id="pan-meter" role="meter" aria-label="Stereo pan from full left to full right" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="0"><span class="pan-meter-fill"></span></div><div class="pan-scale"><span>Left</span><span>Center</span><span>Right</span></div></div>
+      <div class="metric"><span class="metric-label">Output</span><span class="metric-value" id="st-audio">—</span></div>
+      <div class="metric"><span class="metric-label">IMU pointer estimate</span><span class="metric-value" id="st-track">—</span></div>
+      <div class="metric"><span class="metric-label">Fetch time / update rate</span><span class="metric-value" id="st-fetch">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">View controls</h2>
+    <div class="controls">
+      <button id="pause-view" type="button" class="icon-button" aria-label="Pause updates" title="Pause updates"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg><span class="button-label">Pause updates</span></button>
+      <button id="fit-view" type="button" class="icon-button" aria-label="Fit scene" title="Fit scene"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg><span class="button-label">Fit scene</span></button>
+      <button id="toggle-demo" type="button" class="icon-button" aria-label="Start demo" title="Start demo"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg><span class="button-label">Start demo</span></button>
+    </div>
+    <p class="control-note">These controls affect the browser view. Sensor calibration and device settings are reported from the Pi.</p>
+  </section>
+  </div>
+</aside>
+
+<nav id="toolbar" aria-label="3D view controls">
+  <button id="recenter-view" class="icon-button" type="button" title="Frame the head and current hit" aria-label="Recenter view"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="5"/></svg><span class="button-label">Recenter</span></button>
+  <button id="resume-view" class="icon-button" type="button" title="Resume live sensor updates" aria-label="Resume live sensor updates" hidden><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg><span class="button-label">Resume live</span></button>
+</nav>
+
+<div id="legend" class="panel">
+  <div class="legend-row"><span class="sw" style="background:#42d7ff"></span>ToF beam and measured range</div>
+  <div class="legend-row"><span class="sw" style="background:#dfe8f2;opacity:.55"></span>Head to hit: audio direction</div>
+  <div class="legend-row"><span class="sw" style="background:#7089a3"></span>IMU-only position estimate</div>
+  <div class="legend-row"><span class="sw" style="background:#ff9f43"></span>Pointer body and aim axis</div>
+  <div id="frame-note" class="dim" role="status">Waiting for a head-camera or IMU reference.</div>
+  <div class="dim"><span id="frame-coordinate-note">Head frame · +X forward · +Y left · +Z up</span><br>Drag to orbit · wheel to zoom · F to fit</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": { "three": "./vendor/three.module.min.js" }
+}
+</script>
+<script type="module" src="./viz.js?v=20261107-pointer-local-frame2"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#eef0f2"><title>Auris · Navigation dashboard</title>
+<link rel="stylesheet" href="/app.css?v=reference-3">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<script type="module" src="/app.js?v=reference-3"></script>
+</head>
+<body>
+<main class="dashboard">
+<section class="panel connection-panel">
+<p class="eyebrow">AURIS / CAPSTONE</p><h1>Connection: Ethernet/WiFi/Deployed</h1>
+<div id="connection" data-tone="off"><span class="led"></span><strong id="connection-label">Connecting to compute unit</strong></div>
+<label class="deployment">Connection profile <select id="profile"><option>Auto / unknown</option><option>Ethernet</option><option>Wi-Fi</option><option>Deployed</option></select></label>
+<p class="muted">Operator-selected profile; browser access does not identify the Pi’s network interface.</p>
+<div class="connection-stats"><div><small>DATA SOURCE</small><strong id="source">Waiting for Pi</strong></div><div><small>UPDATED</small><strong id="updated">—</strong></div><div><small>HTTP ROUND TRIP</small><strong id="rtt">—</strong></div></div>
+<button id="refresh" type="button">Refresh data ↻</button>
+</section>
+<section class="panel imu-panel"><header><h2>Head IMU</h2><span id="head-status" class="pill" data-tone="off">No data</span></header>
+<svg class="orientation" viewBox="0 0 180 85" role="img" aria-label="Head orientation"><path class="axis" d="M90 65V10M20 65H160"/><g id="head-arrow"><path d="M90 65L135 25M120 27L135 25L134 41"/><circle cx="90" cy="65" r="7"/></g></svg>
+<div class="angles"><div><small>ROLL</small><strong id="head-roll">—</strong></div><div><small>PITCH</small><strong id="head-pitch">—</strong></div><div><small>YAW</small><strong id="head-yaw">—</strong></div></div>
+<p id="head-detail" class="muted">Waiting for orientation.</p>
+<div class="readout"><small>Accelerometer: m/s²</small><strong id="head-accel">Not reported</strong></div>
+<div class="readout"><small>Gyroscope: °/s</small><strong id="head-gyro">Not reported</strong></div></section><section class="panel imu-panel"><header><h2>Probe IMU</h2><span id="pointer-status" class="pill" data-tone="off">No data</span></header>
+<svg class="orientation" viewBox="0 0 180 85" role="img" aria-label="Probe orientation"><path class="axis" d="M90 65V10M20 65H160"/><g id="pointer-arrow"><path d="M90 65L135 25M120 27L135 25L134 41"/><circle cx="90" cy="65" r="7"/></g></svg>
+<div class="angles"><div><small>ROLL</small><strong id="pointer-roll">—</strong></div><div><small>PITCH</small><strong id="pointer-pitch">—</strong></div><div><small>YAW</small><strong id="pointer-yaw">—</strong></div></div>
+<p id="pointer-detail" class="muted">Waiting for orientation.</p>
+<div class="readout"><small>Accelerometer: m/s²</small><strong id="pointer-accel">Not reported</strong></div>
+<div class="readout"><small>Gyroscope: °/s</small><strong id="pointer-gyro">Not reported</strong></div></section>
+<section class="panel tags-panel"><header><h2>Tags</h2><span id="tag-status" class="pill">Unknown</span></header><div id="tags"><p class="muted">Waiting for configured tag IDs.</p></div><p id="tag-detail" class="muted">Visibility requires fresh camera telemetry.</p></section>
+<section class="panel visualization-panel"><header><h2>3D visualization</h2><button id="reset-view" type="button">Reset view</button></header>
+<div class="geometry-readouts"><p class="beam-color">Ray distance: <strong id="ray-distance">—</strong></p><p class="baseline-color">Raygun: DOF relative to the head <strong id="probe-position">—</strong></p><p class="sight-color">Ray tip distance to the head: <strong id="hit-distance">—</strong></p></div>
+<div class="scene-wrap"><canvas id="scene" aria-label="Interactive 3D head, probe, and ray geometry"></canvas><p id="scene-message" class="scene-message">Waiting for head-relative placement</p></div>
+<p class="muted">Drag to orbit · scroll to zoom · head frame: +X forward, +Y left, +Z up</p><div class="legend"><span>● Head</span><span class="baseline-color">● Probe position</span><span class="beam-color">● ToF ray</span><span class="sight-color">● Head to hit</span></div>
+</section>
+<section class="panel camera-panel"><header><h2>Camera feed</h2><span id="camera-status" class="pill">Waiting</span></header><div class="camera-wrap"><img id="camera-feed" alt="Live head-mounted camera feed" hidden><p id="camera-message">Camera feed unavailable</p></div><p id="camera-detail" class="muted">Waiting for camera telemetry.</p></section>
+</main><footer><span id="footer-message">Connecting to the compute unit.</span><span>Read-only telemetry · 100 ms polling</span></footer>
+</body></html>
